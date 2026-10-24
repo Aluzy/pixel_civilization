@@ -37,8 +37,10 @@ pixel_civilization/
 │   ├── scenes/              # BootScene, MenuScene, WorldScene, UIScene
 │   ├── render/              # textures de blocs, couche des individus, calques
 │   ├── ui/                  # inspecteur, tableau de bord, chronique, contrôles du temps
+│   ├── worker/              # hôte temps réel du Worker : cadence (scheduler), messages
 │   └── sim/                 # tourne dans le Worker — aucun import de Phaser ni du DOM
-│       ├── worker.js        # point d'entrée du Worker, boucle de cycles
+│       ├── simulation.js    # classe Simulation : step(n), time(), hash()
+│       ├── protocol.js      # types de messages Worker ↔ rendu
 │       ├── core/            # rng, horloge de cycles, hash d'état, bus d'événements
 │       ├── world/           # génération, blocs, régénération, menaces
 │       ├── ecs/             # entités, composants (tableaux typés), registre
@@ -118,6 +120,9 @@ Messages typés, objets simples ; les gros volumes passent en `ArrayBuffer` tran
 Le Worker n'envoie que ce qui intersecte le `viewport` (plus une marge d'un bloc).
 
 ## Cadence et vitesse
+
+La cadence en temps réel vit dans `src/worker/` (`scheduler.js`, `sim-worker.js`), en dehors de `src/sim/` : c'est le seul endroit côté Worker où l'horloge réelle est lue. `src/sim/` ne connaît que les cycles (décision 0003).
+
 
 - Pas fixe : 10 cycles par seconde à ×1.
 - Le Worker exécute `vitesse × 10` cycles par seconde réelle, en lots, et mesure son temps de calcul. S'il ne tient pas, il plafonne et rapporte la vitesse effective.

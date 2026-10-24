@@ -41,15 +41,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm test
       - run: npm run build
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v4
         with:
           path: dist
 
@@ -68,9 +68,14 @@ Vérifier au moment de l'implémentation que ces versions d'actions sont toujour
 
 4. Le jeu est publié à l'adresse `https://aluzy.github.io/pixel_civilization/`.
 
+## État actuel
+
+- Les workflows sont dans `.github/workflows/` (`deploy.yml`, `ci.yml`).
+- Tant que `package-lock.json` n'est pas versionné, les workflows utilisent `npm install` ; dès qu'il l'est, ils passent automatiquement à `npm ci`. Versionner le fichier de verrouillage est recommandé pour des builds reproductibles.
+
 ## Intégration continue des pull requests
 
-Un second workflow `ci.yml` exécute `npm ci`, `npm run lint`, `npm test` et `npm run build` sur chaque pull request, sans déployer.
+Un second workflow `ci.yml` exécute l'installation, `npm run lint`, `npm run format:check`, `npm test` et `npm run build` sur chaque pull request et chaque branche autre que `main`, sans déployer.
 
 ## Règles
 
