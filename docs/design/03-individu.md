@@ -59,7 +59,8 @@ Se répliquer est une **décision** évaluée par le moteur d'IA (niveau Harmoni
 
 - La réplication apparaît sur une case libre adjacente.
 - Elle hérite des **attributs** du parent avec une mutation de ±5 % par attribut (tirage via le générateur à graine).
-- Elle naît **sans mémoire** : aucun lieu, aucune recette. Elle doit tout apprendre (exploration, imitation, parole, livres).
+- Elle hérite du **génome de décision** du parent (curiosité, aversion au risque, prévoyance…), lui aussi muté de ±5 % par gène (voir [06-ia](06-ia.md), couche 8). C'est le support de l'évolution des stratégies sur les générations.
+- Elle naît **sans mémoire** ni expérience apprise : aucun lieu, aucune recette, aucune estimation. Elle doit tout apprendre (exploration, imitation, parole, livres).
 - Ses jauges démarrent à 30.
 
 ## Vieillissement et mort

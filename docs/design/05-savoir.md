@@ -55,6 +55,12 @@ Un souvenir de lieu peut être périmé (ressource épuisée). L'individu agit s
 - Écrire une recette : 50 cycles. Lire une recette : 20 cycles ; elle entre en mémoire à force 1.
 - Un individu ne peut écrire que ce qu'il sait. Une recette fausse (transmise oralement avec erreur) peut être écrite : les livres peuvent contenir des erreurs.
 
+## Livres de conseils (après J7)
+
+- Un individu expérimenté peut écrire une partie de son **expérience apprise** (voir [06-ia](06-ia.md), couche 7) : zones dangereuses ou fructueuses, coûts réels des actions.
+- Un lecteur intègre ces estimations à force réduite, comme un a priori qu'il corrigera par sa propre expérience.
+- Ils permettent une évolution culturelle plus rapide que l'évolution génétique.
+
 ## Bibliothèques
 
 - Bâtiment composé (gabarit de pixels bruns et blanc cassé) qui contient jusqu'à 50 cartes et livres.

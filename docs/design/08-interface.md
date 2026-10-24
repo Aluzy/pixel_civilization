@@ -34,6 +34,10 @@ Clic sur un individu → panneau latéral :
 - objectif en cours et plan (liste d'actions, action courante surlignée) ;
 - mémoire : liste des souvenirs par type, avec une barre de force ; clic sur un lieu → la caméra s'y rend ;
 - journal de décisions (scores des objectifs concurrents) ;
+- projet à long terme en cours et sa décomposition ; options imaginées par la simulation mentale et leur valeur ;
+- fiches sur les autres individus (compétences, intention présumée, fiabilité, affinité) ;
+- estimations apprises (« forêt nord dangereuse : 7 attaques en 20 passages ») ;
+- génome de décision, comparé à la moyenne de la population ;
 - filiation (parent, réplications).
 
 Clic sur un bâtiment → contenu (stock, livres et cartes d'une bibliothèque). Clic sur une case → biome, ressource, quantité.
@@ -48,6 +52,7 @@ Activables séparément, superposés en semi-transparence : ressources connues d
 - Population, naissances et morts.
 - Score d'harmonie et courbes de ses composantes.
 - Recettes découvertes / connues / écrites / perdues.
+- Évolution du génome : distribution de chaque gène dans la population au fil des jours.
 
 ## Chronique
 

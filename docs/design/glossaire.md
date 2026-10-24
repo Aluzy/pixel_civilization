@@ -22,5 +22,12 @@
 | Chronique | Fil d'événements marquants affiché à l'observateur | `chronicle` |
 | Harmonie | Score composite de 0 à 100 | `harmony` |
 | Âge sombre | Période où un savoir écrit a été perdu | `darkAge` |
+| Projet | But à long terme décomposé en sous-tâches (HTN) | `project` |
+| Simulation mentale | Évaluation de futurs possibles sur un modèle issu des croyances | `imagination` |
+| Fiche sociale | Ce qu'un individu croit savoir d'un autre | `socialModel` |
+| Expérience apprise | Estimations révisées à partir des résultats des actions | `learned` |
+| Génome | Gènes qui paramètrent la personnalité de décision, mutés à chaque réplication | `genome` |
+| Budget de réflexion | Unités de travail de l'IA allouées par cycle | `thinkBudget` |
+| Penseur | Worker secondaire qui calcule des décisions | `thinker` |
 | Graine | Nombre qui détermine tout le monde et les tirages | `seed` |
 | Bloc gelé | Bloc sans individu proche, non simulé en détail | `frozen` |
