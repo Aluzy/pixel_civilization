@@ -1,15 +1,17 @@
 import { describeTick } from '../sim/core/clock.js';
 import { EventType } from '../sim/core/events.js';
+import { subjectLabel } from './names.js';
 
 /**
- * @param {number} subject - Memory subject: 0 = water, else a resource id.
- * @param {{ resources: { name: string }[] }} tables
- * @returns {string} E.g. "un point d’eau", "un lieu de baies".
+ * @param {number} subject - Memory subject: 0 = water, a resource id, or a structure.
+ * @param {import('./names.js').Names} [names]
+ * @returns {string} E.g. "un point d’eau", "un lieu de baies", "son abri".
  */
-export function placeName(subject, tables) {
+export function placeName(subject, names) {
   if (subject === 0) return 'un point d’eau';
-  const name = tables?.resources[subject - 1]?.name ?? 'ressource';
-  return `un lieu de ${name.toLowerCase()}`;
+  if (!names || subject < 0) return 'un lieu';
+  const label = subjectLabel(subject, names).toLowerCase();
+  return subject <= names.resources.length ? `un lieu de ${label}` : `son ${label}`;
 }
 
 /**
@@ -29,12 +31,24 @@ const MEMORY_TEXT = {
   [EventType.REDISCOVERED]: (c) => `${c.who} retrouve ${c.place} oublié ${c.where}.`,
 };
 
+// Crafting and project events name a recipe (what it makes) or a project.
+const MAKING_TEXT = {
+  [EventType.DISCOVERED]: (c) => `${c.who} découvre comment faire : ${c.thing}.`,
+  [EventType.FORGOT_RECIPE]: (c) => `${c.who} a oublié comment faire : ${c.thing}.`,
+  [EventType.CRAFTED]: (c) => `${c.who} fabrique : ${c.thing}.`,
+  [EventType.BUILT]: (c) => `${c.who} bâtit : ${c.thing} ${c.where}.`,
+  [EventType.PROJECT_DONE]: (c) => `${c.who} achève son projet « ${c.project} ».`,
+};
+
 const TEXT = {
   [EventType.BIRTH]: (who) => `Premier pas de ${who}.`,
   [EventType.FIRST_DRINK]: (who) => `Première gorgée d’eau de ${who}.`,
   [EventType.FIRST_MEAL]: (who) => `Premier repas de ${who}.`,
   [EventType.FIRST_SLEEP]: (who) => `Premier sommeil de ${who}.`,
+  [EventType.SHELTERED_SLEEP]: (who) => `Première nuit à l’abri pour ${who}.`,
   [EventType.HEALTH_CRITICAL]: (who) => `Santé critique pour ${who} !`,
+  [EventType.ATTACKED]: (who) => `Un prédateur attaque ${who} !`,
+  [EventType.PREDATOR_KILLED]: (who) => `${who} tue un prédateur.`,
   [EventType.DEATH]: (who) => `Mort de ${who}.`,
 };
 
@@ -53,19 +67,24 @@ export function shortClock(tick, time) {
  * One chronicle line for an event.
  * @param {import('../sim/core/events.js').SimEvent} event
  * @param {import('../sim/core/clock.js').TimeConfig} time
- * @param {{ resources: { name: string }[] }} [tables] - For resource names.
+ * @param {import('./names.js').Names} [names] - For resource, recipe and project names.
  * @returns {string}
  */
-export function formatEvent(event, time, tables) {
+export function formatEvent(event, time, names) {
   const who = `l’individu #${event.agent}`;
   const where = `(${event.x}, ${event.y})`;
   const memoryText = MEMORY_TEXT[event.type];
+  const makingText = MAKING_TEXT[event.type];
   const context = {
     who,
     where,
-    place: placeName(event.subject, tables),
+    place: placeName(event.subject, names),
     need: needName(event.subject),
+    thing: names?.recipes?.[event.subject] ?? '?',
+    project: names?.projects?.[event.subject] ?? '?',
   };
-  const text = memoryText ? memoryText(context) : (TEXT[event.type]?.(who) ?? event.type);
+  let text = TEXT[event.type]?.(who) ?? event.type;
+  if (memoryText) text = memoryText(context);
+  else if (makingText) text = makingText(context);
   return `${shortClock(event.tick, time)} · ${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }

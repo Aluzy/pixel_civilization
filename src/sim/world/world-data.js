@@ -19,6 +19,7 @@
  * @property {string} color - "#rrggbb".
  * @property {boolean} renewable
  * @property {[number, number]} quantity - Inclusive range of units per tile.
+ * @property {string} [tool] - Item needed to harvest it (data/recipes.json).
  */
 
 /**

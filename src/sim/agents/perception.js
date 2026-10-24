@@ -1,5 +1,5 @@
 import { EventType } from '../core/events.js';
-import { isVital, memoryEvent, salienceOf } from './beliefs.js';
+import { isStructure, isVital, memoryEvent, salienceOf, tauOf } from './beliefs.js';
 import { FORGOTTEN_SLOTS, Remembered, WATER_SUBJECT } from './memory.js';
 
 /**
@@ -18,6 +18,7 @@ export function perceptionRadius(ctx, id, dark) {
 
 /**
  * Stores a sighting and reports a rediscovery of a forgotten place.
+ * Exported as {@link notice} for places the agent learns about by acting (building).
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
  * @param {number} id
@@ -27,7 +28,7 @@ export function perceptionRadius(ctx, id, dark) {
  * @param {number} quantity
  * @returns {void}
  */
-function see(state, ctx, id, subject, x, y, quantity) {
+export function notice(state, ctx, id, subject, x, y, quantity) {
   const memory = ctx.agents.memory[id];
   const m = ctx.balance.memory;
   if (memory.count >= memory.capacity && memory.find(subject, x, y, m.sameRadius) < 0) {
@@ -45,13 +46,31 @@ function see(state, ctx, id, subject, x, y, quantity) {
     quantity,
     state.tick,
     salienceOf(ctx, subject),
-    ctx.placeTau,
+    tauOf(ctx, subject),
     m.sameRadius,
   );
   if (result !== Remembered.ADDED && result !== Remembered.REPLACED) return;
   if (isVital(ctx, subject) && memory.takeLost(subject, x, y, m.sameRadius) >= 0) {
     memoryEvent(state, ctx, id, EventType.REDISCOVERED, x, y, subject);
   }
+}
+
+/**
+ * Whether what the agent sees at `cell` confirms a memory of `subject`: 1 yes, 0 no, -1 cannot
+ * tell (a danger is a moving animal: the memory only fades).
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} subject
+ * @param {number} cell
+ * @returns {number}
+ */
+function confirms(ctx, subject, cell) {
+  const nav = ctx.nav;
+  if (subject === WATER_SUBJECT) return nav.besideWater(cell) ? 1 : 0;
+  if (subject === ctx.catalog.dangerSubject) return -1;
+  if (isStructure(ctx, subject)) {
+    return nav.structure[cell] === subject - ctx.catalog.resourceCount ? 1 : 0;
+  }
+  return nav.resource[cell] === subject && nav.quantity[cell] > 0 ? 1 : 0;
 }
 
 /**
@@ -73,20 +92,36 @@ export function perceive(state, ctx, id) {
   agents.explored[id].markArea(ax - radius, ay - radius, ax + radius, ay + radius, state.tick);
 
   const water = nav.nearestWaterSide();
-  if (water >= 0) see(state, ctx, id, WATER_SUBJECT, nav.cellX(water), nav.cellY(water), 0);
+  if (water >= 0) notice(state, ctx, id, WATER_SUBJECT, nav.cellX(water), nav.cellY(water), 0);
 
-  // Nearest reachable cell of each resource, in one pass over the window.
+  // Nearest reachable cell of each resource and each structure, in one pass over the window.
   const best = ctx.nearestBySubject;
+  const R = ctx.catalog.resourceCount;
   best.fill(-1);
   const n = nav.side * nav.side;
   for (let i = 0; i < n; i++) {
+    if (!nav.reachable(i)) continue;
+    const st = nav.structure[i];
+    if (st !== 0 && (best[R + st] < 0 || nav.dist[i] < nav.dist[best[R + st]])) best[R + st] = i;
     const r = nav.resource[i];
-    if (r === 0 || nav.quantity[i] === 0 || !nav.reachable(i)) continue;
+    if (r === 0 || nav.quantity[i] === 0) continue;
     if (best[r] < 0 || nav.dist[i] < nav.dist[best[r]]) best[r] = i;
   }
-  for (let r = 1; r < best.length; r++) {
-    const c = best[r];
-    if (c >= 0) see(state, ctx, id, r, nav.cellX(c), nav.cellY(c), nav.quantity[c]);
+  for (let subject = 1; subject < best.length; subject++) {
+    const c = best[subject];
+    if (c < 0) continue;
+    const quantity = subject <= R ? nav.quantity[c] : 0;
+    notice(state, ctx, id, subject, nav.cellX(c), nav.cellY(c), quantity);
+  }
+
+  // Predators in sight: remembered as dangers where they are.
+  const threats = state.threats;
+  for (let p = 0; p < threats.highWater; p++) {
+    if (threats.alive[p] !== 1) continue;
+    const tx = threats.x[p];
+    const ty = threats.y[p];
+    if (Math.abs(tx - ax) > radius || Math.abs(ty - ay) > radius) continue;
+    notice(state, ctx, id, ctx.catalog.dangerSubject, tx, ty, 0);
   }
 
   // Places it had forgotten and sees again, still valid: rediscovered.
@@ -96,15 +131,12 @@ export function perceive(state, ctx, id) {
     const subject = memory.lostSubject[k];
     const cell = nav.innerCellAt(memory.lostX[k], memory.lostY[k]);
     if (cell < 0 || !nav.reachable(cell)) continue;
-    const valid =
-      subject === WATER_SUBJECT
-        ? nav.besideWater(cell)
-        : nav.resource[cell] === subject && nav.quantity[cell] > 0;
+    const valid = confirms(ctx, subject, cell) === 1;
     memory.clearLost(k);
     if (!valid) continue;
     const x = memory.lostX[k];
     const y = memory.lostY[k];
-    see(state, ctx, id, subject, x, y, subject === WATER_SUBJECT ? 0 : nav.quantity[cell]);
+    notice(state, ctx, id, subject, x, y, subject > 0 && subject <= R ? nav.quantity[cell] : 0);
     memoryEvent(state, ctx, id, EventType.REDISCOVERED, x, y, subject);
   }
 
@@ -113,13 +145,11 @@ export function perceive(state, ctx, id) {
     const cell = nav.innerCellAt(memory.x[i], memory.y[i]);
     if (cell < 0) continue;
     const subject = memory.subject[i];
-    const valid =
-      subject === WATER_SUBJECT
-        ? nav.besideWater(cell)
-        : nav.resource[cell] === subject && nav.quantity[cell] > 0;
-    if (valid) {
+    const valid = confirms(ctx, subject, cell);
+    if (valid < 0) continue;
+    if (valid === 1) {
       // Seeing a remembered place again keeps it alive, even if it is not the nearest.
-      const quantity = subject === WATER_SUBJECT ? 0 : nav.quantity[cell];
+      const quantity = subject > 0 && subject <= R ? nav.quantity[cell] : 0;
       memory.refresh(i, state.tick, salienceOf(ctx, subject), quantity);
       continue;
     }

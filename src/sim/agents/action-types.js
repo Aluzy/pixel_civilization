@@ -7,6 +7,9 @@ export const Action = Object.freeze({
   EAT: 4,
   SLEEP: 5,
   IDLE: 6,
+  HARVEST: 7,
+  CRAFT: 8,
+  EXPERIMENT: 9,
 });
 
 /** Display names for the inspector, indexed by {@link Action}. */
@@ -18,4 +21,17 @@ export const ACTION_NAMES = Object.freeze([
   'mange',
   'dort',
   'se repose',
+  'récolte',
+  'fabrique',
+  'expérimente',
 ]);
+
+/**
+ * Actions the agent sees through once started (unless a vital need or an attack interrupts):
+ * reconsidering them every few ticks would waste the work done.
+ * @param {number} action
+ * @returns {boolean}
+ */
+export function isFocused(action) {
+  return action === Action.HARVEST || action === Action.CRAFT || action === Action.EXPERIMENT;
+}

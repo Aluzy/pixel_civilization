@@ -11,6 +11,11 @@ export const INPUT = Object.freeze({
   curiosity: 3,
   darkness: 4,
   one: 5,
+  needShelter: 6,
+  needWeapon: 7,
+  needTool: 8,
+  danger: 9,
+  vulnerability: 10,
 });
 
 const INPUT_COUNT = Object.keys(INPUT).length;
@@ -81,7 +86,8 @@ export function buildGoalTable(data) {
 /**
  * Scores every goal and returns the index of the best one.
  *
- * score = Π curve(input) × compensation × pyramid × (1 + inertia if current goal), where
+ * score = Π curve(input) × compensation × pyramid × (1 + inertia if current goal)
+ * × (1 + bonus if the goal is the current step of a project), where
  * compensation keeps goals with many considerations comparable (multiplying several factors
  * below 1 would otherwise penalise them), and pyramid suppresses a goal while the levels below
  * it are urgent. Exact ties are broken with the agent's own random stream.
@@ -91,9 +97,11 @@ export function buildGoalTable(data) {
  * @param {number} currentGoal - Index of the goal being pursued, or -1.
  * @param {Float64Array} out - Receives one score per goal.
  * @param {import('../core/rng.js').Rng} rng
+ * @param {number} [favoured=-1] - Goal of the current project step, or -1.
+ * @param {number} [bonus=0] - Its score is multiplied by 1 + bonus.
  * @returns {number}
  */
-export function scoreGoals(table, inputs, currentGoal, out, rng) {
+export function scoreGoals(table, inputs, currentGoal, out, rng, favoured = -1, bonus = 0) {
   if (inputs.length < INPUT_COUNT) throw new Error('Utility inputs buffer too short');
   const urgency = table.levelUrgency;
   urgency.fill(0);
@@ -114,6 +122,7 @@ export function scoreGoals(table, inputs, currentGoal, out, rng) {
     if (n > 1) p += (1 - p) * (1 - 1 / n) * p;
     for (let l = 0; l < goal.level; l++) p *= 1 - urgency[l] * table.suppression;
     if (g === currentGoal) p *= 1 + table.inertia;
+    if (g === favoured) p *= 1 + bonus;
     out[g] = p;
     if (p > bestScore) {
       bestScore = p;

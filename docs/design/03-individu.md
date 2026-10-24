@@ -16,7 +16,7 @@ Un individu est un pixel noir avec des attributs, des jauges de besoins, un inve
 
 Formules de base :
 
-- Capacité d'inventaire = Force × 2 unités.
+- Capacité d'inventaire = Force × 3 unités (× 2 jusqu'au J3 ; porter de quoi bâtir un abri et une réserve de baies demandait plus).
 - Dégâts reçus = max(1, attaque de l'adversaire × multiplicateur d'arme − défense totale).
 - Temps de récolte d'une unité = base de la ressource ÷ (1 + Force / 20) ÷ multiplicateur d'outil.
 
@@ -47,6 +47,8 @@ Chaque jauge va de 0 (satisfait) à 100 (critique) et évolue à chaque cycle.
 | Épuisement | fatigue à 100 : l'individu s'endort, quel que soit son objectif |
 
 Le premier individu commence avec toutes ses jauges à 30. En J2, il dort là où il se trouve : l'abri et les dangers nocturnes arrivent au J4.
+
+Au J4, la fatigue baisse deux fois plus vite dans un abri (`sleepRecovery`), et un individu dans un abri est hors d'atteinte des prédateurs. L'inventaire contient aussi des objets (lance, hache, pioche) qui agissent tant qu'ils sont portés. La jauge d'insécurité n'est pas une jauge à part : le danger perçu et la vulnérabilité sont des entrées de l'objectif Fuir ([06-ia](06-ia.md)).
 
 ## Pyramide des besoins
 

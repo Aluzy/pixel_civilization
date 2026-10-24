@@ -55,6 +55,7 @@ for (let day = 1; day <= options.days; day++) {
         x: agent.x,
         y: agent.y,
         goal: agent.goal,
+        made: agent.made.map((m) => m.name),
       }
     : { day, alive: false };
   days.push(row);
@@ -64,7 +65,9 @@ for (let day = 1; day <= options.days; day++) {
       console.log(`${label}  mort`);
     } else {
       const needs = `faim ${pct(row.hunger)}  soif ${pct(row.thirst)}  fatigue ${pct(row.fatigue)}`;
-      console.log(`${label}  PV ${pct(row.hp)}  ${needs}  (${row.x}, ${row.y})  ${row.goal}`);
+      const made = row.made.length > 0 ? `  [${row.made.join(', ')}]` : '';
+      const where = `(${row.x}, ${row.y})`;
+      console.log(`${label}  PV ${pct(row.hp)}  ${needs}  ${where}  ${row.goal}${made}`);
     }
   }
   if (!row.alive) break;

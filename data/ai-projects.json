@@ -1,0 +1,14 @@
+{
+  "bonus": 0.5,
+  "projects": [
+    {
+      "id": "settle",
+      "name": "S’installer",
+      "steps": [
+        { "goal": "shelter", "name": "Bâtir un abri" },
+        { "goal": "equip", "name": "Fabriquer une arme" },
+        { "goal": "tool", "name": "Fabriquer un outil" }
+      ]
+    }
+  ]
+}

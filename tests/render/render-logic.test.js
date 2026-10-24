@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { nextZoom, scrollToKeepPoint, visibleRect } from '../../src/render/camera-math.js';
 import { buildPalette, hexToRgb, paintChunk } from '../../src/render/palette.js';
-import { WORLD_TABLES } from '../../src/sim/simulation.js';
+import { CATALOG, WORLD_TABLES } from '../../src/sim/simulation.js';
 import { CHUNK_SIZE } from '../../src/sim/world/coords.js';
 import { formatTile } from '../../src/ui/tile-info.js';
 
@@ -35,6 +35,23 @@ describe('palette', () => {
     paintChunk(rgba, chunk, p);
     expect([...rgba.slice(0, 4)]).toEqual([...hexToRgb(WORLD_TABLES.biomes[0].color), 255]);
     expect([...rgba.slice(4, 8)]).toEqual([...hexToRgb(WORLD_TABLES.resources[1].color), 255]);
+  });
+
+  it('paints structures over everything, never in pure black', () => {
+    const p = buildPalette(WORLD_TABLES, CATALOG.structures);
+    const chunk = {
+      biome: new Uint8Array(AREA),
+      resource: new Uint8Array(AREA),
+      structure: new Uint8Array(AREA),
+    };
+    chunk.resource[0] = 2;
+    chunk.structure[0] = 1;
+    const rgba = new Uint8ClampedArray(AREA * 4);
+    paintChunk(rgba, chunk, p);
+    expect([...rgba.slice(0, 4)]).toEqual([...hexToRgb(CATALOG.structures[0].color), 255]);
+    for (let i = 3; i < p.structures.length; i += 3) {
+      expect(p.structures[i] + p.structures[i + 1] + p.structures[i + 2]).toBeGreaterThan(0);
+    }
   });
 });
 

@@ -21,6 +21,10 @@ export const PlanNote = Object.freeze({
   SEARCHING: 3, // Nothing known: exploring to find it.
   HERE: 4, // Already at the right place.
   CARRIED: 5, // Using what the agent carries.
+  PLAN: 6, // Next step of a GOAP plan.
+  TRIAL: 7, // Trying a combination to discover a recipe.
+  FLEEING: 8, // Running away from a predator.
+  SHELTER: 9, // Going to (or staying in) its shelter.
 });
 
 /**

@@ -1,0 +1,53 @@
+{
+  "structures": [
+    { "id": "workbench", "name": "Établi", "color": "#d9c7a0", "kind": "station" },
+    { "id": "shelter", "name": "Abri", "color": "#9c6b45", "kind": "shelter", "sleepRecovery": 2 }
+  ],
+  "items": [
+    { "id": "spear", "name": "Lance", "kind": "weapon", "attack": 2 },
+    { "id": "stone_axe", "name": "Hache de pierre", "kind": "tool", "harvest": { "wood": 2 } },
+    {
+      "id": "stone_pickaxe",
+      "name": "Pioche de pierre",
+      "kind": "tool",
+      "harvest": { "stone": 3 }
+    }
+  ],
+  "recipes": [
+    {
+      "id": "workbench",
+      "station": null,
+      "inputs": { "wood": 4, "fiber": 2 },
+      "durationTicks": 60,
+      "output": { "structure": "workbench" }
+    },
+    {
+      "id": "shelter",
+      "station": null,
+      "inputs": { "wood": 10, "fiber": 5, "stone": 3 },
+      "durationTicks": 150,
+      "output": { "structure": "shelter" }
+    },
+    {
+      "id": "spear",
+      "station": "workbench",
+      "inputs": { "wood": 2, "fiber": 1 },
+      "durationTicks": 30,
+      "output": { "item": "spear" }
+    },
+    {
+      "id": "stone_axe",
+      "station": "workbench",
+      "inputs": { "stone": 2, "wood": 1 },
+      "durationTicks": 40,
+      "output": { "item": "stone_axe" }
+    },
+    {
+      "id": "stone_pickaxe",
+      "station": "workbench",
+      "inputs": { "stone": 3, "wood": 1, "fiber": 1 },
+      "durationTicks": 40,
+      "output": { "item": "stone_pickaxe" }
+    }
+  ]
+}

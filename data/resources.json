@@ -50,7 +50,8 @@
       "color": "#f07a1a",
       "renewable": false,
       "quantity": [10, 80],
-      "harvestTicks": 60
+      "harvestTicks": 60,
+      "tool": "stone_pickaxe"
     },
     {
       "id": "coal",
@@ -58,7 +59,8 @@
       "color": "#4d4858",
       "renewable": false,
       "quantity": [10, 80],
-      "harvestTicks": 50
+      "harvestTicks": 50,
+      "tool": "stone_pickaxe"
     },
     {
       "id": "iron",
@@ -66,7 +68,8 @@
       "color": "#5f7d9c",
       "renewable": false,
       "quantity": [10, 80],
-      "harvestTicks": 70
+      "harvestTicks": 70,
+      "tool": "copper_pickaxe"
     }
   ],
   "placement": [

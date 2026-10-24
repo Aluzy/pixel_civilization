@@ -23,7 +23,7 @@
       "memory": 20
     },
     "startNeeds": 30,
-    "carryPerForce": 2
+    "carryPerForce": 3
   },
   "needs": {
     "hungerPerDay": 50,
@@ -38,7 +38,8 @@
     "regenPerDay": 40,
     "regenBelowNeed": 60,
     "wakeFatigue": 5,
-    "healthCriticalEvent": 30
+    "healthCriticalEvent": 30,
+    "wakeOnNeed": 0.85
   },
   "actions": {
     "drinkPerTick": 2,
@@ -47,13 +48,19 @@
     "nightPerceptionFactor": 0.5,
     "minPerception": 3,
     "carryReserve": 6,
-    "eatUntilHunger": 5
+    "eatUntilHunger": 5,
+    "experimentTicks": 20
   },
   "ai": {
     "decisionInterval": 10,
     "exploreLeg": [16, 40],
     "journalSize": 50,
-    "searchLeg": [32, 64]
+    "searchLeg": [32, 64],
+    "planNodeBudget": 300,
+    "planMaxSteps": 12,
+    "planTravelCost": 60,
+    "planExploreCost": 600,
+    "shelterRange": 48
   },
   "memory": {
     "placeTauDays": 3,
@@ -62,9 +69,49 @@
     "forgetThreshold": 0.1,
     "sweepInterval": 100,
     "sameRadius": 4,
-    "salience": { "water": 1, "edible": 1, "other": 0.5 },
+    "salience": { "water": 1, "edible": 1, "structure": 1, "danger": 0.8, "other": 0.5 },
     "eventCooldown": 600,
-    "maxBlur": 12
+    "maxBlur": 12,
+    "structureTauDays": 15,
+    "dangerTauDays": 2
   },
-  "exploration": { "cellSize": 8, "capacity": 1024, "staleDays": 3 }
+  "exploration": { "cellSize": 8, "capacity": 1024, "staleDays": 3 },
+  "crafting": {
+    "recipeTauDays": 10,
+    "failureTauDays": 5,
+    "failureSlots": 32,
+    "sampleUnits": 6,
+    "sampleDistance": 16,
+    "fetchBase": 0.2,
+    "fetchWalk": 0.3,
+    "stationWalk": 0.3,
+    "trial": {
+      "recentTicks": 600,
+      "recentBonus": 0.3,
+      "costPerType": 0.1,
+      "stationBonus": 0.5,
+      "kindStationBonus": 0.6,
+      "similarBonus": 1,
+      "familiarBonus": 0.3,
+      "jitter": 0.05
+    }
+  },
+  "threats": {
+    "startDay": 2,
+    "spawnInterval": 100,
+    "spawnChance": 0.2,
+    "spawnDistance": [20, 30],
+    "maxPerAgent": 1,
+    "maxPredators": 64,
+    "senseRadius": 32,
+    "speed": 1.5,
+    "hp": 24,
+    "attack": 7,
+    "defense": 1,
+    "attackInterval": 15,
+    "fleeBelow": 0.25,
+    "giveUpTicks": 300,
+    "despawnDistance": 48,
+    "attackedEventCooldown": 300
+  }
 }

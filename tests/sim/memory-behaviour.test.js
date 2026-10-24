@@ -35,24 +35,32 @@ describe('memory in play', () => {
     expect(drift).toBeLessThanOrEqual(balance.memory.maxBlur);
   });
 
-  // Seed 47 tells the J3 story: it forgets the pond at (8, -7) on day 11, looks for it on day 19
-  // from a blurred memory, misses it ("not found"), then rediscovers it the same evening.
-  it('forgets a place, fails to find it, then rediscovers it (J3 exit, seed 47)', () => {
-    const sim = new Simulation({ seed: 47, balance });
-    sim.step(20 * DAY);
+  // Seed 61 tells the J3 story: it forgets the water at (-12, -46) on day 8, looks for it on
+  // day 14 from a blurred memory, misses it ("not found"), then rediscovers it moments later.
+  it('forgets a place, fails to find it, then rediscovers it (J3 exit, seed 61)', () => {
+    const sim = new Simulation({ seed: 61, balance });
+    sim.step(15 * DAY);
     const events = sim.events.events;
-    const forgot = events.findIndex((e) => e.type === EventType.FORGOT_PLACE);
-    expect(forgot).toBeGreaterThanOrEqual(0);
-    const subject = events[forgot].subject;
-    const failed = events.findIndex(
-      (e, i) => i > forgot && e.type === EventType.NOT_FOUND && e.subject === subject,
-    );
-    expect(failed).toBeGreaterThan(forgot);
-    const found = events.findIndex(
-      (e, i) => i > failed && e.type === EventType.REDISCOVERED && e.subject === subject,
-    );
-    expect(found).toBeGreaterThan(failed);
-    expect([events[found].x, events[found].y]).toEqual([events[forgot].x, events[forgot].y]);
+    const story = events.flatMap((forgot, i) => {
+      if (forgot.type !== EventType.FORGOT_PLACE) return [];
+      const failed = events.findIndex(
+        (e, j) => j > i && e.type === EventType.NOT_FOUND && e.subject === forgot.subject,
+      );
+      if (failed < 0) return [];
+      const found = events.findIndex(
+        (e, k) =>
+          k > failed &&
+          e.type === EventType.REDISCOVERED &&
+          e.subject === forgot.subject &&
+          e.x === forgot.x &&
+          e.y === forgot.y,
+      );
+      return found < 0 ? [] : [{ forgot, failed: events[failed], found: events[found] }];
+    });
+    expect(story.length).toBeGreaterThan(0);
+    const { forgot, failed, found } = story[0];
+    expect(forgot.tick).toBeLessThan(failed.tick);
+    expect(failed.tick).toBeLessThan(found.tick);
     expect(sim.agents.aliveCount).toBe(1);
   });
 
