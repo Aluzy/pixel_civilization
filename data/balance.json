@@ -1,0 +1,14 @@
+{
+  "time": {
+    "ticksPerSecond": 10,
+    "ticksPerDay": 1200,
+    "dayStartHour": 6,
+    "phases": [
+      { "name": "day", "fraction": 0.6 },
+      { "name": "dusk", "fraction": 0.1 },
+      { "name": "night", "fraction": 0.2 },
+      { "name": "dawn", "fraction": 0.1 }
+    ],
+    "speedSteps": [1, 4, 16, 64, 256]
+  }
+}
