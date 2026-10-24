@@ -1,0 +1,26 @@
+# Glossaire
+
+| Terme | Définition | Identifiant dans le code |
+| --- | --- | --- |
+| Individu | Pixel noir autonome | `agent` |
+| Cycle | Pas de simulation (10 par seconde à ×1) | `tick` |
+| Jour | 1 200 cycles | `day` |
+| Bloc | Portion de 64 × 64 cases du monde | `chunk` |
+| Case | Une cellule de la grille du monde | `tile` |
+| Ressource | Matière récoltable représentée par une couleur | `resource` |
+| Station | Pixel de transformation qui permet des recettes | `station` |
+| Recette | Combinaison station + ingrédients → produit | `recipe` |
+| Jauge | Niveau d'un besoin, de 0 (satisfait) à 100 (critique) | `need` |
+| Souvenir | Élément de mémoire typé, avec une force | `memory` |
+| Force (d'un souvenir) | Valeur de 0 à 1 qui décroît avec le temps | `strength` |
+| Croyance | Ce que l'individu tient pour vrai, éventuellement périmé | `belief` |
+| Objectif | But choisi par l'Utility AI | `goal` |
+| Plan | Séquence d'actions produite par le GOAP | `plan` |
+| Carte d'influence | Grille basse résolution de valeurs spatiales | `influenceMap` |
+| Tableau noir | Mémoire partagée de la colonie, consultée au camp | `blackboard` |
+| Colonie | Ensemble d'individus partageant un tableau noir | `colony` |
+| Chronique | Fil d'événements marquants affiché à l'observateur | `chronicle` |
+| Harmonie | Score composite de 0 à 100 | `harmony` |
+| Âge sombre | Période où un savoir écrit a été perdu | `darkAge` |
+| Graine | Nombre qui détermine tout le monde et les tirages | `seed` |
+| Bloc gelé | Bloc sans individu proche, non simulé en détail | `frozen` |
