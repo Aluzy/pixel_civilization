@@ -35,6 +35,35 @@
       ]
     },
     {
+      "id": "flee",
+      "name": "Fuir",
+      "level": "survival",
+      "considerations": [
+        { "input": "danger", "curve": { "type": "smoothstep", "lo": 0.15, "hi": 0.6 } },
+        { "input": "vulnerability", "curve": { "type": "linear", "m": 1, "b": 0 } }
+      ]
+    },
+    {
+      "id": "shelter",
+      "name": "Bâtir un abri",
+      "level": "safety",
+      "considerations": [
+        { "input": "needShelter", "curve": { "type": "linear", "m": 0.45, "b": 0 } }
+      ]
+    },
+    {
+      "id": "equip",
+      "name": "S'équiper",
+      "level": "equipment",
+      "considerations": [{ "input": "needWeapon", "curve": { "type": "linear", "m": 0.4, "b": 0 } }]
+    },
+    {
+      "id": "tool",
+      "name": "Fabriquer un outil",
+      "level": "efficiency",
+      "considerations": [{ "input": "needTool", "curve": { "type": "linear", "m": 0.35, "b": 0 } }]
+    },
+    {
       "id": "explore",
       "name": "Explorer",
       "level": "knowledge",

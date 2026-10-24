@@ -25,6 +25,7 @@ export class Navigator {
     this.biome = new Uint8Array(MAX_CELLS);
     this.resource = new Uint8Array(MAX_CELLS);
     this.quantity = new Uint8Array(MAX_CELLS);
+    this.structure = new Uint8Array(MAX_CELLS);
     this.stepCost = new Float64Array(MAX_CELLS);
     this.dist = new Float64Array(MAX_CELLS);
     this.prev = new Int32Array(MAX_CELLS);
@@ -64,6 +65,7 @@ export class Navigator {
         this.biome[i] = biome;
         this.resource[i] = (p >> PACK.RESOURCE_SHIFT) & PACK.MASK;
         this.quantity[i] = (p >> PACK.QUANTITY_SHIFT) & PACK.MASK;
+        this.structure[i] = (p >>> PACK.STRUCTURE_SHIFT) & PACK.MASK;
         const speed = this.biomeSpeed[biome];
         this.stepCost[i] = speed > 0 ? 1 / speed : Infinity;
       }
@@ -257,6 +259,30 @@ export class Navigator {
       if (best < 0 || this.dist[i] < this.dist[best]) best = i;
     }
     return best;
+  }
+
+  /**
+   * Cheapest reachable cell holding a structure of `code`, or -1.
+   * @param {number} code
+   * @returns {number}
+   */
+  nearestStructure(code) {
+    let best = -1;
+    const n = this.side * this.side;
+    for (let i = 0; i < n; i++) {
+      if (this.dist[i] === Infinity || this.structure[i] !== code) continue;
+      if (best < 0 || this.dist[i] < this.dist[best]) best = i;
+    }
+    return best;
+  }
+
+  /**
+   * True if a cell can take a new structure: passable, no resource, no structure.
+   * @param {number} cell
+   * @returns {boolean}
+   */
+  buildable(cell) {
+    return this.dist[cell] !== Infinity && this.resource[cell] === 0 && this.structure[cell] === 0;
   }
 
   /**

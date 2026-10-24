@@ -51,5 +51,13 @@
     { "id": "plain", "name": "Plaine", "color": "#b8c590", "speed": 1, "when": {} }
   ],
   "spawn": { "biomes": ["plain", "forest"], "maxRadius": 512 },
-  "darkness": { "day": 0.1, "dusk": 0.6, "night": 1, "dawn": 0.6 }
+  "darkness": { "day": 0.1, "dusk": 0.6, "night": 1, "dawn": 0.6 },
+  "threats": {
+    "predator": {
+      "name": "Prédateur",
+      "color": "#7a1010",
+      "biomes": ["forest", "plain"],
+      "phases": ["dusk", "night"]
+    }
+  }
 }

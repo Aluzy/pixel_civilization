@@ -15,6 +15,14 @@ export const EventType = Object.freeze({
   SEARCHING: 'searching',
   NOT_FOUND: 'notFound',
   REDISCOVERED: 'rediscovered',
+  DISCOVERED: 'discovered',
+  FORGOT_RECIPE: 'forgotRecipe',
+  CRAFTED: 'crafted',
+  BUILT: 'built',
+  SHELTERED_SLEEP: 'shelteredSleep',
+  PROJECT_DONE: 'projectDone',
+  ATTACKED: 'attacked',
+  PREDATOR_KILLED: 'predatorKilled',
 });
 
 /** Events kept in memory; older ones are dropped (the count keeps growing). */
@@ -28,7 +36,8 @@ const MAX_EVENTS = 500;
  * @property {number} agent - Entity id concerned, or -1.
  * @property {number} x
  * @property {number} y
- * @property {number} subject - What the event is about (water = 0, resource id), or -1.
+ * @property {number} subject - What the event is about: memory subject (water = 0, resource id,
+ *   structure), recipe index for crafting events, project index, or -1.
  */
 
 export class EventLog {

@@ -9,6 +9,7 @@ import { phaseIndexAt } from '../core/clock.js';
 export function timeSystem(state, ctx) {
   state.tick += 1;
   const phase = phaseIndexAt(state.tick, state.balance.time);
+  ctx.phase = phase;
   ctx.darkness = ctx.darknessByPhase[phase];
   ctx.dark = ctx.nightPhase === phase;
 }

@@ -9,7 +9,7 @@ import { createRng } from '../../src/sim/core/rng.js';
 function store() {
   return new AgentStore({
     max: 4,
-    resourceCount: 3,
+    goodCount: 4,
     journalSize: 5,
     exploration: { capacity: 64, cellSize: 8 },
   });

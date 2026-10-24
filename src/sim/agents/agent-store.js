@@ -1,3 +1,4 @@
+import { RecipeBook } from '../crafting/recipe-book.js';
 import { Action } from './action-types.js';
 import { ExplorationMap } from './exploration-map.js';
 import { Journal } from './journal.js';
@@ -17,13 +18,17 @@ export class AgentStore {
   /**
    * @param {object} options
    * @param {number} options.max - Maximum number of simultaneous agents.
-   * @param {number} options.resourceCount - Number of resource ids (excluding 0).
+   * @param {number} options.goodCount - Slots per inventory (good ids, 0 unused).
+   * @param {number} [options.recipeCount=0]
+   * @param {number} [options.failureSlots=1]
    * @param {number} options.journalSize
    * @param {{ capacity: number, cellSize: number }} options.exploration
    */
-  constructor({ max, resourceCount, journalSize, exploration }) {
+  constructor({ max, goodCount, recipeCount = 0, failureSlots = 1, journalSize, exploration }) {
     this.max = max;
-    this.resourceSlots = resourceCount + 1;
+    this.goodSlots = goodCount;
+    this.recipeCount = recipeCount;
+    this.failureSlots = failureSlots;
     this.journalSize = journalSize;
     this.exploration = exploration;
     /** One past the highest id ever used: loops stop there. */
@@ -54,8 +59,9 @@ export class AgentStore {
     this.defense = f64();
     this.perception = f64();
     this.memorySize = f64();
-    // Carried units per resource id.
-    this.inventory = new Uint16Array(max * this.resourceSlots);
+    // Carried units per good id, and the tick each good was last picked up when none was carried.
+    this.inventory = new Uint16Array(max * goodCount);
+    this.acquiredTick = new Int32Array(max * goodCount);
     // Decision and action state.
     this.goal = new Int8Array(max).fill(-1);
     this.goalSince = i32();
@@ -70,6 +76,27 @@ export class AgentStore {
     this.exploreX = i32();
     this.exploreY = i32();
     this.flags = u8();
+    // Crafting: recipe being made, trial being tried, resource being harvested and up to how many.
+    this.craftRecipe = new Int16Array(max);
+    this.trialStation = i32();
+    this.trialMask = i32();
+    this.harvestGood = u8();
+    this.harvestUntil = new Uint16Array(max);
+    // Long-term project (HTN): index of the project and of its current step, -1 = none.
+    this.project = new Int8Array(max).fill(-1);
+    this.projectStep = new Int8Array(max).fill(-1);
+    // Combat and safety.
+    this.attackedTick = i32();
+    this.kills = new Uint16Array(max);
+    /** First tick each recipe was made, per agent and recipe (-1 = never). */
+    this.firstMade = new Int32Array(max * Math.max(1, recipeCount));
+    /** @type {RecipeBook[]} Recipes known and failed trials remembered. */
+    this.recipes = [];
+    /**
+     * Last plan of each agent, for the inspector only (derived from beliefs, never decides).
+     * @type {(import('../ai/planner.js').PlanResult | null)[]}
+     */
+    this.lastPlan = [];
     // Path of absolute cells, as x, y pairs.
     /** @type {Int32Array[]} */
     this.path = [];
@@ -122,7 +149,8 @@ export class AgentStore {
     this.thirst[id] = needs;
     this.fatigue[id] = needs;
     this.curiosity[id] = needs;
-    this.inventory.fill(0, id * this.resourceSlots, (id + 1) * this.resourceSlots);
+    this.inventory.fill(0, id * this.goodSlots, (id + 1) * this.goodSlots);
+    this.acquiredTick.fill(-1e9, id * this.goodSlots, (id + 1) * this.goodSlots);
     this.goal[id] = -1;
     this.goalSince[id] = tick;
     this.action[id] = Action.NONE;
@@ -132,6 +160,17 @@ export class AgentStore {
     this.needsDecision[id] = 1;
     this.exploring[id] = 0;
     this.flags[id] = 0;
+    this.craftRecipe[id] = -1;
+    this.harvestGood[id] = 0;
+    this.harvestUntil[id] = 0;
+    this.project[id] = -1;
+    this.projectStep[id] = -1;
+    this.attackedTick[id] = -1e9;
+    this.kills[id] = 0;
+    const rc = Math.max(1, this.recipeCount);
+    this.firstMade.fill(-1, id * rc, (id + 1) * rc);
+    this.recipes[id] = new RecipeBook(this.recipeCount, this.failureSlots);
+    this.lastPlan[id] = null;
     if (!this.path[id]) this.path[id] = new Int32Array(PATH_MAX * 2);
     this.pathLength[id] = 0;
     this.pathIndex[id] = 0;
@@ -156,23 +195,48 @@ export class AgentStore {
   }
 
   /**
-   * Carried units of a resource.
+   * Carried units of a good.
    * @param {number} id
-   * @param {number} resource
+   * @param {number} good
    * @returns {number}
    */
-  carried(id, resource) {
-    return this.inventory[id * this.resourceSlots + resource];
+  carried(id, good) {
+    return this.inventory[id * this.goodSlots + good];
   }
 
   /**
    * @param {number} id
-   * @param {number} resource
+   * @param {number} good
    * @param {number} delta
+   * @param {number} [tick] - When given, a good carried for the first time is dated.
    * @returns {void}
    */
-  addCarried(id, resource, delta) {
-    this.inventory[id * this.resourceSlots + resource] += delta;
+  addCarried(id, good, delta, tick) {
+    const i = id * this.goodSlots + good;
+    if (tick !== undefined && this.inventory[i] === 0 && delta > 0) this.acquiredTick[i] = tick;
+    this.inventory[i] += delta;
+  }
+
+  /**
+   * @param {number} id
+   * @param {number} recipe
+   * @returns {number} First tick the agent made this recipe, -1 if never.
+   */
+  madeAt(id, recipe) {
+    return this.firstMade[id * Math.max(1, this.recipeCount) + recipe];
+  }
+
+  /**
+   * @param {number} id
+   * @param {number} recipe
+   * @param {number} tick
+   * @returns {boolean} True if it was the first time.
+   */
+  recordMade(id, recipe, tick) {
+    const i = id * Math.max(1, this.recipeCount) + recipe;
+    if (this.firstMade[i] >= 0) return false;
+    this.firstMade[i] = tick;
+    return true;
   }
 
   /**
@@ -181,8 +245,8 @@ export class AgentStore {
    */
   carriedTotal(id) {
     let n = 0;
-    const base = id * this.resourceSlots;
-    for (let r = 1; r < this.resourceSlots; r++) n += this.inventory[base + r];
+    const base = id * this.goodSlots;
+    for (let g = 1; g < this.goodSlots; g++) n += this.inventory[base + g];
     return n;
   }
 
@@ -214,7 +278,16 @@ export class AgentStore {
         one[0] = f[id];
         h.typedArray(one);
       }
-      h.typedArray(this.inventory.subarray(id * this.resourceSlots, (id + 1) * this.resourceSlots));
+      const g0 = id * this.goodSlots;
+      h.typedArray(this.inventory.subarray(g0, g0 + this.goodSlots));
+      h.typedArray(this.acquiredTick.subarray(g0, g0 + this.goodSlots));
+      h.uint32(this.craftRecipe[id] & 0xffff).uint32(this.trialStation[id]);
+      h.uint32(this.trialMask[id]).uint32(this.harvestGood[id]).uint32(this.harvestUntil[id]);
+      h.uint32(this.project[id] & 0xff).uint32(this.projectStep[id] & 0xff);
+      h.uint32(this.attackedTick[id]).uint32(this.kills[id]);
+      const rc = Math.max(1, this.recipeCount);
+      h.typedArray(this.firstMade.subarray(id * rc, (id + 1) * rc));
+      this.recipes[id].hashInto(h);
       h.typedArray(this.path[id].subarray(0, this.pathLength[id] * 2));
       h.uint32(this.pathIndex[id]);
       h.typedArray(this.rng[id].s);

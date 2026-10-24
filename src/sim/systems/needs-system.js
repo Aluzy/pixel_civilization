@@ -1,4 +1,5 @@
 import { Flag, isEffort } from '../agents/actions.js';
+import { structureAt } from '../agents/equipment.js';
 import { EventType } from '../core/events.js';
 
 /**
@@ -19,11 +20,15 @@ export function needsSystem(state, ctx) {
     a.hunger[id] = Math.min(n.critical, a.hunger[id] + r.hunger * effort);
     a.thirst[id] = Math.min(n.critical, a.thirst[id] + r.thirst * effort);
     if (a.asleep[id] === 1) {
-      a.fatigue[id] = Math.max(0, a.fatigue[id] - r.fatigueRecovery);
+      // A shelter makes sleep more restful.
+      const code = structureAt(state, ctx, a.x[id], a.y[id]);
+      const rest = code === 0 ? 1 : ctx.catalog.structures[code - 1].sleepRecovery;
+      a.fatigue[id] = Math.max(0, a.fatigue[id] - r.fatigueRecovery * rest);
     } else {
       a.fatigue[id] = Math.min(n.critical, a.fatigue[id] + r.fatigue * effort);
     }
-    if (a.exploring[id] === 1 && isEffort(a.action[id])) {
+    // Only walking into the unknown for its own sake satisfies curiosity, not errands.
+    if (a.goal[id] === ctx.goalIndex.explore && a.exploring[id] === 1 && isEffort(a.action[id])) {
       a.curiosity[id] = Math.max(0, a.curiosity[id] - r.curiosityRelief);
     } else if (a.asleep[id] === 0) {
       a.curiosity[id] = Math.min(n.critical, a.curiosity[id] + r.curiosity);

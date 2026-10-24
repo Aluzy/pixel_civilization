@@ -1,161 +1,13 @@
-import { EventType } from '../core/events.js';
 import { Action } from './action-types.js';
-import { memoryEvent, recall } from './beliefs.js';
 import { PlanNote } from './journal.js';
 import { WATER_SUBJECT } from './memory.js';
+import { inShelter } from './equipment.js';
+import { explore, goToRemembered, moveTo, search, startHere } from './movement.js';
 import { perceive } from './perception.js';
+import { pursue } from './work.js';
 
 // Turns a chosen goal into a concrete action, using only what the agent perceives and remembers.
-// Hand-written per goal in J2; the GOAP planner (J4) generalises this.
-
-const EXPLORE_ATTEMPTS = 4;
-/** An exploration target closer than this (Chebyshev, tiles) counts as reached. */
-const EXPLORE_REACHED = 2;
-
-/**
- * Result of planning, also written to the journal.
- * @typedef {object} Plan
- * @property {number} action
- * @property {number} x - Target x (or the agent's position).
- * @property {number} y
- * @property {number} note - {@link PlanNote}.
- */
-
-/**
- * Starts moving along a path towards `cell`, then `then`.
- * @param {import('../simulation.js').SimContext} ctx
- * @param {number} id
- * @param {number} cell - Reachable cell of the navigation window.
- * @param {number} then - Action to start on arrival.
- * @returns {boolean} False if the agent is already there.
- */
-function moveTo(ctx, id, cell, then) {
-  const agents = ctx.agents;
-  const steps = ctx.nav.writePath(cell, agents.path[id]);
-  if (steps === 0) return false;
-  agents.pathLength[id] = steps;
-  agents.pathIndex[id] = 0;
-  agents.action[id] = Action.MOVE;
-  agents.thenAction[id] = then;
-  agents.actionX[id] = ctx.nav.cellX(cell);
-  agents.actionY[id] = ctx.nav.cellY(cell);
-  agents.actionProgress[id] = 0;
-  return true;
-}
-
-/**
- * @param {import('../simulation.js').SimContext} ctx
- * @param {number} id
- * @param {number} action
- * @returns {void}
- */
-function startHere(ctx, id, action) {
-  const agents = ctx.agents;
-  agents.action[id] = action;
-  agents.thenAction[id] = Action.NONE;
-  agents.actionX[id] = agents.x[id];
-  agents.actionY[id] = agents.y[id];
-  agents.actionProgress[id] = 0;
-}
-
-/**
- * Heads for the nearest remembered place whose subject is flagged in `subjects`, as the agent
- * recalls it (weak memories are blurred). Drops places that cannot be approached from here, and
- * forgets those it cannot find where it believed they were.
- * @param {import('../simulation.js').SimState} state
- * @param {import('../simulation.js').SimContext} ctx
- * @param {number} id
- * @param {Uint8Array} subjects
- * @param {Plan} plan
- * @returns {boolean}
- */
-function goToRemembered(state, ctx, id, subjects, plan) {
-  const agents = ctx.agents;
-  const memory = agents.memory[id];
-  const target = ctx.recallTarget;
-  for (;;) {
-    const i = memory.nearest(subjects, agents.x[id], agents.y[id]);
-    if (i < 0) return false;
-    recall(ctx, id, i, state.tick, target);
-    const tx = target[0];
-    const ty = target[1];
-    const gap = Math.max(Math.abs(tx - agents.x[id]), Math.abs(ty - agents.y[id]));
-    if (gap <= EXPLORE_REACHED) {
-      // Standing where it believed the place was, and it is not in sight: the memory failed.
-      memoryEvent(state, ctx, id, EventType.NOT_FOUND, tx, ty, memory.subject[i]);
-      memory.forget(i, state.tick);
-      continue;
-    }
-    const cell = ctx.nav.toward(tx, ty);
-    if (cell >= 0 && moveTo(ctx, id, cell, Action.NONE)) {
-      plan.action = Action.MOVE;
-      plan.x = tx;
-      plan.y = ty;
-      plan.note = PlanNote.REMEMBERED;
-      return true;
-    }
-    // No way to get closer from here: the belief is useless, drop it.
-    memory.remove(i);
-  }
-}
-
-/**
- * Nothing known for this need: report the search (once in a while) and explore.
- * @param {import('../simulation.js').SimState} state
- * @param {import('../simulation.js').SimContext} ctx
- * @param {number} id
- * @param {number} subject - Representative subject of the need (water, or a food).
- * @param {Plan} plan
- * @returns {void}
- */
-function search(state, ctx, id, subject, plan) {
-  const a = ctx.agents;
-  memoryEvent(state, ctx, id, EventType.SEARCHING, a.x[id], a.y[id], subject);
-  explore(state, ctx, id, plan, ctx.balance.ai.searchLeg);
-}
-
-/**
- * Walks towards the current exploration target. A new target is chosen, when needed, on the
- * frontier of the agent's own exploration map: the least known direction, at a random distance.
- * @param {import('../simulation.js').SimState} state
- * @param {import('../simulation.js').SimContext} ctx
- * @param {number} id
- * @param {Plan} plan
- * @param {number[]} [legRange] - Distance range of a new target (default: curiosity legs).
- * @returns {boolean}
- */
-function explore(state, ctx, id, plan, legRange = ctx.balance.ai.exploreLeg) {
-  const agents = ctx.agents;
-  const rng = agents.rng[id];
-  const legMin = legRange[0];
-  const legMax = legRange[1];
-  for (let attempt = 0; attempt <= EXPLORE_ATTEMPTS; attempt++) {
-    const gapX = Math.abs(agents.exploreX[id] - agents.x[id]);
-    const gapY = Math.abs(agents.exploreY[id] - agents.y[id]);
-    const reached = Math.max(gapX, gapY) <= EXPLORE_REACHED;
-    if (agents.exploring[id] !== 1 || reached || attempt > 0) {
-      const leg = rng.int(legMin, legMax);
-      const out = ctx.exploreTarget;
-      const map = agents.explored[id];
-      map.frontier(agents.x[id], agents.y[id], leg, state.tick, ctx.staleTicks, rng, out);
-      agents.exploreX[id] = out[0];
-      agents.exploreY[id] = out[1];
-      agents.exploring[id] = 1;
-    }
-    const cell = ctx.nav.toward(agents.exploreX[id], agents.exploreY[id]);
-    if (cell >= 0 && moveTo(ctx, id, cell, Action.NONE)) {
-      plan.action = Action.MOVE;
-      plan.x = agents.exploreX[id];
-      plan.y = agents.exploreY[id];
-      plan.note = PlanNote.SEARCHING;
-      return true;
-    }
-  }
-  agents.exploring[id] = 0;
-  startHere(ctx, id, Action.IDLE);
-  plan.action = Action.IDLE;
-  return false;
-}
+// Survival goals are hand-written; crafting goals follow the GOAP planner (work.js).
 
 /**
  * @param {import('../simulation.js').SimContext} ctx
@@ -175,7 +27,7 @@ function carriesFood(ctx, id) {
  * @param {import('../simulation.js').SimContext} ctx
  * @param {number} id
  * @param {number} goal - Goal index.
- * @param {Plan} plan
+ * @param {import('./movement.js').Plan} plan
  * @returns {void}
  */
 export function planGoal(state, ctx, id, goal, plan) {
@@ -186,6 +38,7 @@ export function planGoal(state, ctx, id, goal, plan) {
   plan.y = agents.y[id];
   plan.note = PlanNote.HERE;
   agents.asleep[id] = 0;
+  agents.lastPlan[id] = null;
   perceive(state, ctx, id);
   // The exploration heading is kept across goals: a thirsty agent searching for water keeps
   // walking the same way instead of turning at every replan.
@@ -235,13 +88,120 @@ export function planGoal(state, ctx, id, goal, plan) {
       return;
     }
     case 'sleep':
-      startHere(ctx, id, Action.SLEEP);
-      plan.action = Action.SLEEP;
+      goToSleep(state, ctx, id, plan);
+      return;
+    case 'flee':
+      flee(state, ctx, id, plan);
       return;
     case 'explore':
       explore(state, ctx, id, plan);
       return;
-    default:
-      startHere(ctx, id, Action.IDLE);
+    default: {
+      const target = ctx.targets[goal];
+      if (target) pursue(state, ctx, id, target, plan);
+      else startHere(ctx, id, Action.IDLE);
+    }
   }
+}
+
+/**
+ * Cheapest reachable shelter tile in sight, or -1.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @returns {number}
+ */
+function shelterInSight(ctx) {
+  let best = -1;
+  for (let code = 1; code < ctx.shelterCodes.length; code++) {
+    if (ctx.shelterCodes[code] !== 1) continue;
+    const cell = ctx.nav.nearestStructure(code);
+    if (cell >= 0 && (best < 0 || ctx.nav.dist[cell] < ctx.nav.dist[best])) best = cell;
+  }
+  return best;
+}
+
+/**
+ * Sleeps in its shelter when it has one not too far, else where it stands. Exhaustion does not
+ * wait: the body falls asleep on the spot.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {import('./movement.js').Plan} plan
+ * @returns {void}
+ */
+function goToSleep(state, ctx, id, plan) {
+  const agents = ctx.agents;
+  plan.action = Action.SLEEP;
+  const here = inShelter(state, ctx, agents.x[id], agents.y[id]);
+  if (here || agents.fatigue[id] >= ctx.balance.needs.critical) {
+    if (here) plan.note = PlanNote.SHELTER;
+    startHere(ctx, id, Action.SLEEP);
+    return;
+  }
+  const cell = shelterInSight(ctx);
+  if (cell >= 0 && moveTo(ctx, id, cell, Action.SLEEP)) {
+    plan.action = Action.MOVE;
+    plan.x = ctx.nav.cellX(cell);
+    plan.y = ctx.nav.cellY(cell);
+    plan.note = PlanNote.SHELTER;
+    return;
+  }
+  const memory = agents.memory[id];
+  const i = memory.nearest(ctx.shelterSubjects, agents.x[id], agents.y[id]);
+  const range = ctx.balance.ai.shelterRange;
+  const dx = i < 0 ? Infinity : Math.abs(memory.x[i] - agents.x[id]);
+  const dy = i < 0 ? Infinity : Math.abs(memory.y[i] - agents.y[id]);
+  if (Math.max(dx, dy) <= range && goToRemembered(state, ctx, id, ctx.shelterSubjects, plan)) {
+    plan.note = PlanNote.SHELTER;
+    return;
+  }
+  startHere(ctx, id, Action.SLEEP);
+}
+
+/**
+ * Runs from the nearest predator in sight: into a shelter in sight if there is one, else to the
+ * reachable tile that puts the most distance between them for the least walking.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {import('./movement.js').Plan} plan
+ * @returns {void}
+ */
+function flee(state, ctx, id, plan) {
+  const agents = ctx.agents;
+  const nav = ctx.nav;
+  plan.note = PlanNote.FLEEING;
+  if (inShelter(state, ctx, agents.x[id], agents.y[id])) {
+    startHere(ctx, id, Action.IDLE);
+    plan.note = PlanNote.SHELTER;
+    return;
+  }
+  const threats = state.threats;
+  const p = threats.nearest(agents.x[id], agents.y[id], nav.radius);
+  if (p < 0) {
+    startHere(ctx, id, Action.IDLE);
+    return;
+  }
+  let cell = shelterInSight(ctx);
+  if (cell < 0) {
+    const px = threats.x[p];
+    const py = threats.y[p];
+    let bestScore = -Infinity;
+    const n = nav.side * nav.side;
+    for (let i = 0; i < n; i++) {
+      if (!nav.reachable(i) || i === nav.center) continue;
+      const d = Math.max(Math.abs(nav.cellX(i) - px), Math.abs(nav.cellY(i) - py));
+      const score = 2 * d - 0.5 * nav.dist[i];
+      if (score > bestScore) {
+        bestScore = score;
+        cell = i;
+      }
+    }
+  }
+  if (cell >= 0 && moveTo(ctx, id, cell, Action.NONE)) {
+    plan.action = Action.MOVE;
+    plan.x = nav.cellX(cell);
+    plan.y = nav.cellY(cell);
+    return;
+  }
+  startHere(ctx, id, Action.IDLE);
 }

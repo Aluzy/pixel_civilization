@@ -15,7 +15,12 @@ export function chunkId(cx, cy) {
 }
 
 /** Packed tile layout returned by {@link ChunkStore#packedAt}. */
-export const PACK = Object.freeze({ RESOURCE_SHIFT: 8, QUANTITY_SHIFT: 16, MASK: 0xff });
+export const PACK = Object.freeze({
+  RESOURCE_SHIFT: 8,
+  QUANTITY_SHIFT: 16,
+  STRUCTURE_SHIFT: 24,
+  MASK: 0xff,
+});
 
 /**
  * @typedef {object} TileInfo
@@ -24,6 +29,7 @@ export const PACK = Object.freeze({ RESOURCE_SHIFT: 8, QUANTITY_SHIFT: 16, MASK:
  * @property {number} biome - Biome index.
  * @property {number} resource - Resource id, 0 = none.
  * @property {number} quantity
+ * @property {number} structure - Structure code, 0 = none.
  * @property {number} altitude - In [0, 255].
  */
 
@@ -81,7 +87,8 @@ export class ChunkStore {
   }
 
   /**
-   * Allocation-free tile read: biome | resource << 8 | quantity << 16 (see {@link PACK}).
+   * Allocation-free tile read: biome | resource << 8 | quantity << 16 | structure << 24 (see
+   * {@link PACK}). Read the structure with `>>>` since the result may be negative.
    * @param {number} x
    * @param {number} y
    * @returns {number}
@@ -91,7 +98,12 @@ export class ChunkStore {
     const cy = Math.floor(y / CHUNK_SIZE);
     const chunk = this.get(cx, cy);
     const i = (y - cy * CHUNK_SIZE) * CHUNK_SIZE + (x - cx * CHUNK_SIZE);
-    return chunk.biome[i] | (chunk.resource[i] << 8) | (chunk.quantity[i] << 16);
+    return (
+      chunk.biome[i] |
+      (chunk.resource[i] << 8) |
+      (chunk.quantity[i] << 16) |
+      (chunk.structure[i] << 24)
+    );
   }
 
   /**
@@ -133,6 +145,19 @@ export class ChunkStore {
   }
 
   /**
+   * Places a structure on a tile (built by an agent).
+   * @param {number} x
+   * @param {number} y
+   * @param {number} code - Structure code, 0 to remove.
+   * @returns {void}
+   */
+  setStructure(x, y, code) {
+    const chunk = this.get(toChunk(x), toChunk(y));
+    chunk.structure[Chunk.index(toLocal(x), toLocal(y))] = code;
+    this.markChanged(chunk);
+  }
+
+  /**
    * @param {Chunk} chunk
    * @returns {void}
    */
@@ -166,6 +191,7 @@ export class ChunkStore {
       biome: chunk.biome[i],
       resource: chunk.resource[i],
       quantity: chunk.quantity[i],
+      structure: chunk.structure[i],
       altitude: chunk.altitude[i],
     };
   }

@@ -22,6 +22,8 @@ export class Chunk {
     this.resource = new Uint8Array(CHUNK_AREA);
     /** Units of resource left per tile. */
     this.quantity = new Uint8Array(CHUNK_AREA);
+    /** Structure code per tile (station, shelter), 0 = none. Built by agents only. */
+    this.structure = new Uint8Array(CHUNK_AREA);
     /** Altitude quantised to [0, 255]. */
     this.altitude = new Uint8Array(CHUNK_AREA);
     /** True once the simulation has changed a tile, so the chunk belongs to the saved state. */

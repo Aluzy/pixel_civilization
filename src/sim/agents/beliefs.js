@@ -20,7 +20,27 @@ const EVENT_SLOT = Object.freeze({
  * @returns {boolean}
  */
 export function isVital(ctx, subject) {
-  return subject === WATER_SUBJECT || ctx.edible[subject] === 1;
+  return subject === WATER_SUBJECT || ctx.edible[subject] === 1 || isStructure(ctx, subject);
+}
+
+/**
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} subject
+ * @returns {boolean} True for the memory subject of a structure (station, shelter).
+ */
+export function isStructure(ctx, subject) {
+  return subject > ctx.catalog.resourceCount && subject < ctx.catalog.dangerSubject;
+}
+
+/**
+ * Time constant of a new memory of `subject`, in ticks (structures last, dangers fade fast).
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} subject
+ * @returns {number}
+ */
+export function tauOf(ctx, subject) {
+  if (subject === ctx.catalog.dangerSubject) return ctx.dangerTau;
+  return isStructure(ctx, subject) ? ctx.structureTau : ctx.placeTau;
 }
 
 /**
@@ -32,6 +52,8 @@ export function isVital(ctx, subject) {
 export function salienceOf(ctx, subject) {
   const s = ctx.balance.memory.salience;
   if (subject === WATER_SUBJECT) return s.water;
+  if (subject === ctx.catalog.dangerSubject) return s.danger;
+  if (isStructure(ctx, subject)) return s.structure;
   return ctx.edible[subject] === 1 ? s.edible : s.other;
 }
 

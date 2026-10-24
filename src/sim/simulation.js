@@ -1,16 +1,23 @@
 import aiGoals from '../../data/ai-goals.json' with { type: 'json' };
+import projectData from '../../data/ai-projects.json' with { type: 'json' };
+import recipeData from '../../data/recipes.json' with { type: 'json' };
 import resourceData from '../../data/resources.json' with { type: 'json' };
 import worldData from '../../data/world.json' with { type: 'json' };
 import { ACTION_NAMES, Action } from './agents/action-types.js';
 import { AgentStore } from './agents/agent-store.js';
+import { attackMultiplier } from './agents/equipment.js';
 import { MAX_RADIUS, Navigator } from './agents/navigation.js';
 import { WATER_SUBJECT } from './agents/memory.js';
+import { Planner, Step } from './ai/planner.js';
+import { buildProjects } from './ai/projects.js';
 import { buildGoalTable } from './ai/utility.js';
 import { describeTick, phaseIndexAt } from './core/clock.js';
 import { EventLog, EventType } from './core/events.js';
 import { createHasher, hashCoords } from './core/hash.js';
 import { createRng, seedToKey } from './core/rng.js';
+import { buildCatalog } from './crafting/catalog.js';
 import { SYSTEMS } from './systems/index.js';
+import { ThreatStore } from './threats/threat-store.js';
 import { ChunkStore, findSpawn } from './world/chunk-store.js';
 import { WorldGenerator } from './world/generator.js';
 import { buildWorldTables } from './world/world-data.js';
@@ -20,6 +27,12 @@ export const WORLD_TABLES = buildWorldTables(worldData, resourceData);
 
 /** Compiled utility goals from data/ai-goals.json (read-only). */
 export const GOAL_TABLE = buildGoalTable(aiGoals);
+
+/** Goods, structures and recipes from data/recipes.json (read-only). */
+export const CATALOG = buildCatalog(recipeData, WORLD_TABLES);
+
+/** Long-term projects from data/ai-projects.json (read-only). */
+export const PROJECTS = buildProjects(projectData, GOAL_TABLE);
 
 /** Independent random streams, one per subsystem, so that systems cannot disturb each other. */
 export const RNG_STREAMS = Object.freeze(['world', 'threats', 'ai', 'social', 'lifecycle']);
@@ -43,6 +56,7 @@ export const RNG_STREAMS = Object.freeze(['world', 'threats', 'ai', 'social', 'l
  * @property {ChunkStore} world - Tiles, generated on demand.
  * @property {{ x: number, y: number }} spawn - Where the first individual appears.
  * @property {AgentStore} agents
+ * @property {ThreatStore} threats - Predators.
  * @property {EventLog} events
  * @property {Regrowth[]} regrowth - Sorted by tick.
  */
@@ -73,27 +87,66 @@ export const RNG_STREAMS = Object.freeze(['world', 'threats', 'ai', 'social', 'l
  * @property {boolean} dark - True at night (reduced perception).
  * @property {Float64Array} inputs - Scratch utility inputs.
  * @property {Float64Array} scores - Scratch utility scores.
- * @property {import('./agents/behaviors.js').Plan} plan - Scratch plan.
+ * @property {import('./agents/movement.js').Plan} plan - Scratch plan.
  * @property {(id: number) => number} capacity - Units an agent can carry.
  * @property {number} placeTau - Initial memory time constant, in ticks.
  * @property {number} maxTau - Longest memory time constant, in ticks.
  * @property {number} staleTicks - Age at which an explored area counts as unknown again.
  * @property {Uint8Array} waterSubjects - Memory subject mask for water.
  * @property {number} firstEdible - A food subject, for "searching for food" events.
- * @property {Int32Array} nearestBySubject - Scratch: nearest window cell per resource.
+ * @property {Int32Array} nearestBySubject - Scratch: nearest window cell per resource, structure.
  * @property {Int32Array} exploreTarget - Scratch: x, y of a chosen exploration target.
  * @property {Int32Array} recallTarget - Scratch: x, y where a memory is believed to be.
  * @property {(state: SimState, x: number, y: number, resource: number) => void} scheduleRegrowth
  */
 
 /**
- * @param {number} slots - Number of memory subjects (resources + water).
- * @returns {Uint8Array} Subject mask selecting water only.
+ * @param {number} slots - Number of memory subjects.
+ * @param {number[]} subjects
+ * @returns {Uint8Array} Subject mask selecting the given subjects.
  */
-function waterMask(slots) {
+function subjectMask(slots, subjects) {
   const mask = new Uint8Array(slots);
-  mask[WATER_SUBJECT] = 1;
+  for (const s of subjects) mask[s] = 1;
   return mask;
+}
+
+/**
+ * Planning targets of the crafting goals: a goal is satisfied by any of these goods or
+ * structures (data/ai-goals.json ids → catalogue kinds).
+ * @param {import('./crafting/catalog.js').Catalog} catalog
+ * @param {string[]} goalKinds
+ * @returns {(import('./ai/planner.js').PlanTarget | null)[]}
+ */
+function buildTargets(catalog, goalKinds) {
+  const itemKind = { equip: 'weapon', tool: 'tool' };
+  return goalKinds.map((kind, id) => {
+    const goods = new Uint8Array(catalog.goodCount);
+    const structures = new Uint8Array(catalog.structures.length + 1);
+    if (kind === 'shelter') {
+      for (const s of catalog.structures) if (s.kind === 'shelter') structures[s.code] = 1;
+    } else if (itemKind[kind]) {
+      for (const item of catalog.items) if (item.kind === itemKind[kind]) goods[item.good] = 1;
+    } else {
+      return null;
+    }
+    return { id, goods, structures };
+  });
+}
+
+/**
+ * One planning target per structure code (index 0 unused), to build a given station.
+ * @param {import('./crafting/catalog.js').Catalog} catalog
+ * @returns {(import('./ai/planner.js').PlanTarget | null)[]}
+ */
+function buildStructureTargets(catalog) {
+  return [null].concat(
+    catalog.structures.map((st) => {
+      const structures = new Uint8Array(catalog.structures.length + 1);
+      structures[st.code] = 1;
+      return { id: 64 + st.code, goods: new Uint8Array(catalog.goodCount), structures };
+    }),
+  );
 }
 
 /**
@@ -128,9 +181,17 @@ function buildContext(balance, tables, agents, seedKey) {
   const goalIndex = Object.fromEntries(goalKinds.map((id, i) => [id, i]));
   if (goalIndex.sleep === undefined) throw new Error('data/ai-goals.json needs a "sleep" goal');
   const phases = time.phases.map((p) => p.name);
+  const catalog = CATALOG;
+  const subjects = catalog.subjectCount;
+  const R = catalog.resourceCount;
+  const shelterCodes = new Uint8Array(catalog.structures.length + 1);
+  for (const st of catalog.structures) if (st.kind === 'shelter') shelterCodes[st.code] = 1;
+  const predator = worldData.threats.predator;
+  const days = (d) => d * time.ticksPerDay;
   const darknessByPhase = Float64Array.from(phases.map((p) => worldData.darkness[p] ?? 0));
   const phase0 = phaseIndexAt(0, time);
-  return {
+  /** @type {SimContext} */
+  const ctx = {
     balance,
     tables,
     goals: GOAL_TABLE,
@@ -159,16 +220,53 @@ function buildContext(balance, tables, agents, seedKey) {
     nightPhase: phases.indexOf('night'),
     darkness: darknessByPhase[phase0],
     dark: phases.indexOf('night') === phase0,
-    inputs: new Float64Array(8),
+    inputs: new Float64Array(16),
     scores: new Float64Array(GOAL_TABLE.goals.length),
     plan: { action: 0, x: 0, y: 0, note: 0 },
     capacity: (id) => agents.force[id] * balance.agent.carryPerForce,
     placeTau: balance.memory.placeTauDays * time.ticksPerDay,
     maxTau: balance.memory.maxTauDays * time.ticksPerDay,
     staleTicks: balance.exploration.staleDays * time.ticksPerDay,
-    waterSubjects: waterMask(resourceSlots),
+    waterSubjects: subjectMask(subjects, [WATER_SUBJECT]),
+    subjectCount: subjects,
+    /** One mask per memory subject, selecting it alone. */
+    subjectMasks: Array.from({ length: subjects }, (_, i) => subjectMask(subjects, [i])),
+    shelterSubjects: subjectMask(
+      subjects,
+      catalog.structures.filter((st) => st.kind === 'shelter').map((st) => R + st.code),
+    ),
+    materialSubjects: subjectMask(
+      subjects,
+      [...catalog.material].flatMap((m, g) => (m === 1 ? [g] : [])),
+    ),
+    catalog,
+    projects: PROJECTS,
+    targets: buildTargets(catalog, goalKinds),
+    planner: new Planner(catalog, {
+      nodeBudget: balance.ai.planNodeBudget,
+      maxSteps: balance.ai.planMaxSteps,
+      travelCost: balance.ai.planTravelCost,
+      exploreCost: balance.ai.planExploreCost,
+      harvestTicks,
+    }),
+    shelterCodes,
+    predatorBiomes: Uint8Array.from(tables.biomes, (b) => (predator.biomes.includes(b.id) ? 1 : 0)),
+    predatorPhases: Uint8Array.from(phases, (p) => (predator.phases.includes(p) ? 1 : 0)),
+    phase: phase0,
+    structureTau: days(balance.memory.structureTauDays),
+    dangerTau: days(balance.memory.dangerTauDays),
+    recipeTau: days(balance.crafting.recipeTauDays),
+    failureTau: days(balance.crafting.failureTauDays),
+    trialOut: new Int32Array(3),
+    trialTypes: new Int32Array(catalog.goodCount),
+    trialStations: new Uint8Array(catalog.structures.length + 1),
+    stationCost: new Float64Array(catalog.structures.length + 1),
+    fetchCost: new Float64Array(catalog.goodCount),
+    trialAgent: 0,
+    acquired: null,
+    structureTargets: buildStructureTargets(catalog),
     firstEdible: Math.max(0, edible.indexOf(1)),
-    nearestBySubject: new Int32Array(resourceSlots),
+    nearestBySubject: new Int32Array(CATALOG.dangerSubject),
     exploreTarget: new Int32Array(2),
     recallTarget: new Int32Array(2),
     scheduleRegrowth(state, x, y, resource) {
@@ -183,6 +281,33 @@ function buildContext(balance, tables, agents, seedKey) {
       queue.splice(i, 0, entry);
     },
   };
+  // Reader for the trial heuristic, bound to the agent being served (no closure per call).
+  ctx.acquired = (g) => agents.acquiredTick[ctx.trialAgent * agents.goodSlots + g];
+  return ctx;
+}
+
+/**
+ * Readable plan for the inspector.
+ * @param {SimContext} ctx
+ * @param {import('./ai/planner.js').PlanResult | null} plan
+ * @returns {{ status: number, cost: number, nodes: number, steps: string[] } | null}
+ */
+function describePlan(ctx, plan) {
+  if (!plan) return null;
+  const steps = plan.steps.map((st) => {
+    const recipe = ctx.catalog.recipes[st.arg];
+    switch (st.kind) {
+      case Step.EXPLORE:
+        return `chercher ${ctx.catalog.goodName(st.arg)}`;
+      case Step.GATHER:
+        return `réunir ${st.count} ${ctx.catalog.goodName(st.arg)}`;
+      case Step.CRAFT:
+        return `fabriquer ${recipe.name}${st.count > 1 ? ` × ${st.count}` : ''}`;
+      default:
+        return `bâtir ${recipe.name}`;
+    }
+  });
+  return { status: plan.status, cost: Math.round(plan.cost), nodes: plan.nodes, steps };
 }
 
 /**
@@ -206,7 +331,9 @@ export class Simulation {
     if (balance.agent.start.perception > MAX_RADIUS) throw new Error('Perception above maximum');
     const agents = new AgentStore({
       max: balance.agent.maxEntities,
-      resourceCount: tables.resources.length,
+      goodCount: CATALOG.goodCount,
+      recipeCount: CATALOG.recipes.length,
+      failureSlots: balance.crafting.failureSlots,
       journalSize: balance.ai.journalSize,
       exploration: balance.exploration,
     });
@@ -220,6 +347,7 @@ export class Simulation {
       world,
       spawn,
       agents,
+      threats: new ThreatStore(balance.threats.maxPredators),
       events: new EventLog(),
       regrowth: [],
     };
@@ -304,6 +432,19 @@ export class Simulation {
   }
 
   /**
+   * Positions of predators, for the renderer.
+   * @returns {{ id: number, x: number, y: number, fleeing: boolean }[]}
+   */
+  threatPositions() {
+    const t = this.state.threats;
+    const out = [];
+    for (let i = 0; i < t.highWater; i++) {
+      if (t.alive[i] === 1) out.push({ id: i, x: t.x[i], y: t.y[i], fleeing: t.mood[i] === 2 });
+    }
+    return out;
+  }
+
+  /**
    * Full description of one agent for the inspector, or null if it does not exist.
    * @param {number} id
    * @param {boolean} [withMap=false] - Include the explored cells (for the memory layer).
@@ -313,10 +454,11 @@ export class Simulation {
     const a = this.state.agents;
     if (id < 0 || id >= a.highWater || a.alive[id] !== 1) return null;
     const goals = this.ctx.goals.goals;
+    const catalog = this.ctx.catalog;
     const inventory = [];
-    for (let r = 1; r < a.resourceSlots; r++) {
-      const n = a.carried(id, r);
-      if (n > 0) inventory.push({ resource: r, count: n });
+    for (let g = 1; g < a.goodSlots; g++) {
+      const n = a.carried(id, g);
+      if (n > 0) inventory.push({ good: g, name: catalog.goodName(g), count: n });
     }
     const memory = a.memory[id];
     const tick = this.state.tick;
@@ -332,6 +474,14 @@ export class Simulation {
       });
     }
     remembered.sort((p, q) => q.strength - p.strength);
+    const book = a.recipes[id];
+    const recipes = catalog.recipes
+      .filter((r) => book.knows(r.index))
+      .map((r) => ({ id: r.id, name: r.name, strength: book.strength(r.index, tick) }));
+    const made = catalog.recipes
+      .filter((r) => a.madeAt(id, r.index) >= 0)
+      .map((r) => ({ name: r.name, tick: a.madeAt(id, r.index) }));
+    const project = a.project[id] >= 0 ? this.ctx.projects.projects[a.project[id]] : null;
     return {
       id,
       x: a.x[id],
@@ -354,6 +504,17 @@ export class Simulation {
         memory: a.memorySize[id],
       },
       inventory,
+      recipes,
+      failures: book.failureCount(),
+      made,
+      kills: a.kills[id],
+      weapon: attackMultiplier(this.ctx, id),
+      plan: describePlan(this.ctx, a.lastPlan[id]),
+      project: project && {
+        name: project.name,
+        step: a.projectStep[id],
+        steps: project.steps.map((st) => st.name),
+      },
       goal: a.goal[id] >= 0 ? goals[a.goal[id]].name : '—',
       action: ACTION_NAMES[a.action[id]],
       asleep: a.asleep[id] === 1,
@@ -388,8 +549,10 @@ export class Simulation {
     for (const name of RNG_STREAMS) h.string(name).typedArray(s.rng[name].s);
     for (const c of s.world.modifiedChunks()) {
       h.uint32(c.cx).uint32(c.cy).typedArray(c.resource).typedArray(c.quantity);
+      h.typedArray(c.structure);
     }
     s.agents.hashInto(h);
+    s.threats.hashInto(h);
     h.uint32(s.events.count);
     for (const e of s.events.events) h.uint32(e.tick).string(e.type).uint32(e.agent);
     for (const g of s.regrowth) h.uint32(g.tick).uint32(g.x).uint32(g.y).uint32(g.resource);
