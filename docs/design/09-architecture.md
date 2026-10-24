@@ -88,8 +88,10 @@ L'ordre est fixe et documenté ; le modifier exige une décision dans `docs/deci
 4. `memorySystem` — oubli des lieux devenus trop faibles (tous les 100 cycles).
 5. `decisionSystem` — perception, Utility AI, comportements ; réévaluation tous les 10 cycles décalée par identifiant, ou immédiate quand l'action se termine.
 6. `actionSystem` — exécution des actions (déplacement, boire, cueillir, manger, dormir, récolter, fabriquer, essayer).
-7. `threatSystem` — apparition, chasse, combat et départ des prédateurs (après les actions, pour qu'une attaque interrompe l'action suivante ; décision 0009).
-8. `lifecycleSystem` — mort.
+7. `socialSystem` — transmission orale entre individus au repos (J5).
+8. `threatSystem` — apparition, chasse, combat et départ des prédateurs (après les actions, pour qu'une attaque interrompe l'action suivante ; décision 0009).
+9. `lifecycleSystem` — mort, libération de la tâche, oubli du défunt par les autres.
+10. `colonySystem` — générateurs de tâches des colonies, tous les 50 cycles (J5, décision 0011).
 
 `memorySystem` oublie aussi les recettes et les échecs. `decisionSystem` laisse se terminer le sommeil et les actions de travail (sauf attaque ou besoin vital).
 
@@ -97,7 +99,7 @@ Ordre cible, à mesure que les jalons ajoutent les systèmes : time, world, thre
 
 Chaque système reçoit `(state, ctx)` : `state` contient tout ce qui définit la partie (hashé), `ctx` les tables lues dans `data/`, des valeurs dérivées (taux par cycle, obscurité courante) et des tampons de travail réutilisés.
 
-Les individus vivent dans `src/sim/agents/` : `agent-store.js` (composants en tableaux typés), `navigation.js`, `perception.js`, `memory.js` (lieux, force, oubli), `beliefs.js` (saillance, rappel flou, consolidation, événements), `exploration-map.js`, `behaviors.js`, `actions.js`, `journal.js`. `src/sim/core/math.js` fournit `expNeg`, une exponentielle déterministe. L'IA de choix est dans `src/sim/ai/` (`curves.js`, `utility.js`, `planner.js` pour le GOAP, `projects.js` pour les projets HTN). Au J4 : `src/sim/crafting/` (`catalog.js` : espace d'identifiants des biens — 1…R ressources, R+1… objets —, recettes indexées par station et ensemble d'ingrédients ; `recipe-book.js` ; `experiment.js`), `src/sim/agents/work.js` (comportements des objectifs de fabrication), `movement.js` (déplacements partagés), `equipment.js` (effets des objets et des constructions), `src/sim/threats/threat-store.js`. Sujets de mémoire : 0 eau, 1…R ressources, R+1…R+S constructions, R+S+1 danger. La couche `structure` des blocs est lue par `packedAt` dans les bits 24 à 31 (à lire avec `>>>`).
+Les individus vivent dans `src/sim/agents/` : `agent-store.js` (composants en tableaux typés), `navigation.js`, `perception.js`, `memory.js` (lieux, force, oubli), `beliefs.js` (saillance, rappel flou, consolidation, événements), `exploration-map.js`, `behaviors.js`, `actions.js`, `journal.js`. `src/sim/core/math.js` fournit `expNeg`, une exponentielle déterministe. L'IA de choix est dans `src/sim/ai/` (`curves.js`, `utility.js`, `planner.js` pour le GOAP, `projects.js` pour les projets HTN). Au J4 : `src/sim/crafting/` (`catalog.js` : espace d'identifiants des biens — 1…R ressources, R+1… objets —, recettes indexées par station et ensemble d'ingrédients ; `recipe-book.js` ; `experiment.js`), `src/sim/agents/work.js` (comportements des objectifs de fabrication), `movement.js` (déplacements partagés), `equipment.js` (effets des objets et des constructions), `src/sim/threats/threat-store.js`. Sujets de mémoire : 0 eau, 1…R ressources, R+1…R+S constructions, R+S+1 danger. La couche `structure` des blocs est lue par `packedAt` dans les bits 24 à 31 (à lire avec `>>>`). Au J5 : `src/sim/colony/` (`colony-store.js` : colonies, projets, tableau noir ; `colony-logic.js` : tâches, réservations, dépôt ; `replication.js`), `src/sim/agents/colony-work.js` (comportements des objectifs Tâche collective et Se répliquer), `social-model.js` (fiches), `src/sim/ai/imagination.js` (simulation mentale du combat). L'état contient `colonies`, hashé comme le reste.
 
 ## Aléatoire et déterminisme
 
@@ -118,7 +120,8 @@ Messages typés, objets simples ; les gros volumes passent en `ArrayBuffer` tran
 | Rendu → Worker | `viewport` | rectangle visible en cases `{ x0, y0, x1, y1 }` |
 | Rendu → Worker | `select` | individu à décrire dans chaque `frame` (`id`, ou −1) ; `withMap` ajoute sa carte d'exploration (calque mémoire) |
 | Rendu → Worker | `skip` | `{ kind: 'dawn' \| 'event' }` : pleine vitesse jusqu'à l'aube ou jusqu'au prochain événement, puis ×1 |
-| Worker → Rendu | `frame` | cycle, heure, vitesse demandée et effective, saut en cours, positions des individus (interpolées le long du chemin) et des prédateurs, nouveaux événements, fiche de l'individu sélectionné |
+| Rendu → Worker | `auto` | `{ on, alerts }` : accélération automatique et types d'événements qui la ramènent à ×1 |
+| Worker → Rendu | `frame` | cycle, heure, vitesse demandée et effective, saut en cours, positions des individus (interpolées le long du chemin) et des prédateurs, résumé de la colonie, accélération automatique active, nouveaux événements, fiche de l'individu sélectionné |
 | Worker → Rendu | `chunk` | `cx`, `cy` et copies transférables des tableaux biome, ressource, quantité, construction, altitude |
 | Worker → Rendu | `stats` | tableau de bord, vitesse effective |
 | Worker → Rendu | `events` | nouveaux événements de chronique |

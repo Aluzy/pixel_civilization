@@ -51,7 +51,7 @@ Réalisé : survie 10 jours sur 60 graines sur 60 (test automatique sur 10 grain
 
 **Sortie** : on voit le pixel oublier un lieu, échouer à le retrouver, puis le redécouvrir par exploration.
 
-Réalisé : mémoire à force et oubli, souvenirs flous, carte d'exploration personnelle, calque M. La séquence complète est rare quand la mémoire fonctionne bien (le pixel n'oublie que des lieux lointains) : 3 graines sur 150 en 40 jours. Graine de démonstration : **47** — il oublie le point d'eau (8, −7) au jour 11, le cherche au jour 19 d'après un souvenir flou, ne le trouve pas, puis le redécouvre le soir même. Depuis le J4, le comportement a changé et c'est la graine **61** qui sert de test : point d'eau (−12, −46) oublié au jour 8, introuvable au jour 14, retrouvé quelques instants plus tard. Survie 10 jours : 99 graines sur 100.
+Réalisé : mémoire à force et oubli, souvenirs flous, carte d'exploration personnelle, calque M. La séquence complète est rare quand la mémoire fonctionne bien (le pixel n'oublie que des lieux lointains) : 3 graines sur 150 en 40 jours. Graine de démonstration : **47** — il oublie le point d'eau (8, −7) au jour 11, le cherche au jour 19 d'après un souvenir flou, ne le trouve pas, puis le redécouvre le soir même. Depuis le J4, le comportement a changé ; au J5 c'est la graine **20** qui sert de test : l'individu #14 oublie le point d'eau (−12, 7) au jour 10, ne le retrouve pas au jour 14, puis le retrouve quelques instants plus tard. Survie 10 jours : 99 graines sur 100.
 
 ## J4 — Fabrication (`v0.5.0`)
 
@@ -77,6 +77,8 @@ Réalisé : 10 graines sur 10 (graines 1 à 10, test automatique), 28 sur 30 sur
 - Chronique et filtres d'alerte, accélération automatique.
 
 **Sortie** : une colonie d'au moins 20 individus reste stable (pas d'extinction, pas d'explosion) pendant 30 jours sur 8 graines sur 10, et l'inspecteur montre au moins un comportement préparatoire (stock constitué pour un projet) et une coopération à plusieurs.
+
+Réalisé : 9 graines sur 10 (test automatique), avec 22 à 40 individus au jour 30 (la graine 10 en compte 18), aucune extinction et au plus 1 mort par graine. La population plafonne ensuite (42 à 70 individus vers les jours 50 à 60, sous le plafond de sécurité de 120). Sur 10 graines sur 10, des abris sont bâtis à plusieurs à partir d'une réserve remplie à l'avance, et le bloc Colonie le montre (matériaux réunis, contributeurs, bâtisseur). Ajouts : réplication régulée par les lits et la réserve, tableau noir des lieux, projets et tâches réservées, transmission orale et imitation, fiches sociales, rôles émergents, simulation mentale du combat, filtres de chronique et accélération automatique. Reporté : Workers penseurs et test K = 1 / K = 4 (décision 0012), simulation mentale du site du camp et des expéditions, spécialisation par avantage comparatif.
 
 ## J6 — Écrit (`v0.7.0`)
 
