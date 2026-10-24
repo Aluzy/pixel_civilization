@@ -14,6 +14,12 @@ export class SimClient {
     this.lastFrame = null;
     /** @type {Set<(frame: object) => void>} */
     this.frameListeners = new Set();
+    /** @type {object | null} The READY message, once received. */
+    this.ready = null;
+    /** @type {Set<(ready: object) => void>} */
+    this.readyListeners = new Set();
+    /** @type {Set<(chunk: object) => void>} */
+    this.chunkListeners = new Set();
     this.worker.onmessage = (event) => this.handle(event.data);
     this.worker.onerror = (event) => console.error('Simulation worker error:', event.message);
   }
@@ -26,6 +32,11 @@ export class SimClient {
     switch (message.type) {
       case FromWorker.READY:
         console.info(`Simulation ready (seed ${message.seed}, state ${message.hash}).`);
+        this.ready = message;
+        for (const listener of this.readyListeners) listener(message);
+        break;
+      case FromWorker.CHUNK:
+        for (const listener of this.chunkListeners) listener(message);
         break;
       case FromWorker.FRAME:
         this.lastFrame = message;
@@ -46,6 +57,35 @@ export class SimClient {
   onFrame(listener) {
     this.frameListeners.add(listener);
     return () => this.frameListeners.delete(listener);
+  }
+
+  /**
+   * Calls the listener once the simulation is ready (immediately if it already is).
+   * @param {(ready: { seed: number, spawn: { x: number, y: number } }) => void} listener
+   * @returns {() => void} Unsubscribe function.
+   */
+  onReady(listener) {
+    if (this.ready) listener(this.ready);
+    else this.readyListeners.add(listener);
+    return () => this.readyListeners.delete(listener);
+  }
+
+  /**
+   * @param {(chunk: import('../render/chunk-layer.js').ChunkMessage) => void} listener
+   * @returns {() => void} Unsubscribe function.
+   */
+  onChunk(listener) {
+    this.chunkListeners.add(listener);
+    return () => this.chunkListeners.delete(listener);
+  }
+
+  /**
+   * Tells the worker which tiles are visible, so it streams the matching chunks.
+   * @param {{ x0: number, y0: number, x1: number, y1: number }} rect
+   * @returns {void}
+   */
+  setViewport(rect) {
+    this.worker.postMessage({ type: ToWorker.VIEWPORT, rect });
   }
 
   /**

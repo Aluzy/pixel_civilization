@@ -7,3 +7,5 @@ coverage/
 .env
 .env.*
 eslint-report.json
+_local.html
+_phaser
