@@ -128,4 +128,14 @@ export class SimClient {
     const paused = this.lastFrame?.paused ?? false;
     this.worker.postMessage({ type: paused ? ToWorker.RESUME : ToWorker.PAUSE });
   }
+
+  /**
+   * Automatic acceleration: faster while nothing among `alerts` happens, ×1 when one does.
+   * @param {boolean} on
+   * @param {string[]} alerts - Event types that bring the speed back to ×1.
+   * @returns {void}
+   */
+  setAuto(on, alerts) {
+    this.worker.postMessage({ type: ToWorker.AUTO, on, alerts });
+  }
 }

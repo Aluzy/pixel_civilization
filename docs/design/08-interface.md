@@ -51,6 +51,8 @@ Clic sur un bâtiment → contenu (stock, livres et cartes d'une bibliothèque).
 
 Au J4, le panneau ajoute : le plan GOAP en cours (« réunir 3 fibres › bâtir Établi › fabriquer Lance », coût estimé et nœuds explorés) ou « recette inconnue, il expérimente » ; le projet et son étape courante (▶) ; les recettes connues avec leur force et le nombre d'échecs retenus ; le multiplicateur d'arme et les prédateurs tués. L'inventaire nomme les objets. Les mémoires de constructions et de dangers apparaissent dans la liste et dans le calque M (danger en magenta). Les constructions sont peintes dans leur couleur et l'inspection d'une case les nomme ; les prédateurs sont des pixels rouge sombre dessinés au-dessus de l'ombre de la nuit.
 
+Au J5, le panneau ajoute la génération, la lignée (fondateur ou réplique de #n, nombre de répliques), le rôle émergent, la tâche collective en cours (« apporter 5 Bois pour « Abri n°7 » »), les trois liens les plus forts et le risque imaginé d'un combat. Sous l'horloge, un bloc **Colonie** montre la population, les naissances et les morts, les abris et les lits, la réserve, chaque projet avec ce qu'il a et ce qu'il lui faut, ses contributeurs et son bâtisseur, et les auteurs du dernier abri.
+
 ## Calques
 
 Activables séparément, superposés en semi-transparence : ressources connues de la colonie, danger, zones explorées, territoire et zones spécialisées, mémoire de l'individu sélectionné (ce qu'il croit savoir, comparé à la réalité).
@@ -65,7 +67,7 @@ Activables séparément, superposés en semi-transparence : ressources connues d
 
 ## Chronique
 
-Au J2, la chronique affiche les 6 derniers événements en bas à gauche : premier pas, première gorgée d'eau, premier repas, premier sommeil, santé critique, mort. Au J3 elle en montre 8 et ajoute les événements de mémoire : lieu oublié, croyance fausse, recherche sans savoir où, lieu introuvable, lieu redécouvert. Au J4 : recette découverte ou oubliée, objet fabriqué, construction bâtie, première nuit à l'abri, projet achevé, attaque d'un prédateur, prédateur tué.
+Au J2, la chronique affiche les 6 derniers événements en bas à gauche : premier pas, première gorgée d'eau, premier repas, premier sommeil, santé critique, mort. Au J3 elle en montre 8 et ajoute les événements de mémoire : lieu oublié, croyance fausse, recherche sans savoir où, lieu introuvable, lieu redécouvert. Au J4 : recette découverte ou oubliée, objet fabriqué, construction bâtie, première nuit à l'abri, projet achevé, attaque d'un prédateur, prédateur tué. Au J5 : naissance d'une réplique, recette apprise de vive voix ou en regardant faire, recette mal comprise, première contribution à la réserve, abri bâti par la colonie avec le nombre de contributeurs. La touche **C** fait défiler trois filtres (tout, important, colonie) ; la touche **T** active l'accélération automatique (`src/worker/auto-speed.js`) : un palier de plus après 10 s réelles sans alerte, retour à ×1 dès qu'un événement du filtre courant survient (les événements importants quand le filtre est « tout »). Choisir une vitesse ou mettre en pause la désactive.
 
 Fil d'événements générés automatiquement, horodatés en jour et heure de jeu :
 

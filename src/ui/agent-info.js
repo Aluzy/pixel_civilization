@@ -15,6 +15,9 @@ const NOTE_TEXT = {
   [PlanNote.TRIAL]: 'essai',
   [PlanNote.FLEEING]: 'fuite',
   [PlanNote.SHELTER]: 'abri',
+  [PlanNote.COLONY]: 'colonie',
+  [PlanNote.REPLICATION]: 'réplication',
+  [PlanNote.PANTRY]: 'réserve',
 };
 
 /**
@@ -73,7 +76,7 @@ export function formatAgent(agent, names, time) {
   const memoryTitle = `Mémoire ${agent.memory.length}/${agent.memoryCapacity}`;
   const doing = agent.asleep ? 'dort' : agent.action;
   const lines = [
-    `Individu #${agent.id} · (${agent.x}, ${agent.y}) · ${days} j`,
+    `Individu #${agent.id} · (${agent.x}, ${agent.y}) · ${days} j · génération ${agent.generation}`,
     `${'PV'.padEnd(9)} ${bar(agent.hp, agent.maxHp, 12)} ${hp}`,
     need('Faim', agent.needs.hunger),
     need('Soif', agent.needs.thirst),
@@ -89,7 +92,18 @@ export function formatAgent(agent, names, time) {
   }
   const known = agent.recipes.map((r) => `${r.name} ${bar(r.strength, 1, 4)}`).join(' · ');
   lines.push(`Recettes (échecs retenus ${agent.failures}) : ${known || 'aucune'}`);
-  lines.push(`Arme ×${agent.weapon} · prédateurs tués ${agent.kills}`);
+  const risk = Math.round(agent.fightRisk * 100);
+  lines.push(`Arme ×${agent.weapon} · prédateurs tués ${agent.kills} · risque imaginé ${risk} %`);
+  const lineage = agent.parent >= 0 ? `réplique de #${agent.parent}` : 'fondateur';
+  lines.push(`${lineage} · ${agent.children} réplique(s) · rôle : ${agent.role}`);
+  if (agent.task) lines.push(`Tâche : ${agent.task}`);
+  if (agent.social.length > 0) {
+    const peers = agent.social.slice(0, 3).map((p) => {
+      const work = p.shared > 0 ? `, ${p.shared} projet(s)` : '';
+      return `#${p.id} (${p.talks} échange(s)${work})`;
+    });
+    lines.push(`Liens : ${peers.join(' · ')}`);
+  }
   const vital = `eau ${agent.knownWater.length}, nourriture ${agent.knownFood.length}`;
   lines.push(`${memoryTitle} (${vital}) :`);
   for (const p of agent.memory.slice(0, MEMORY_LINES)) {

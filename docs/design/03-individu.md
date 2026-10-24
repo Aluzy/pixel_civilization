@@ -81,6 +81,16 @@ Se répliquer est une **décision** évaluée par le moteur d'IA (niveau Harmoni
 - Elle naît **sans mémoire** ni expérience apprise : aucun lieu, aucune recette, aucune estimation. Elle doit tout apprendre (exploration, imitation, parole, livres).
 - Ses jauges démarrent à 30.
 
+### État au jalon J5
+
+Implémenté (`src/sim/colony/replication.js`, objectif « Se répliquer » au niveau Harmonie, 0,6) :
+
+- Conditions de la colonie, qui rendent l'objectif possible : un **lit libre** (chaque abri de la colonie compte 2 lits), assez de **nourriture d'avance** dans la réserve du camp (au moins une unité par membre, telle que l'individu l'a vue la dernière fois au camp), 300 cycles depuis sa dernière réplication, population sous le plafond de sécurité (120).
+- Conditions individuelles, que le comportement prépare lui-même : porter le coût (**6 baies et 3 fibres**, au lieu de 10 et 5), manger dès que la faim dépasse 15 pour rester sous 30 pendant 600 cycles, n'avoir perdu aucun PV depuis 2 jours (il se repose au camp en attendant). La réplication dure 60 cycles, au camp.
+- La réplique naît sur une case franchissable voisine, avec les attributs du parent multipliés chacun par un facteur tiré uniformément dans [0,95 ; 1,05] (flux aléatoire `lifecycle`), ses jauges à 30, sans souvenir ni recette, dans la colonie du parent, génération + 1. Pas encore de génome (J7).
+- Les lits et la réserve régulent la population : une naissance demande un abri de plus, et la réserve ne se remplit que si le territoire nourrit plus de bouches qu'il n'en a. Mesure : 18 à 40 individus au jour 30 sur les graines 1 à 10, au plus 1 mort par graine ; la population plafonne ensuite (graines 1 à 3 : 42, 48 et 70 individus aux jours 50 à 60).
+- Mort : la tâche est libérée, la colonie compte le décès, les autres oublient le défunt (son identifiant peut être réutilisé). L'inventaire ne tombe pas encore au sol.
+
 ## Actions de survie (J2)
 
 | Action | Effet |

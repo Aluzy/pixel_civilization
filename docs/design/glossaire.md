@@ -16,6 +16,11 @@
 | Essai | Tentative station + ensemble de matériaux pour découvrir une recette | `trial` |
 | Échec | Essai raté retenu en mémoire pour ne pas le refaire | `failure` |
 | Prédateur | Menace qui chasse les individus hors abri | `threat` |
+| Réserve | Biens déposés au camp d'une colonie | `stock` |
+| Tâche | Part d'un projet de colonie (« apporter 5 bois ») | `task` |
+| Réservation | Engagement d'un individu sur une tâche, libéré au bout de 2 jours | `reserved` |
+| Réplique | Individu né de la réplication d'un autre | `child` |
+| Rôle | Activité dominante d'un individu, déduite de ses habitudes | `role` |
 | Jauge | Niveau d'un besoin, de 0 (satisfait) à 100 (critique) | `need` |
 | Souvenir | Élément de mémoire typé, avec une force | `memory` |
 | Force (d'un souvenir) | Valeur de 0 à 1 qui décroît avec le temps | `strength` |

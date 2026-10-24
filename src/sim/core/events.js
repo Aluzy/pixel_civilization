@@ -23,6 +23,11 @@ export const EventType = Object.freeze({
   PROJECT_DONE: 'projectDone',
   ATTACKED: 'attacked',
   PREDATOR_KILLED: 'predatorKilled',
+  TOLD: 'told',
+  IMITATED: 'imitated',
+  MISTAKEN: 'mistaken',
+  COLONY_PROJECT: 'colonyProject',
+  FIRST_DELIVERY: 'firstDelivery',
 });
 
 /** Events kept in memory; older ones are dropped (the count keeps growing). */

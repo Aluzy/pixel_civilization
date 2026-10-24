@@ -28,6 +28,13 @@ Implémenté dans `src/sim/agents/memory.js`, `perception.js`, `beliefs.js` et `
 - Recettes et échecs ont leur propre mémoire (`src/sim/crafting/recipe-book.js`), à côté des 20 emplacements de lieux : un emplacement par recette du catalogue et un anneau de 32 échecs (décision 0008). Même loi d'oubli : recettes τ = 10 jours, consolidées ×1,5 à chaque fabrication ; échecs τ = 5 jours. Une recette oubliée doit être redécouverte (événement « a oublié comment faire »).
 - Les lieux comptent maintenant aussi les stations et constructions (force initiale 1, τ = 15 jours) et les dangers (prédateur vu : force 0,8, τ = 2 jours, jamais « corrigés » par la vue puisqu'un animal bouge).
 
+## État au jalon J5
+
+- **Transmission orale** (`src/sim/systems/social-system.js`) : tous les 40 cycles, un individu au repos (éveillé, inactif, en train de manger ou de boire) à côté d'un autre au repos échange avec lui une connaissance dans chaque sens. Une recette que l'autre ne connaît pas (tirée selon sa force), ou à défaut un lieu (tiré selon sa force, décalé de 0 à 3 cases). Tout entre en mémoire à force 0,5. Une recette a 10 % de chances d'être mal comprise : elle semble connue mais la fabrication échoue, gaspille la moitié des ingrédients et devient un échec retenu. La chronique annonce les recettes apprises et les erreurs.
+- **Imitation** : quand une recette est réalisée, chaque individu éveillé qui voit la scène note la compétence du fabricant dans sa fiche et l'apprend avec une chance sur deux, à force 0,6 (il suffit d'être présent à la fin, pas pendant toute la fabrication).
+- **Tableau noir** : au camp, au plus tous les 200 cycles, l'individu y inscrit les lieux dont il se souvient (sauf les dangers) et y lit les lieux des sujets dont il ne connaît aucun lieu (force 0,5). Les inscriptions de plus de 6 jours sont ignorées.
+- Le camp de sa colonie et ses abris ne s'oublient pas : un membre sait toujours où est chez lui.
+
 ## Mémoire individuelle
 
 ### Souvenirs

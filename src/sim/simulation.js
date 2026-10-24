@@ -15,6 +15,7 @@ import { describeTick, phaseIndexAt } from './core/clock.js';
 import { EventLog, EventType } from './core/events.js';
 import { createHasher, hashCoords } from './core/hash.js';
 import { createRng, seedToKey } from './core/rng.js';
+import { Colony } from './colony/colony-store.js';
 import { buildCatalog } from './crafting/catalog.js';
 import { SYSTEMS } from './systems/index.js';
 import { ThreatStore } from './threats/threat-store.js';
@@ -57,6 +58,7 @@ export const RNG_STREAMS = Object.freeze(['world', 'threats', 'ai', 'social', 'l
  * @property {{ x: number, y: number }} spawn - Where the first individual appears.
  * @property {AgentStore} agents
  * @property {ThreatStore} threats - Predators.
+ * @property {Colony[]} colonies - Index = colony id.
  * @property {EventLog} events
  * @property {Regrowth[]} regrowth - Sorted by tick.
  */
@@ -132,6 +134,23 @@ function buildTargets(catalog, goalKinds) {
     }
     return { id, goods, structures };
   });
+}
+
+/**
+ * Goods vector (index = good id) from a `{ resourceId: count }` object of data.
+ * @param {import('./crafting/catalog.js').Catalog} catalog
+ * @param {import('./world/world-data.js').WorldTables} tables
+ * @param {Record<string, number>} counts
+ * @returns {Int32Array}
+ */
+function goodVector(catalog, tables, counts) {
+  const v = new Int32Array(catalog.goodCount);
+  for (const [id, n] of Object.entries(counts)) {
+    const r = tables.resources.findIndex((res) => res.id === id);
+    if (r < 0) throw new Error(`Unknown resource: ${id}`);
+    v[r + 1] = n;
+  }
+  return v;
 }
 
 /**
@@ -262,6 +281,9 @@ function buildContext(balance, tables, agents, seedKey) {
     trialStations: new Uint8Array(catalog.structures.length + 1),
     stationCost: new Float64Array(catalog.structures.length + 1),
     fetchCost: new Float64Array(catalog.goodCount),
+    replicationCost: goodVector(catalog, tables, balance.replication.cost),
+    costOut: new Int32Array(2),
+    imagined: { hp: 0, maxHp: 0, attack: 0, defense: 0 },
     trialAgent: 0,
     acquired: null,
     structureTargets: buildStructureTargets(catalog),
@@ -311,6 +333,100 @@ function describePlan(ctx, plan) {
 }
 
 /**
+ * Readable colony project: what it still needs and who contributed.
+ * @param {SimContext} ctx
+ * @param {import('./colony/colony-store.js').Colony} colony
+ * @param {import('./colony/colony-store.js').Project} p
+ * @param {object} cfg - balance.colony.
+ * @returns {object}
+ */
+function describeProject(ctx, colony, p, cfg) {
+  const pantry = p.kind === 2;
+  const goods = [];
+  for (let g = 1; g < p.needs.length; g++) {
+    if (p.needs[g] === 0) continue;
+    const need = pantry ? (colony.members + 1) * cfg.foodPerMember : p.needs[g];
+    goods.push({
+      name: ctx.catalog.goodName(g),
+      have: Math.min(need, colony.stock[g]),
+      need,
+      reserved: p.reserved[g],
+    });
+  }
+  return {
+    kind: pantry ? 'pantry' : 'shelter',
+    name: pantry ? 'Réserve de nourriture' : `Abri n°${p.number}`,
+    goods,
+    contributors: [...p.contributors].filter((id) => id >= 0),
+    builder: p.builder,
+  };
+}
+
+/**
+ * The agent's colony task, in words, or null.
+ * @param {SimContext} ctx
+ * @param {SimState} state
+ * @param {AgentStore} a
+ * @param {number} id
+ * @returns {string | null}
+ */
+function describeTask(ctx, state, a, id) {
+  const slot = a.taskProject[id];
+  if (slot < 0 || a.colony[id] < 0) return null;
+  const colony = state.colonies[a.colony[id]];
+  const p = colony.projects[slot];
+  const name = p.kind === 2 ? 'la réserve de nourriture' : `« Abri n°${p.number} »`;
+  if (a.taskBuild[id] === 1) return `bâtir ${name}`;
+  return `apporter ${a.taskAmount[id]} ${ctx.catalog.goodName(a.taskGood[id])} pour ${name}`;
+}
+
+/**
+ * The others it knows best (affinity first), for the inspector.
+ * @param {AgentStore} a
+ * @param {number} id
+ * @returns {{ id: number, affinity: number, talks: number, shared: number, skills: number }[]}
+ */
+function describeSocial(a, id) {
+  const m = a.social[id];
+  const out = [];
+  for (let i = 0; i < m.count; i++) {
+    out.push({
+      id: m.other[i],
+      affinity: m.affinity[i],
+      talks: m.talks[i],
+      shared: m.shared[i],
+      skills: m.skills[i],
+    });
+  }
+  return out.sort((p, q) => q.affinity - p.affinity || p.id - q.id);
+}
+
+/**
+ * Role an agent has taken, from its habits (displayed only, never assigned).
+ * @param {SimContext} ctx
+ * @param {AgentStore} a
+ * @param {number} id
+ * @returns {string}
+ */
+function roleOf(ctx, a, id) {
+  if (a.builds[id] >= 2) return 'bâtisseur';
+  let best = 0;
+  let bestGood = 0;
+  for (let g = 1; g < a.goodSlots; g++) {
+    const n = a.gathered[id * a.goodSlots + g];
+    if (n > best) {
+      best = n;
+      bestGood = g;
+    }
+  }
+  if (best >= 10) {
+    const name = ctx.catalog.goodName(bestGood).toLowerCase();
+    return ctx.edible[bestGood] === 1 ? 'cueilleur' : `récolteur (${name})`;
+  }
+  return a.delivers[id] > 0 ? 'porteur' : '—';
+}
+
+/**
  * Deterministic simulation: same seed and same number of ticks give the same state.
  * Contains no real-time logic; pacing is done by the host (src/worker).
  */
@@ -334,6 +450,7 @@ export class Simulation {
       goodCount: CATALOG.goodCount,
       recipeCount: CATALOG.recipes.length,
       failureSlots: balance.crafting.failureSlots,
+      sheets: balance.social.sheets,
       journalSize: balance.ai.journalSize,
       exploration: balance.exploration,
     });
@@ -348,6 +465,7 @@ export class Simulation {
       spawn,
       agents,
       threats: new ThreatStore(balance.threats.maxPredators),
+      colonies: [new Colony(0, CATALOG.goodCount, balance.colony)],
       events: new EventLog(),
       regrowth: [],
     };
@@ -362,7 +480,9 @@ export class Simulation {
       attributes: balance.agent.start,
       needs: balance.agent.startNeeds,
       rng: rng.ai.fork('agent-0-0'),
+      colony: 0,
     });
+    this.state.colonies[0].members = 1;
     this.state.events.push(0, EventType.BIRTH, first, spawn.x, spawn.y);
   }
 
@@ -429,6 +549,38 @@ export class Simulation {
       out.push({ id, x, y, asleep: a.asleep[id] === 1 });
     }
     return out;
+  }
+
+  /**
+   * Summary of a colony for the observer: population, beds, stock, projects and who worked on
+   * them. Null if it does not exist.
+   * @param {number} c
+   * @returns {object | null}
+   */
+  describeColony(c) {
+    const colony = this.state.colonies[c];
+    if (!colony) return null;
+    const catalog = this.ctx.catalog;
+    const cfg = this.state.balance.colony;
+    const stock = [];
+    for (let g = 1; g < colony.stock.length; g++) {
+      if (colony.stock[g] > 0) stock.push({ name: catalog.goodName(g), count: colony.stock[g] });
+    }
+    const projects = colony.projects
+      .filter((p) => p.kind !== 0)
+      .map((p) => describeProject(this.ctx, colony, p, cfg));
+    return {
+      id: c,
+      members: colony.members,
+      births: colony.births,
+      deaths: colony.deaths,
+      shelters: colony.shelterCount,
+      beds: colony.beds(cfg.bedsPerShelter),
+      camp: colony.hasCamp ? { x: colony.campX, y: colony.campY } : null,
+      stock,
+      projects,
+      lastProject: [...colony.lastProject].filter((id) => id >= 0),
+    };
   }
 
   /**
@@ -508,6 +660,13 @@ export class Simulation {
       failures: book.failureCount(),
       made,
       kills: a.kills[id],
+      fightRisk: a.fightRisk[id],
+      generation: a.generation[id],
+      parent: a.parent[id],
+      children: a.children[id],
+      role: roleOf(this.ctx, a, id),
+      task: describeTask(this.ctx, this.state, a, id),
+      social: describeSocial(a, id),
       weapon: attackMultiplier(this.ctx, id),
       plan: describePlan(this.ctx, a.lastPlan[id]),
       project: project && {
@@ -553,6 +712,7 @@ export class Simulation {
     }
     s.agents.hashInto(h);
     s.threats.hashInto(h);
+    for (const colony of s.colonies) colony.hashInto(h);
     h.uint32(s.events.count);
     for (const e of s.events.events) h.uint32(e.tick).string(e.type).uint32(e.agent);
     for (const g of s.regrowth) h.uint32(g.tick).uint32(g.x).uint32(g.y).uint32(g.resource);

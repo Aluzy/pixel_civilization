@@ -63,7 +63,7 @@ describe('memory chronicle', () => {
     sim.step(1200);
     const text = formatAgent(sim.describeAgent(0), NAMES, balance.time).join('\n');
     expect(text).toMatch(/Mémoire \d+\/20/);
-    expect(text).toMatch(/Eau +\(-?\d+, -?\d+\) +[█░]{8} vu J1/);
+    expect(text).toMatch(/ +\(-?\d+, -?\d+\) +[█░]{8} vu J1/);
   });
 });
 

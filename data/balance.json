@@ -30,7 +30,7 @@
     "thirstPerDay": 100,
     "fatiguePerDayAwake": 80,
     "fatigueRecoveryPerDayAsleep": 400,
-    "curiosityPerDay": 120,
+    "curiosityPerDay": 80,
     "curiosityReliefPerDayExploring": 300,
     "effortMultiplier": 1.3,
     "critical": 100,
@@ -113,5 +113,46 @@
     "giveUpTicks": 300,
     "despawnDistance": 48,
     "attackedEventCooldown": 300
-  }
+  },
+  "replication": {
+    "fedTicks": 600,
+    "fedBelow": 30,
+    "unhurtDays": 2,
+    "cooldownTicks": 300,
+    "durationTicks": 60,
+    "cost": { "berries": 6, "fiber": 3 },
+    "mutation": 0.05,
+    "eatAbove": 15,
+    "pantryPerMember": 1
+  },
+  "colony": {
+    "campRadius": 6,
+    "boardCapacity": 128,
+    "boardInterval": 200,
+    "boardMaxAgeDays": 6,
+    "projectSlots": 4,
+    "bedsPerShelter": 2,
+    "reservationTicks": 2400,
+    "taskChunk": 5,
+    "taskInterval": 50,
+    "foodPerMember": 4,
+    "habitBonus": 1,
+    "maxPopulation": 120,
+    "exploreLeash": 40,
+    "homeRange": 80
+  },
+  "social": {
+    "talkInterval": 40,
+    "talkRadius": 1,
+    "placeOffset": 3,
+    "heardStrength": 0.5,
+    "wrongRecipeChance": 0.1,
+    "imitationChance": 0.5,
+    "imitationStrength": 0.6,
+    "sheets": 10,
+    "eventCooldown": 600,
+    "sharedAffinity": 0.3,
+    "talkAffinity": 0.1
+  },
+  "imagination": { "rollouts": 12, "predatorSpread": 0.3, "riskHealth": 0.3 }
 }

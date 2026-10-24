@@ -3,6 +3,7 @@ import { Action } from './action-types.js';
 import { ExplorationMap } from './exploration-map.js';
 import { Journal } from './journal.js';
 import { Memory } from './memory.js';
+import { SocialModel } from './social-model.js';
 
 /** Kinds of chronicle events about memory, each with its own cooldown per agent. */
 export const MEMORY_EVENT_KINDS = 5;
@@ -21,10 +22,20 @@ export class AgentStore {
    * @param {number} options.goodCount - Slots per inventory (good ids, 0 unused).
    * @param {number} [options.recipeCount=0]
    * @param {number} [options.failureSlots=1]
+   * @param {number} [options.sheets=4] - Social sheets per agent.
    * @param {number} options.journalSize
    * @param {{ capacity: number, cellSize: number }} options.exploration
    */
-  constructor({ max, goodCount, recipeCount = 0, failureSlots = 1, journalSize, exploration }) {
+  constructor({
+    max,
+    goodCount,
+    recipeCount = 0,
+    failureSlots = 1,
+    journalSize,
+    exploration,
+    sheets = 4,
+  }) {
+    this.sheets = sheets;
     this.max = max;
     this.goodSlots = goodCount;
     this.recipeCount = recipeCount;
@@ -87,11 +98,41 @@ export class AgentStore {
     this.projectStep = new Int8Array(max).fill(-1);
     // Combat and safety.
     this.attackedTick = i32();
+    /** Last imagined risk of fighting a predator (mental simulation), for the inspector. */
+    this.fightRisk = f64();
     this.kills = new Uint16Array(max);
     /** First tick each recipe was made, per agent and recipe (-1 = never). */
     this.firstMade = new Int32Array(max * Math.max(1, recipeCount));
     /** @type {RecipeBook[]} Recipes known and failed trials remembered. */
     this.recipes = [];
+    // Lineage, colony and replication.
+    this.colony = new Int16Array(max).fill(-1);
+    this.parent = i32();
+    this.generation = new Uint16Array(max);
+    this.children = new Uint16Array(max);
+    /** Last tick hunger was at or above the replication threshold. */
+    this.hungryTick = i32();
+    /** Last tick health went down. */
+    this.hurtTick = i32();
+    this.prevHp = f64();
+    this.lastReplication = i32();
+    // Colony task: project slot (-1 none), good to bring, amount, when reserved, building.
+    this.taskProject = new Int8Array(max).fill(-1);
+    this.taskGood = u8();
+    this.taskAmount = new Uint16Array(max);
+    this.taskTick = i32();
+    this.taskBuild = u8();
+    /** Last tick the agent read and wrote the colony blackboard. */
+    this.boardTick = i32();
+    /** Food it saw in the pantry at that time, and whether there were open tasks (beliefs). */
+    this.pantrySeen = new Uint16Array(max);
+    this.tasksSeen = u8();
+    /** Units gathered per good, crafts and builds: habits from which roles emerge. */
+    this.gathered = new Uint16Array(max * goodCount);
+    this.builds = new Uint16Array(max);
+    this.delivers = new Uint16Array(max);
+    /** @type {SocialModel[]} What each agent believes about the others. */
+    this.social = [];
     /**
      * Last plan of each agent, for the inspector only (derived from beliefs, never decides).
      * @type {(import('../ai/planner.js').PlanResult | null)[]}
@@ -124,9 +165,12 @@ export class AgentStore {
    *   perception, memory.
    * @param {number} spec.needs - Starting value of every need.
    * @param {import('../core/rng.js').Rng} spec.rng
+   * @param {number} [spec.colony=-1]
+   * @param {number} [spec.parent=-1]
+   * @param {number} [spec.generation=0]
    * @returns {number}
    */
-  create({ x, y, tick, attributes, needs, rng }) {
+  create({ x, y, tick, attributes, needs, rng, colony = -1, parent = -1, generation = 0 }) {
     let id = 0;
     while (id < this.max && this.alive[id] === 1) id++;
     if (id >= this.max) throw new Error('Too many agents');
@@ -166,11 +210,32 @@ export class AgentStore {
     this.project[id] = -1;
     this.projectStep[id] = -1;
     this.attackedTick[id] = -1e9;
+    this.fightRisk[id] = 0;
     this.kills[id] = 0;
     const rc = Math.max(1, this.recipeCount);
     this.firstMade.fill(-1, id * rc, (id + 1) * rc);
     this.recipes[id] = new RecipeBook(this.recipeCount, this.failureSlots);
     this.lastPlan[id] = null;
+    this.colony[id] = colony;
+    this.parent[id] = parent;
+    this.generation[id] = generation;
+    this.children[id] = 0;
+    this.hungryTick[id] = tick;
+    this.hurtTick[id] = tick;
+    this.prevHp[id] = attributes.hp;
+    this.lastReplication[id] = tick;
+    this.taskProject[id] = -1;
+    this.taskGood[id] = 0;
+    this.taskAmount[id] = 0;
+    this.taskTick[id] = 0;
+    this.taskBuild[id] = 0;
+    this.boardTick[id] = -1e9;
+    this.pantrySeen[id] = 0;
+    this.tasksSeen[id] = 0;
+    this.gathered.fill(0, id * this.goodSlots, (id + 1) * this.goodSlots);
+    this.builds[id] = 0;
+    this.delivers[id] = 0;
+    this.social[id] = new SocialModel(this.sheets);
     if (!this.path[id]) this.path[id] = new Int32Array(PATH_MAX * 2);
     this.pathLength[id] = 0;
     this.pathIndex[id] = 0;
@@ -265,6 +330,7 @@ export class AgentStore {
       this.fatigue,
       this.curiosity,
       this.actionProgress,
+      this.fightRisk,
     ];
     const one = new Float64Array(1);
     for (let id = 0; id < this.highWater; id++) {
@@ -288,6 +354,17 @@ export class AgentStore {
       const rc = Math.max(1, this.recipeCount);
       h.typedArray(this.firstMade.subarray(id * rc, (id + 1) * rc));
       this.recipes[id].hashInto(h);
+      h.uint32(this.colony[id] & 0xffff)
+        .uint32(this.parent[id])
+        .uint32(this.generation[id]);
+      h.uint32(this.children[id]).uint32(this.hungryTick[id]).uint32(this.hurtTick[id]);
+      h.uint32(this.lastReplication[id]).uint32(this.taskProject[id] & 0xff);
+      h.uint32(this.taskGood[id]).uint32(this.taskAmount[id]).uint32(this.taskTick[id]);
+      h.uint32(this.taskBuild[id]).uint32(this.boardTick[id]);
+      h.uint32(this.pantrySeen[id]).uint32(this.tasksSeen[id]);
+      h.typedArray(this.gathered.subarray(g0, g0 + this.goodSlots));
+      h.uint32(this.builds[id]).uint32(this.delivers[id]);
+      this.social[id].hashInto(h);
       h.typedArray(this.path[id].subarray(0, this.pathLength[id] * 2));
       h.uint32(this.pathIndex[id]);
       h.typedArray(this.rng[id].s);
