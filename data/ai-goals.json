@@ -38,17 +38,13 @@
       "id": "explore",
       "name": "Explorer",
       "level": "knowledge",
-      "considerations": [
-        { "input": "curiosity", "curve": { "type": "linear", "m": 0.6, "b": 0 } }
-      ]
+      "considerations": [{ "input": "curiosity", "curve": { "type": "linear", "m": 0.6, "b": 0 } }]
     },
     {
       "id": "rest",
       "name": "Se reposer",
       "level": "survival",
-      "considerations": [
-        { "input": "one", "curve": { "type": "constant", "value": 0.08 } }
-      ]
+      "considerations": [{ "input": "one", "curve": { "type": "constant", "value": 0.08 } }]
     }
   ]
 }

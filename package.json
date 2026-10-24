@@ -15,7 +15,9 @@
     "format:check": "prettier --check .",
     "sim": "node tools/headless-sim.js"
   },
-  "dependencies": { "phaser": "^4.2.1" },
+  "dependencies": {
+    "phaser": "^4.2.1"
+  },
   "devDependencies": {
     "@eslint/js": "^9.30.0",
     "eslint": "^9.30.0",
@@ -24,5 +26,7 @@
     "vite": "^7.1.0",
     "vitest": "^3.2.4"
   },
-  "engines": { "node": ">=20.19" }
+  "engines": {
+    "node": ">=20.19"
+  }
 }

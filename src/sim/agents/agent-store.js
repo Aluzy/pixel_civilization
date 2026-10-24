@@ -196,7 +196,8 @@ export class AgentStore {
     for (let id = 0; id < this.highWater; id++) {
       if (this.alive[id] !== 1) continue;
       h.uint32(id).uint32(this.x[id]).uint32(this.y[id]);
-      h.uint32(this.goal[id] & 0xff).uint32(this.action[id]).uint32(this.thenAction[id]);
+      h.uint32(this.goal[id] & 0xff);
+      h.uint32(this.action[id]).uint32(this.thenAction[id]);
       h.uint32(this.actionX[id]).uint32(this.actionY[id]).uint32(this.asleep[id]);
       h.uint32(this.exploreX[id]).uint32(this.exploreY[id]).uint32(this.exploring[id]);
       for (const f of fields) {
