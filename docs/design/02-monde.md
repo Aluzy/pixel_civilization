@@ -64,6 +64,8 @@ La palette exacte (codes hexadécimaux) est définie dans `data/resources.json`.
 
 **Régénération** : les ressources renouvelables repoussent à proximité des cases existantes de même type, selon un taux défini dans `balance.json`. Une ressource totalement éradiquée d'une zone ne revient pas.
 
+Implémentation actuelle (J2) : une case renouvelable vidée repousse **au même endroit** après `regrowTicks` cycles (`data/resources.json` : baies 2 jours, fibre 3 jours, bois 10 jours), avec une quantité tirée dans sa plage. La propagation vers les cases voisines viendra avec l'agriculture.
+
 ## Cycle jour/nuit
 
 - Un jour dure 1 200 cycles (120 s à ×1, à 10 cycles/s).

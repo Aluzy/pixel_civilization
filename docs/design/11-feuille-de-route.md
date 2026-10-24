@@ -41,6 +41,8 @@ L'IA monte en niveau au fil des jalons (niveaux définis dans [06-ia](06-ia.md))
 
 **Sortie** : le pixel survit seul 10 jours de simulation sans intervention, et l'observateur atteint le jour 10 en moins d'une minute réelle.
 
+Réalisé : survie 10 jours sur 60 graines sur 60 (test automatique sur 10 graines), jour 10 atteint en ~5 s à ×256. Ajouts non prévus : une mémoire minimale des lieux d'eau et de nourriture (sans elle, l'individu ne retrouvait pas l'eau), la repousse des ressources, une chronique partielle et le suivi de l'individu par la caméra.
+
 ## J3 — Mémoire et exploration (`v0.4.0`)
 
 - Perception, mémoire limitée, force et oubli, croyances fausses.

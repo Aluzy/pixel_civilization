@@ -104,6 +104,24 @@ export class SimClient {
     this.worker.postMessage({ type: ToWorker.SET_SPEED, speed });
   }
 
+  /**
+   * Chooses the agent described in each frame (`frame.selected`), or none with -1.
+   * @param {number} id
+   * @returns {void}
+   */
+  select(id) {
+    this.worker.postMessage({ type: ToWorker.SELECT, id });
+  }
+
+  /**
+   * Fast-forwards until dawn or until the next event, then returns to ×1.
+   * @param {string} kind - A {@link SkipKind}.
+   * @returns {void}
+   */
+  skip(kind) {
+    this.worker.postMessage({ type: ToWorker.SKIP, kind });
+  }
+
   /** @returns {void} */
   togglePause() {
     const paused = this.lastFrame?.paused ?? false;

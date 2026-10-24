@@ -12,6 +12,11 @@ const FORBIDDEN = [
   { pattern: /new\s+Date\s*\(/, reason: 'new Date (use ticks)' },
   { pattern: /from\s+['"]phaser['"]/, reason: 'Phaser import' },
   { pattern: /\b(window|document)\./, reason: 'DOM access' },
+  {
+    pattern: /Math\.(exp|expm1|log|log1p|log2|log10|pow|cbrt|hypot|a?sinh?|a?cosh?|a?tanh?|atan2)\s*\(/,
+    reason: 'transcendental Math function (ADR 0005)',
+  },
+  { pattern: /\*\*/, reason: 'the ** operator (ADR 0005)' },
 ];
 
 /**

@@ -1,5 +1,21 @@
 import { Chunk } from './chunk.js';
-import { chunkKey, toChunk, toLocal } from './coords.js';
+import { CHUNK_SIZE, toChunk, toLocal } from './coords.js';
+
+// Numeric chunk ids avoid building strings in hot loops. Valid for |cx|, |cy| < 2^20 chunks.
+const ID_OFFSET = 1 << 20;
+const ID_SPAN = 1 << 21;
+
+/**
+ * @param {number} cx
+ * @param {number} cy
+ * @returns {number}
+ */
+export function chunkId(cx, cy) {
+  return (cy + ID_OFFSET) * ID_SPAN + (cx + ID_OFFSET);
+}
+
+/** Packed tile layout returned by {@link ChunkStore#packedAt}. */
+export const PACK = Object.freeze({ RESOURCE_SHIFT: 8, QUANTITY_SHIFT: 16, MASK: 0xff });
 
 /**
  * @typedef {object} TileInfo
@@ -21,8 +37,14 @@ export class ChunkStore {
    */
   constructor(generator) {
     this.generator = generator;
-    /** @type {Map<string, Chunk>} */
+    /** @type {Map<number, Chunk>} */
     this.chunks = new Map();
+    /** @type {Set<number>} Ids of chunks changed since the last {@link ChunkStore#takeDirty}. */
+    this.dirty = new Set();
+    /** @type {Chunk | null} Last chunk accessed, to skip the map lookup on runs of tiles. */
+    this.last = null;
+    /** Set by {@link ChunkStore#takeUnit}: true if the last take emptied its tile. */
+    this.lastTakeDepleted = false;
   }
 
   /** @returns {number} Number of chunks in memory. */
@@ -36,7 +58,7 @@ export class ChunkStore {
    * @returns {boolean}
    */
   has(cx, cy) {
-    return this.chunks.has(chunkKey(cx, cy));
+    return this.chunks.has(chunkId(cx, cy));
   }
 
   /**
@@ -46,13 +68,88 @@ export class ChunkStore {
    * @returns {Chunk}
    */
   get(cx, cy) {
-    const key = chunkKey(cx, cy);
-    let chunk = this.chunks.get(key);
+    const last = this.last;
+    if (last !== null && last.cx === cx && last.cy === cy) return last;
+    const id = chunkId(cx, cy);
+    let chunk = this.chunks.get(id);
     if (!chunk) {
       chunk = this.generator.generateChunk(cx, cy);
-      this.chunks.set(key, chunk);
+      this.chunks.set(id, chunk);
     }
+    this.last = chunk;
     return chunk;
+  }
+
+  /**
+   * Allocation-free tile read: biome | resource << 8 | quantity << 16 (see {@link PACK}).
+   * @param {number} x
+   * @param {number} y
+   * @returns {number}
+   */
+  packedAt(x, y) {
+    const cx = Math.floor(x / CHUNK_SIZE);
+    const cy = Math.floor(y / CHUNK_SIZE);
+    const chunk = this.get(cx, cy);
+    const i = (y - cy * CHUNK_SIZE) * CHUNK_SIZE + (x - cx * CHUNK_SIZE);
+    return chunk.biome[i] | (chunk.resource[i] << 8) | (chunk.quantity[i] << 16);
+  }
+
+  /**
+   * Removes one unit of resource from a tile and clears the tile when it reaches zero.
+   * Allocation-free: whether the tile was emptied is left in {@link ChunkStore#lastTakeDepleted}.
+   * @param {number} x
+   * @param {number} y
+   * @returns {number} Resource id taken, 0 if there was none.
+   */
+  takeUnit(x, y) {
+    const chunk = this.get(toChunk(x), toChunk(y));
+    const i = Chunk.index(toLocal(x), toLocal(y));
+    const resource = chunk.resource[i];
+    this.lastTakeDepleted = false;
+    if (resource === 0 || chunk.quantity[i] === 0) return 0;
+    chunk.quantity[i] -= 1;
+    if (chunk.quantity[i] === 0) {
+      chunk.resource[i] = 0;
+      this.lastTakeDepleted = true;
+    }
+    this.markChanged(chunk);
+    return resource;
+  }
+
+  /**
+   * Puts a resource back on a tile (regrowth).
+   * @param {number} x
+   * @param {number} y
+   * @param {number} resource
+   * @param {number} quantity
+   * @returns {void}
+   */
+  setResource(x, y, resource, quantity) {
+    const chunk = this.get(toChunk(x), toChunk(y));
+    const i = Chunk.index(toLocal(x), toLocal(y));
+    chunk.resource[i] = resource;
+    chunk.quantity[i] = quantity;
+    this.markChanged(chunk);
+  }
+
+  /**
+   * @param {Chunk} chunk
+   * @returns {void}
+   */
+  markChanged(chunk) {
+    chunk.modified = true;
+    this.dirty.add(chunkId(chunk.cx, chunk.cy));
+  }
+
+  /**
+   * Chunks changed since the last call, so the host can send them to the renderer again.
+   * @returns {Chunk[]}
+   */
+  takeDirty() {
+    const out = [];
+    for (const id of this.dirty) out.push(this.chunks.get(id));
+    this.dirty.clear();
+    return out;
   }
 
   /**

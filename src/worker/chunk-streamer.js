@@ -18,6 +18,8 @@ export class ChunkStreamer {
     this.sent = new Set();
     /** @type {{ cx: number, cy: number }[]} Chunks still to send, in order. */
     this.queue = [];
+    /** @type {Set<string>} Chunks the renderer holds in an outdated version. */
+    this.stale = new Set();
   }
 
   /**
@@ -26,10 +28,28 @@ export class ChunkStreamer {
    */
   setViewport(rect) {
     const keep = new Set(chunksInRect(rect, this.keepMargin).map((c) => chunkKey(c.cx, c.cy)));
-    for (const key of this.sent) if (!keep.has(key)) this.sent.delete(key);
-    this.queue = chunksInRect(rect, this.sendMargin).filter(
-      (c) => !this.sent.has(chunkKey(c.cx, c.cy)),
-    );
+    for (const key of this.sent) {
+      if (keep.has(key)) continue;
+      this.sent.delete(key);
+      this.stale.delete(key);
+    }
+    this.queue = chunksInRect(rect, this.sendMargin).filter((c) => {
+      const key = chunkKey(c.cx, c.cy);
+      return !this.sent.has(key) || this.stale.has(key);
+    });
+  }
+
+  /**
+   * Queues a chunk again, first, if the renderer holds it (its content changed).
+   * @param {number} cx
+   * @param {number} cy
+   * @returns {void}
+   */
+  resend(cx, cy) {
+    const key = chunkKey(cx, cy);
+    if (!this.sent.has(key) || this.stale.has(key)) return;
+    this.stale.add(key);
+    this.queue.unshift({ cx, cy });
   }
 
   /** @returns {boolean} */
@@ -44,7 +64,9 @@ export class ChunkStreamer {
   next() {
     const c = this.queue.shift();
     if (!c) return null;
-    this.sent.add(chunkKey(c.cx, c.cy));
+    const key = chunkKey(c.cx, c.cy);
+    this.sent.add(key);
+    this.stale.delete(key);
     return this.store.get(c.cx, c.cy);
   }
 }
