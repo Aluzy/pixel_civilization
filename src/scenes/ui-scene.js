@@ -13,8 +13,14 @@ const TEXT_STYLE = {
 
 const KEY_NAMES = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'];
 
+const HELP = [
+  'Glisser / flèches : déplacer   Molette / + − : zoom',
+  'Clic : inspecter   Espace : pause   1–5 : vitesse   6 : max',
+];
+
 /**
- * Observer overlay: seed, version, clock, speed and time controls. Independent of camera zoom.
+ * Observer overlay: seed, version, clock, speed, time controls and tile inspection.
+ * Independent of the world camera's zoom.
  */
 export class UiScene extends Phaser.Scene {
   constructor() {
@@ -31,14 +37,24 @@ export class UiScene extends Phaser.Scene {
     this.footer = this.add
       .text(12, 0, `Graine ${seed}   ${version}`, { ...TEXT_STYLE, fontSize: '12px' })
       .setScrollFactor(0);
-    this.help = this.add
-      .text(0, 0, 'Espace : pause   1–5 : vitesse   6 : max', { ...TEXT_STYLE, fontSize: '12px' })
-      .setScrollFactor(0);
+    this.help = this.add.text(0, 0, HELP, { ...TEXT_STYLE, fontSize: '12px' }).setScrollFactor(0);
+    this.inspection = this.add
+      .text(0, 12, '', { ...TEXT_STYLE, fontSize: '13px' })
+      .setScrollFactor(0)
+      .setVisible(false);
     this.layout();
     this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
 
     const unsubscribe = sim.onFrame((frame) => this.render(frame));
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribe);
+    const showTile = (text) => {
+      this.inspection.setText(text).setVisible(true);
+      this.layout();
+    };
+    this.game.events.on('tile-inspected', showTile);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      unsubscribe();
+      this.game.events.off('tile-inspected', showTile);
+    });
     this.render(null);
 
     const keyboard = this.input.keyboard;
@@ -54,6 +70,7 @@ export class UiScene extends Phaser.Scene {
     const { width, height } = this.scale;
     this.footer.setPosition(12, height - this.footer.height - 12);
     this.help.setPosition(width - this.help.width - 12, height - this.help.height - 12);
+    this.inspection.setPosition(width - this.inspection.width - 12, 12);
   }
 
   /**
@@ -75,6 +92,7 @@ export class UiScene extends Phaser.Scene {
       formatClock(frame.time),
       `Vitesse ${speed}`,
       `Cycle ${frame.tick.toLocaleString('fr-FR')}`,
+      `${Math.round(this.game.loop.actualFps)} img/s`,
     ]);
   }
 }

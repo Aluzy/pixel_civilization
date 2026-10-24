@@ -81,3 +81,39 @@ export function createHasher() {
 export function hashString(text) {
   return new Hasher().string(text).digest();
 }
+
+/**
+ * Stateless, allocation-free hash of integer coordinates, for per-tile randomness that does not
+ * depend on generation order. Uses the murmur3 finaliser for good bit mixing.
+ * @param {number} key - 32-bit seed key.
+ * @param {number} x
+ * @param {number} y
+ * @param {number} salt - Distinguishes independent uses at the same coordinates.
+ * @returns {number} Unsigned 32-bit value.
+ */
+export function hashCoords(key, x, y, salt) {
+  let h = key >>> 0;
+  h = Math.imul(h ^ (x | 0), 0xcc9e2d51);
+  h = Math.imul((h << 15) | (h >>> 17), 0x1b873593);
+  h = Math.imul(h ^ (y | 0), 0xcc9e2d51);
+  h = Math.imul((h << 13) | (h >>> 19), 0x1b873593);
+  h = Math.imul(h ^ (salt | 0), 0xcc9e2d51);
+  h ^= h >>> 16;
+  h = Math.imul(h, 0x85ebca6b);
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35);
+  h ^= h >>> 16;
+  return h >>> 0;
+}
+
+/**
+ * {@link hashCoords} mapped to a float in [0, 1).
+ * @param {number} key
+ * @param {number} x
+ * @param {number} y
+ * @param {number} salt
+ * @returns {number}
+ */
+export function randomAt(key, x, y, salt) {
+  return hashCoords(key, x, y, salt) / 4294967296;
+}

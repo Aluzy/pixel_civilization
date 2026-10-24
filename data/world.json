@@ -1,0 +1,53 @@
+{
+  "chunkSize": 64,
+  "fields": {
+    "altitude": { "scale": 0.0045, "octaves": 5, "lacunarity": 2, "gain": 0.5, "contrast": 1.9 },
+    "humidity": { "scale": 0.006, "octaves": 3, "lacunarity": 2, "gain": 0.5, "contrast": 1.8 },
+    "temperature": { "scale": 0.003, "octaves": 2, "lacunarity": 2, "gain": 0.5, "contrast": 1.7 }
+  },
+  "biomes": [
+    {
+      "id": "water",
+      "name": "Eau",
+      "color": "#4a6b86",
+      "when": { "altitude": [0, 0.3] }
+    },
+    {
+      "id": "shore",
+      "name": "Berge",
+      "color": "#d3c79e",
+      "when": { "altitude": [0.3, 0.33] }
+    },
+    {
+      "id": "mountain",
+      "name": "Montagne",
+      "color": "#b9b6aa",
+      "when": { "altitude": [0.75, 1.01] }
+    },
+    {
+      "id": "marsh",
+      "name": "Marais",
+      "color": "#7d8a5d",
+      "when": { "altitude": [0.33, 0.42], "humidity": [0.68, 1.01] }
+    },
+    {
+      "id": "desert",
+      "name": "Désert",
+      "color": "#ddd3a6",
+      "when": { "humidity": [0, 0.3], "temperature": [0.55, 1.01] }
+    },
+    {
+      "id": "forest",
+      "name": "Forêt",
+      "color": "#728c5e",
+      "when": { "humidity": [0.52, 1.01] }
+    },
+    {
+      "id": "plain",
+      "name": "Plaine",
+      "color": "#b8c590",
+      "when": {}
+    }
+  ],
+  "spawn": { "biomes": ["plain", "forest"], "maxRadius": 512 }
+}

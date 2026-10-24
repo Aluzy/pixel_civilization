@@ -11,7 +11,7 @@ La simulation est entièrement séparée du rendu : elle tourne dans un Web Work
 | Build | Vite | Démarrage instantané, build statique pour GitHub Pages, Web Workers natifs (`new Worker(new URL(...), { type: 'module' })`) |
 | Simulation | Web Worker dédié | Rendu fluide quelle que soit la charge |
 | Aléatoire | Générateur à graine (mulberry32 ou sfc32) | Parties reproductibles |
-| Bruit | `simplex-noise` | Biomes |
+| Bruit | Simplex maison (`src/sim/world/noise.js`) | Biomes ; identique sur tous les moteurs JS et indépendant des mises à jour de dépendances (décision 0004) |
 | Tests | Vitest | Logique de simulation testée sans navigateur |
 | Qualité | ESLint + Prettier | Style homogène entre agents |
 
@@ -25,7 +25,8 @@ pixel_civilization/
 ├── package.json
 ├── vite.config.js
 ├── data/
-│   ├── resources.json       # ressources, couleurs, biomes
+│   ├── world.json           # taille des blocs, champs de bruit, biomes, apparition
+│   ├── resources.json       # ressources, couleurs, règles de placement
 │   ├── recipes.json         # recettes et stations
 │   ├── ai-goals.json        # objectifs, considérations, courbes
 │   ├── ai-projects.json     # méthodes de décomposition des projets (HTN)
@@ -35,7 +36,7 @@ pixel_civilization/
 │   ├── main.js              # configuration Phaser, création du Worker
 │   ├── bridge/              # client du protocole Worker (côté rendu)
 │   ├── scenes/              # BootScene, MenuScene, WorldScene, UIScene
-│   ├── render/              # textures de blocs, couche des individus, calques
+│   ├── render/              # palette, couche des blocs (pool de textures), caméra, calques
 │   ├── ui/                  # inspecteur, tableau de bord, chronique, contrôles du temps
 │   ├── worker/              # hôte temps réel du Worker : cadence (scheduler), messages
 │   └── sim/                 # tourne dans le Worker — aucun import de Phaser ni du DOM
@@ -109,15 +110,15 @@ Messages typés, objets simples ; les gros volumes passent en `ArrayBuffer` tran
 | Rendu → Worker | `setSpeed` | palier ou `max` |
 | Rendu → Worker | `pause` / `resume` | — |
 | Rendu → Worker | `skipTo` | `{ until: 'event' \| 'dawn' \| { day } }` |
-| Rendu → Worker | `viewport` | rectangle visible en cases, zoom |
+| Rendu → Worker | `viewport` | rectangle visible en cases `{ x0, y0, x1, y1 }` |
 | Rendu → Worker | `inspect` | identifiant d'entité ou position |
 | Worker → Rendu | `frame` | cycle, positions des individus visibles (transférable), blocs modifiés dans la vue |
-| Worker → Rendu | `chunk` | `cx`, `cy`, tampon de cases (transférable) |
+| Worker → Rendu | `chunk` | `cx`, `cy` et copies transférables des tableaux biome, ressource, quantité, altitude |
 | Worker → Rendu | `stats` | tableau de bord, vitesse effective |
 | Worker → Rendu | `events` | nouveaux événements de chronique |
 | Worker → Rendu | `inspection` | détail d'une entité ou d'une case |
 
-Le Worker n'envoie que ce qui intersecte le `viewport` (plus une marge d'un bloc).
+Le Worker n'envoie que ce qui intersecte le `viewport` plus une marge (`CHUNK_SEND_MARGIN` = 1 bloc), du plus proche au plus lointain, dans un budget de 6 ms par tranche (`src/worker/chunk-streamer.js`). Le rendu garde les blocs à moins de `CHUNK_KEEP_MARGIN` = 2 blocs de la vue et libère les autres ; le Worker oublie les mêmes, car les deux côtés utilisent la même fonction `chunksInRect`. Aucun message de déchargement n'est donc nécessaire. L'inspection d'une case lit la copie locale du bloc côté rendu, sans aller-retour.
 
 ## Cadence et vitesse
 
@@ -157,7 +158,8 @@ Le rendu minimal tourne sur la carte graphique et coûte peu ; la simulation tou
 
 ## Rendu Phaser
 
-- `WorldScene` : une texture 64 × 64 par bloc visible, mise à jour uniquement à la réception d'un bloc modifié. Pool de textures réutilisées.
+- `WorldScene` : une texture canevas 64 × 64 par bloc visible (`ChunkLayer`), peinte via une table de couleurs, mise à jour uniquement à la réception d'un bloc. Les textures libérées retournent dans un pool et sont réutilisées.
+- Voile jour/nuit : un rectangle semi-transparent qui suit la vue, sous les individus (qui restent visibles la nuit).
 - Couche des individus et des menaces : dessinée à chaque image (un `Graphics` ou une texture dynamique), au-dessus des blocs.
 - `UIScene` : interface en superposition, indépendante du zoom de la caméra.
 - Calques : textures basse résolution (une cellule d'influence = 1 pixel de texture, mise à l'échelle ×8).

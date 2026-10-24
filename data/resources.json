@@ -1,0 +1,70 @@
+{
+  "resources": [
+    {
+      "id": "berries",
+      "name": "Baies",
+      "color": "#e3263a",
+      "renewable": true,
+      "quantity": [3, 12]
+    },
+    { "id": "wood", "name": "Bois", "color": "#7a4a22", "renewable": true, "quantity": [8, 30] },
+    {
+      "id": "fiber",
+      "name": "Fibre végétale",
+      "color": "#9be35a",
+      "renewable": true,
+      "quantity": [4, 16]
+    },
+    {
+      "id": "stone",
+      "name": "Pierre",
+      "color": "#6b6b6b",
+      "renewable": false,
+      "quantity": [20, 120]
+    },
+    {
+      "id": "clay",
+      "name": "Argile",
+      "color": "#c8862e",
+      "renewable": false,
+      "quantity": [10, 60]
+    },
+    {
+      "id": "copper",
+      "name": "Cuivre",
+      "color": "#f07a1a",
+      "renewable": false,
+      "quantity": [10, 80]
+    },
+    {
+      "id": "coal",
+      "name": "Charbon",
+      "color": "#4d4858",
+      "renewable": false,
+      "quantity": [10, 80]
+    },
+    { "id": "iron", "name": "Fer", "color": "#5f7d9c", "renewable": false, "quantity": [10, 80] }
+  ],
+  "placement": [
+    { "resource": "wood", "biome": "forest", "scale": 0.05, "threshold": 0.42, "density": 0.55 },
+    { "resource": "berries", "biome": "forest", "scale": 0.09, "threshold": 0.68, "density": 0.3 },
+    { "resource": "berries", "biome": "plain", "scale": 0.08, "threshold": 0.7, "density": 0.25 },
+    { "resource": "fiber", "biome": "plain", "scale": 0.07, "threshold": 0.62, "density": 0.3 },
+    { "resource": "fiber", "biome": "marsh", "scale": 0.08, "threshold": 0.5, "density": 0.35 },
+    { "resource": "clay", "biome": "marsh", "scale": 0.06, "threshold": 0.66, "density": 0.4 },
+    { "resource": "clay", "biome": "shore", "scale": 0.07, "threshold": 0.6, "density": 0.35 },
+    { "resource": "fiber", "biome": "shore", "scale": 0.09, "threshold": 0.72, "density": 0.2 },
+    { "resource": "stone", "biome": "desert", "scale": 0.08, "threshold": 0.74, "density": 0.25 },
+    { "resource": "stone", "biome": "mountain", "scale": 0.05, "threshold": 0.4, "density": 0.45 },
+    { "resource": "coal", "biome": "mountain", "scale": 0.07, "threshold": 0.72, "density": 0.4 },
+    { "resource": "copper", "biome": "mountain", "scale": 0.07, "threshold": 0.74, "density": 0.4 },
+    {
+      "resource": "iron",
+      "biome": "mountain",
+      "scale": 0.07,
+      "threshold": 0.7,
+      "density": 0.4,
+      "minAltitude": 0.86
+    }
+  ]
+}

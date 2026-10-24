@@ -4,8 +4,9 @@ Le joueur observe sans intervenir. L'interface sert à comprendre ce qui se pass
 
 ## Caméra
 
-- Déplacement libre : glisser à la souris ou au doigt, flèches ou ZQSD/WASD.
-- Zoom de ×1 (1 case = 1 pixel écran) à ×16 (1 case = 16 pixels écran), à la molette ou au pincement.
+- Déplacement libre : glisser à la souris ou au doigt, flèches, ZQSD ou WASD (vitesse constante à l'écran quel que soit le zoom).
+- Zoom par paliers ×1, ×2, ×3, ×4, ×6, ×8, ×12, ×16 (1 case = N pixels écran), à la molette (centré sur le curseur), au pincement ou avec + et −. Départ à ×8, centré sur l'individu.
+- Un clic (sans glisser) inspecte une case : elle est encadrée et le panneau en haut à droite affiche coordonnées, biome, ressource, quantité et altitude.
 - Rendu net, sans lissage (`pixelArt: true`).
 - Option « suivre » : la caméra suit l'individu sélectionné.
 

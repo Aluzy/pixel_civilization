@@ -21,7 +21,7 @@ La conception complète est dans [`docs/design/`](docs/design/README.md). **Lis 
 - **Phaser 4** (paquet npm `phaser`) pour le rendu, la caméra et l'interface.
 - **Vite** pour le développement et le build.
 - **Vitest** pour les tests.
-- `simplex-noise` pour la génération du monde.
+- Bruit simplex implémenté dans le projet (`src/sim/world/noise.js`) pour la génération du monde, sans dépendance (décision 0004).
 - Déploiement sur **GitHub Pages** via GitHub Actions (voir `docs/design/10-deploiement.md`).
 
 ## Commandes
@@ -94,7 +94,7 @@ Pour chaque tâche :
 | Sujet | Fichier |
 | --- | --- |
 | Vision, piliers, hors périmètre | `docs/design/01-vision.md` |
-| Monde, biomes, ressources, jour/nuit, menaces | `docs/design/02-monde.md` |
+| Monde, biomes, ressources, jour/nuit, menaces (données : `data/world.json`, `data/resources.json`) | `docs/design/02-monde.md` |
 | Individu, attributs, besoins, réplication | `docs/design/03-individu.md` |
 | Fabrication par la couleur, stations, découverte | `docs/design/04-fabrication.md` |
 | Mémoire, oubli, cartes, livres, bibliothèques | `docs/design/05-savoir.md` |

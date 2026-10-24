@@ -6,29 +6,33 @@
 - Il est découpé en **blocs** (*chunks*) de 64 × 64 cases, générés à la demande à partir de la graine.
 - Une même graine produit toujours le même monde.
 - Un bloc est identifié par `(cx, cy) = (floor(x / 64), floor(y / 64))`.
-- Stockage d'un bloc : `Uint8Array(4096)` pour le type de case, plus un `Uint8Array(4096)` pour la quantité restante de la ressource de la case.
+- Stockage d'un bloc (`src/sim/world/chunk.js`) : quatre `Uint8Array(4096)` parallèles — biome, ressource (0 = aucune), quantité restante, altitude quantifiée sur 0–255.
+- Un bloc généré mais jamais modifié est une fonction pure de la graine : il ne compte pas dans le hash d'état. Seuls les blocs modifiés par la simulation (`modified`) y entrent, si bien que ce que regarde l'observateur ne change jamais le résultat.
 
 ## Génération procédurale
 
-1. Trois cartes de bruit Simplex multi-octaves, chacune avec un flux aléatoire dérivé de la graine :
-   - altitude (échelle ~1/256, 4 octaves) ;
-   - humidité (échelle ~1/192, 3 octaves) ;
-   - température (échelle ~1/512, 2 octaves, plus un léger gradient nord-sud).
-2. Le **biome** de chaque case est déterminé par une table altitude × humidité × température.
-3. Chaque biome fixe la probabilité d'apparition des ressources, distribuées **en amas** (bosquets, filons) grâce à un quatrième bruit à haute fréquence seuillé, pas au hasard uniforme.
-4. La génération d'un bloc ne dépend que de la graine et de `(cx, cy)` : elle est parallélisable et rejouable.
+1. Trois champs de bruit simplex fractal (fbm), chacun avec un flux aléatoire dérivé de la graine, puis étirés autour de 0,5 (`contrast`) pour exploiter toute la plage [0, 1] :
+   - altitude (fréquence 0,0045, 5 octaves) ;
+   - humidité (0,006, 3 octaves) ;
+   - température (0,003, 2 octaves). Le gradient nord-sud initialement prévu est abandonné : le monde est sans bord.
+2. Le **biome** de chaque case est la première règle de `data/world.json` dont les plages altitude × humidité × température correspondent.
+3. Les ressources sont placées **en amas** : pour chaque règle de `data/resources.json` (`placement`), un bruit propre délimite des taches (`threshold`), à l'intérieur desquelles une case porte la ressource avec la probabilité `density`. Le tirage par case vient d'un hachage des coordonnées (`hashCoords`), pas d'un flux séquentiel.
+4. La génération d'un bloc ne dépend que de la graine et de `(cx, cy)`, jamais de l'ordre de génération : elle est parallélisable et rejouable (testé).
+5. Le bruit est implémenté dans le projet (`src/sim/world/noise.js`), pas importé : décision 0004.
+
+Proportions mesurées sur 1 024 × 1 024 cases (3 graines) : eau ~23 %, plaine ~24 %, forêt ~23 %, montagne ~17 %, désert ~5 %, berge ~4 %, marais ~3 % ; ~80 % des cases sans ressource. Génération : ~2,5 ms par bloc sur une machine de développement.
 
 ### Biomes
 
-| Biome | Condition indicative | Couleur de fond | Ressources principales |
+| Biome | Condition (ordre d'évaluation) | Couleur de fond | Ressources principales |
 | --- | --- | --- | --- |
-| Eau | altitude < 0,30 | Bleu foncé | Eau |
+| Eau | altitude < 0,30 | Bleu foncé | Eau (le biome lui-même) |
 | Berge | 0,30 ≤ altitude < 0,33 | Sable | Argile, fibre |
-| Plaine | altitude moyenne, humidité moyenne | Vert pâle | Baies, fibre, gibier |
-| Forêt | altitude moyenne, humidité forte | Vert foncé | Bois, baies, gibier |
-| Marais | altitude basse, humidité très forte | Vert olive | Fibre, argile |
-| Désert | humidité faible, température forte | Jaune pâle | Pierre (rare) |
-| Montagne | altitude > 0,70 | Gris clair | Pierre, cuivre, charbon, fer |
+| Montagne | altitude ≥ 0,75 | Gris clair | Pierre, cuivre, charbon, fer (altitude ≥ 0,86) |
+| Marais | 0,33 ≤ altitude < 0,42 et humidité ≥ 0,68 | Vert olive | Fibre, argile |
+| Désert | humidité < 0,30 et température ≥ 0,55 | Jaune pâle | Pierre (rare) |
+| Forêt | humidité ≥ 0,52 | Vert foncé | Bois, baies |
+| Plaine | sinon | Vert pâle | Baies, fibre |
 
 Les couleurs de fond des biomes sont **désaturées** pour que les pixels de ressources, vifs, ressortent.
 
@@ -47,11 +51,12 @@ Chaque case de ressource contient une quantité (1 à 255 unités). Récolter re
 | Cuivre | Orange | Montagne | Non | Outil de pierre requis |
 | Charbon | Gris anthracite (≠ noir pur) | Montagne | Non | Outil de pierre requis |
 | Fer | Gris-bleu | Montagne profonde | Non | Outil de cuivre requis |
-| Gibier | Jaune | Forêt, plaine | Oui, se déplace et se reproduit | Arme requise |
+| Gibier | Jaune | Forêt, plaine | Oui, se déplace et se reproduit | Arme requise (faune, ajoutée au jalon J4) |
 
 La palette exacte (codes hexadécimaux) est définie dans `data/resources.json`. Règles de palette :
 
-- `#000000` est réservé aux individus ;
+- `#000000` est réservé aux individus, et aucune ressource ne doit pouvoir s'y confondre : le charbon est un gris violacé (`#4d4858`), pas un quasi-noir ;
+- l'eau n'est pas une couche de ressource : c'est le biome Eau, inépuisable ;
 - deux ressources doivent rester distinguables pour les daltoniens (vérifier avec un simulateur de deutéranopie) ;
 - aux zooms ≥ ×8, chaque type peut afficher un motif en plus de sa couleur.
 
