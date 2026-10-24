@@ -62,7 +62,8 @@ export default [
   },
   {
     files: ['src/sim/**/*.js'],
-    languageOptions: { globals: {} },
+    // Only platform-neutral globals: no DOM, no timers, no clocks.
+    languageOptions: { globals: { TextEncoder: 'readonly' } },
     rules: SIM_RESTRICTIONS,
   },
   {

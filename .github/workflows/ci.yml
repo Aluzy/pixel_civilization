@@ -10,13 +10,21 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
       - name: Install dependencies
         run: if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
-      - run: npm run lint
-      - run: npm run format:check
+      - name: Lint
+        run: npx eslint . --format json --output-file eslint-report.json || (node tools/ci/annotate-eslint.js eslint-report.json; exit 1)
+      - name: Check formatting
+        run: |
+          files=$(npx prettier --list-different . || true)
+          for f in $files; do
+            diff=$(npx prettier "$f" | diff "$f" - | head -60 | sed -e 's/%/%25/g' | sed -e ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error file=$f::Not formatted with Prettier (run npm run format)%0A$diff"
+          done
+          [ -z "$files" ]
       - run: npm test
       - run: npm run build
