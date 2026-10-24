@@ -1,12 +1,19 @@
 import * as Phaser from 'phaser';
+import aiGoals from '../../data/ai-goals.json' with { type: 'json' };
+import projectData from '../../data/ai-projects.json' with { type: 'json' };
 import balance from '../../data/balance.json' with { type: 'json' };
+import recipeData from '../../data/recipes.json' with { type: 'json' };
 import resourceData from '../../data/resources.json' with { type: 'json' };
 import worldData from '../../data/world.json' with { type: 'json' };
+import { buildProjects } from '../sim/ai/projects.js';
+import { buildGoalTable } from '../sim/ai/utility.js';
+import { buildCatalog } from '../sim/crafting/catalog.js';
 import { SkipKind } from '../sim/protocol.js';
 import { buildWorldTables } from '../sim/world/world-data.js';
 import { formatAgent } from '../ui/agent-info.js';
 import { formatEvent } from '../ui/chronicle.js';
 import { formatClock, formatSpeed } from '../ui/format.js';
+import { buildNames } from '../ui/names.js';
 
 const TEXT_STYLE = {
   fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
@@ -39,6 +46,8 @@ export class UiScene extends Phaser.Scene {
   constructor() {
     super('ui');
     this.tables = buildWorldTables(worldData, resourceData);
+    const projects = buildProjects(projectData, buildGoalTable(aiGoals));
+    this.names = buildNames(this.tables, buildCatalog(recipeData, this.tables), projects);
     /** @type {string[]} */
     this.chronicle = [];
     this.agentSelected = false;
@@ -130,13 +139,13 @@ export class UiScene extends Phaser.Scene {
     this.status.setText(lines);
 
     if (frame.events.length > 0) {
-      for (const e of frame.events) this.chronicle.push(formatEvent(e, balance.time, this.tables));
+      for (const e of frame.events) this.chronicle.push(formatEvent(e, balance.time, this.names));
       this.chronicle = this.chronicle.slice(-CHRONICLE_LINES);
       this.chronicleText.setText(['Chronique', ...this.chronicle]).setVisible(true);
     }
 
     if (this.agentSelected && frame.selected) {
-      const panel = formatAgent(frame.selected, this.tables, balance.time);
+      const panel = formatAgent(frame.selected, this.names, balance.time);
       if (this.following) panel[0] += ' · suivi';
       this.inspection.setText(panel).setVisible(true);
     }

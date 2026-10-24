@@ -1,11 +1,13 @@
 import * as Phaser from 'phaser';
 import balance from '../../data/balance.json' with { type: 'json' };
+import recipeData from '../../data/recipes.json' with { type: 'json' };
 import resourceData from '../../data/resources.json' with { type: 'json' };
 import worldData from '../../data/world.json' with { type: 'json' };
 import { visibleRect } from '../render/camera-math.js';
 import { CameraControls } from '../render/camera-controls.js';
 import { ChunkLayer } from '../render/chunk-layer.js';
 import { buildPalette } from '../render/palette.js';
+import { buildCatalog } from '../sim/crafting/catalog.js';
 import { buildWorldTables } from '../sim/world/world-data.js';
 import { formatTile } from '../ui/tile-info.js';
 
@@ -24,7 +26,10 @@ const PHASE_SHADE = {
   dawn: { color: 0x2a2a40, alpha: 0.18 },
 };
 
-const DEPTH = { chunks: 0, shade: 20, memory: 22, selection: 25, agents: 30 };
+const DEPTH = { chunks: 0, shade: 20, memory: 22, selection: 25, threats: 28, agents: 30 };
+
+/** Colour of predators (data/world.json), drawn above the night shade like individuals. */
+const PREDATOR_COLOR = Number.parseInt(worldData.threats.predator.color.slice(1), 16);
 
 // Memory layer: explored cells fade from fresh to stale; places are outlined in their colour.
 const LAYER = {
@@ -33,6 +38,7 @@ const LAYER = {
   exploredStale: 0.03,
   staleTicks: balance.exploration.staleDays * balance.time.ticksPerDay,
   waterColor: 0x6fd3ff,
+  dangerColor: 0xff40ff,
 };
 
 /**
@@ -43,6 +49,7 @@ export class WorldScene extends Phaser.Scene {
   constructor() {
     super('world');
     this.tables = buildWorldTables(worldData, resourceData);
+    this.catalog = buildCatalog(recipeData, this.tables);
     /** @type {string} */
     this.lastViewportKey = '';
     this.lastViewportSync = 0;
@@ -50,6 +57,8 @@ export class WorldScene extends Phaser.Scene {
     this.agentRects = new Map();
     /** @type {{ id: number, x: number, y: number }[]} */
     this.agents = [];
+    /** @type {Map<number, Phaser.GameObjects.Rectangle>} */
+    this.threatRects = new Map();
     /** @type {number} Selected individual, or -1. */
     this.selectedAgent = -1;
     this.following = false;
@@ -65,7 +74,8 @@ export class WorldScene extends Phaser.Scene {
     /** @type {import('../bridge/sim-client.js').SimClient} */
     const sim = this.registry.get('sim');
     this.sim = sim;
-    this.chunks = new ChunkLayer(this, buildPalette(this.tables), DEPTH.chunks);
+    const palette = buildPalette(this.tables, this.catalog.structures);
+    this.chunks = new ChunkLayer(this, palette, DEPTH.chunks);
 
     this.shade = this.add.rectangle(0, 0, 1, 1, 0x000000, 0).setOrigin(0, 0).setDepth(DEPTH.shade);
     this.selection = this.add
@@ -76,7 +86,14 @@ export class WorldScene extends Phaser.Scene {
       .setVisible(false);
 
     this.memoryGraphics = this.add.graphics().setDepth(DEPTH.memory);
-    this.resourceColors = this.tables.resources.map((r) => Number.parseInt(r.color.slice(1), 16));
+    // Memory layer colour per subject: water, resources, structures, then danger.
+    const hex = (c) => Number.parseInt(c.slice(1), 16);
+    this.subjectColors = [
+      LAYER.waterColor,
+      ...this.tables.resources.map((r) => hex(r.color)),
+      ...this.catalog.structures.map((st) => hex(st.color)),
+      LAYER.dangerColor,
+    ];
 
     this.controls = new CameraControls(this, {
       zoomSteps: ZOOM_STEPS,
@@ -163,12 +180,37 @@ export class WorldScene extends Phaser.Scene {
       rect.destroy();
       this.agentRects.delete(id);
     }
+    this.drawThreats(frame.threats ?? []);
     if (this.selectedAgent >= 0) {
       const agent = frame.agents.find((a) => a.id === this.selectedAgent);
       if (agent) this.selection.setPosition(agent.x, agent.y).setVisible(true);
       else this.clearSelection();
     }
     this.drawMemory(frame);
+  }
+
+  /**
+   * Predators as dark red pixels.
+   * @param {{ id: number, x: number, y: number }[]} threats
+   * @returns {void}
+   */
+  drawThreats(threats) {
+    const seen = new Set();
+    for (const t of threats) {
+      seen.add(t.id);
+      let rect = this.threatRects.get(t.id);
+      if (!rect) {
+        rect = this.add.rectangle(0, 0, 1, 1, PREDATOR_COLOR);
+        rect.setOrigin(0, 0).setDepth(DEPTH.threats);
+        this.threatRects.set(t.id, rect);
+      }
+      rect.setPosition(t.x, t.y);
+    }
+    for (const [id, rect] of this.threatRects) {
+      if (seen.has(id)) continue;
+      rect.destroy();
+      this.threatRects.delete(id);
+    }
   }
 
   /**
@@ -204,7 +246,7 @@ export class WorldScene extends Phaser.Scene {
     }
     const width = 2 / this.cameras.main.zoom;
     for (const p of agent.memory) {
-      const color = p.subject === 0 ? LAYER.waterColor : this.resourceColors[p.subject - 1];
+      const color = this.subjectColors[p.subject] ?? LAYER.dangerColor;
       g.lineStyle(width, color, 0.25 + 0.75 * p.strength);
       g.strokeRect(p.x - 1, p.y - 1, 3, 3);
     }
@@ -266,7 +308,9 @@ export class WorldScene extends Phaser.Scene {
   inspect(x, y) {
     const tile = this.chunks.tileAt(x, y);
     this.selection.setPosition(x, y).setVisible(true);
-    const text = tile ? formatTile(tile, this.tables) : `(${x}, ${y}) · pas encore chargé`;
+    const text = tile
+      ? formatTile(tile, this.tables, this.catalog.structures)
+      : `(${x}, ${y}) · pas encore chargé`;
     this.game.events.emit('tile-inspected', text);
   }
 }

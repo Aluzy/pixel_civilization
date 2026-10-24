@@ -1,16 +1,9 @@
 import { PlanNote } from '../sim/agents/journal.js';
+import { PlanStatus } from '../sim/ai/planner.js';
 import { shortClock } from './chronicle.js';
+import { subjectLabel } from './names.js';
 
-const MEMORY_LINES = 5;
-
-/**
- * @param {number} subject
- * @param {import('../sim/world/world-data.js').WorldTables} tables
- * @returns {string}
- */
-function subjectName(subject, tables) {
-  return subject === 0 ? 'Eau' : tables.resources[subject - 1].name;
-}
+const MEMORY_LINES = 4;
 
 const NOTE_TEXT = {
   [PlanNote.SEEN]: 'en vue',
@@ -18,7 +11,23 @@ const NOTE_TEXT = {
   [PlanNote.SEARCHING]: 'recherche',
   [PlanNote.HERE]: 'sur place',
   [PlanNote.CARRIED]: 'provisions',
+  [PlanNote.PLAN]: 'plan',
+  [PlanNote.TRIAL]: 'essai',
+  [PlanNote.FLEEING]: 'fuite',
+  [PlanNote.SHELTER]: 'abri',
 };
+
+/**
+ * One line for the current plan of a crafting goal.
+ * @param {{ status: number, cost: number, nodes: number, steps: string[] } | null} plan
+ * @returns {string}
+ */
+function planLine(plan) {
+  if (!plan) return 'Plan : —';
+  if (plan.status === PlanStatus.DONE) return 'Plan : but atteint';
+  if (plan.status !== PlanStatus.OK) return `Plan : recette inconnue, il expérimente`;
+  return `Plan : ${plan.steps.join(' › ')} (~${plan.cost} c., ${plan.nodes} nœuds)`;
+}
 
 /**
  * Text bar for a value, e.g. "████░░░░".
@@ -52,13 +61,13 @@ function need(label, value) {
 /**
  * Lines of the inspector panel for one agent (from Simulation#describeAgent).
  * @param {object} agent
- * @param {import('../sim/world/world-data.js').WorldTables} tables
+ * @param {import('./names.js').Names} names
  * @param {import('../sim/core/clock.js').TimeConfig} time
  * @returns {string[]}
  */
-export function formatAgent(agent, tables, time) {
+export function formatAgent(agent, names, time) {
   const days = Math.floor(agent.age / time.ticksPerDay);
-  const item = (i) => `${tables.resources[i.resource - 1].name} × ${i.count}`;
+  const item = (i) => `${i.name} × ${i.count}`;
   const carried = agent.inventory.length === 0 ? 'rien' : agent.inventory.map(item).join(', ');
   const hp = String(Math.round(agent.hp)).padStart(3);
   const memoryTitle = `Mémoire ${agent.memory.length}/${agent.memoryCapacity}`;
@@ -71,11 +80,20 @@ export function formatAgent(agent, tables, time) {
     need('Fatigue', agent.needs.fatigue),
     need('Curiosité', agent.needs.curiosity),
     `Objectif : ${agent.goal} (${doing})`,
+    planLine(agent.plan),
     `Porte : ${carried}`,
-    `${memoryTitle} (eau ${agent.knownWater.length}, nourriture ${agent.knownFood.length}) :`,
   ];
+  if (agent.project) {
+    const steps = agent.project.steps.map((st, i) => (i === agent.project.step ? `▶ ${st}` : st));
+    lines.push(`Projet « ${agent.project.name} » : ${steps.join(' · ')}`);
+  }
+  const known = agent.recipes.map((r) => `${r.name} ${bar(r.strength, 1, 4)}`).join(' · ');
+  lines.push(`Recettes (échecs retenus ${agent.failures}) : ${known || 'aucune'}`);
+  lines.push(`Arme ×${agent.weapon} · prédateurs tués ${agent.kills}`);
+  const vital = `eau ${agent.knownWater.length}, nourriture ${agent.knownFood.length}`;
+  lines.push(`${memoryTitle} (${vital}) :`);
   for (const p of agent.memory.slice(0, MEMORY_LINES)) {
-    const name = subjectName(p.subject, tables).padEnd(14).slice(0, 14);
+    const name = subjectLabel(p.subject, names).padEnd(14).slice(0, 14);
     const where = `(${p.x}, ${p.y})`.padEnd(12);
     lines.push(`  ${name} ${where} ${bar(p.strength, 1, 8)} vu ${shortClock(p.seen, time)}`);
   }

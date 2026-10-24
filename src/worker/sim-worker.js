@@ -62,6 +62,7 @@ function sendFrame() {
     effectiveSpeed: scheduler.effectiveSpeed(now),
     skip: skip?.kind ?? null,
     agents: sim.agentPositions(),
+    threats: sim.threatPositions(),
     events,
     selected: selected >= 0 ? sim.describeAgent(selected, selectedWithMap) : null,
   });
@@ -115,10 +116,12 @@ function streamChunks() {
     const biome = chunk.biome.slice();
     const resource = chunk.resource.slice();
     const quantity = chunk.quantity.slice();
+    const structure = chunk.structure.slice();
     const altitude = chunk.altitude.slice();
+    const { cx, cy } = chunk;
     self.postMessage(
-      { type: FromWorker.CHUNK, cx: chunk.cx, cy: chunk.cy, biome, resource, quantity, altitude },
-      [biome.buffer, resource.buffer, quantity.buffer, altitude.buffer],
+      { type: FromWorker.CHUNK, cx, cy, biome, resource, quantity, structure, altitude },
+      [biome.buffer, resource.buffer, quantity.buffer, structure.buffer, altitude.buffer],
     );
   }
 }

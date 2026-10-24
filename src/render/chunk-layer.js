@@ -9,6 +9,7 @@ import { paintChunk } from './palette.js';
  * @property {Uint8Array} biome
  * @property {Uint8Array} resource
  * @property {Uint8Array} quantity
+ * @property {Uint8Array} structure
  * @property {Uint8Array} altitude
  */
 
@@ -104,6 +105,7 @@ export class ChunkLayer {
       biome: data.biome[i],
       resource: data.resource[i],
       quantity: data.quantity[i],
+      structure: data.structure[i],
       altitude: data.altitude[i],
     };
   }
