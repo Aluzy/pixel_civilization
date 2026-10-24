@@ -56,6 +56,7 @@ for (let day = 1; day <= options.days; day++) {
         y: agent.y,
         goal: agent.goal,
         made: agent.made.map((m) => m.name),
+        population: sim.agents.aliveCount,
       }
     : { day, alive: false };
   days.push(row);
@@ -66,8 +67,9 @@ for (let day = 1; day <= options.days; day++) {
     } else {
       const needs = `faim ${pct(row.hunger)}  soif ${pct(row.thirst)}  fatigue ${pct(row.fatigue)}`;
       const made = row.made.length > 0 ? `  [${row.made.join(', ')}]` : '';
+      const pop = `  pop ${String(row.population).padStart(3)}`;
       const where = `(${row.x}, ${row.y})`;
-      console.log(`${label}  PV ${pct(row.hp)}  ${needs}  ${where}  ${row.goal}${made}`);
+      console.log(`${label}${pop}  PV ${pct(row.hp)}  ${needs}  ${where}  ${row.goal}${made}`);
     }
   }
   if (!row.alive) break;

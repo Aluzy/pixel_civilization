@@ -9,6 +9,7 @@ import {
   ToWorker,
 } from '../sim/protocol.js';
 import { Simulation } from '../sim/simulation.js';
+import { AutoSpeed } from './auto-speed.js';
 import { ChunkStreamer } from './chunk-streamer.js';
 import { TickScheduler } from './scheduler.js';
 
@@ -37,6 +38,9 @@ let selectedWithMap = false;
  * @type {{ kind: string, untilTick: number, afterSeq: number } | null}
  */
 let skip = null;
+/** Automatic acceleration, and the next event it has not looked at yet. */
+const auto = new AutoSpeed({ steps: balance.time.speedSteps });
+let autoSeq = 0;
 
 /**
  * @param {object} message
@@ -63,6 +67,8 @@ function sendFrame() {
     skip: skip?.kind ?? null,
     agents: sim.agentPositions(),
     threats: sim.threatPositions(),
+    colony: sim.describeColony(0),
+    auto: auto.enabled,
     events,
     selected: selected >= 0 ? sim.describeAgent(selected, selectedWithMap) : null,
   });
@@ -137,6 +143,12 @@ function slice() {
       const end = performance.now();
       scheduler.done(ran, end, end - start);
     }
+    if (auto.enabled && !skip) {
+      const events = sim.events.since(autoSeq);
+      autoSeq = sim.events.count;
+      const speed = auto.update(events, performance.now(), scheduler.speed);
+      if (speed !== null) scheduler.setSpeed(speed);
+    }
     streamChunks();
     if (performance.now() - lastFrameAt >= FRAME_INTERVAL_MS) sendFrame();
   } catch (error) {
@@ -189,12 +201,14 @@ self.onmessage = (event) => {
       break;
     case ToWorker.SET_SPEED:
       skip = null;
+      auto.setEnabled(false, performance.now());
       scheduler?.setSpeed(message.speed);
       if (scheduler?.paused) scheduler.resume();
       sendFrame();
       break;
     case ToWorker.PAUSE:
       skip = null;
+      auto.setEnabled(false, performance.now());
       scheduler?.pause();
       sendFrame();
       break;
@@ -212,6 +226,13 @@ self.onmessage = (event) => {
       break;
     case ToWorker.SKIP:
       startSkip(message.kind);
+      sendFrame();
+      break;
+    case ToWorker.AUTO:
+      auto.setAlerts(message.alerts ?? []);
+      auto.setEnabled(message.on === true, performance.now());
+      autoSeq = sim ? sim.events.count : 0;
+      if (scheduler?.paused && message.on) scheduler.resume();
       sendFrame();
       break;
     default:

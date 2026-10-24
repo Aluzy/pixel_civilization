@@ -11,7 +11,8 @@ import { buildCatalog } from '../sim/crafting/catalog.js';
 import { SkipKind } from '../sim/protocol.js';
 import { buildWorldTables } from '../sim/world/world-data.js';
 import { formatAgent } from '../ui/agent-info.js';
-import { formatEvent } from '../ui/chronicle.js';
+import { FILTERS, formatEvent, passes } from '../ui/chronicle.js';
+import { formatColony } from '../ui/colony-info.js';
 import { formatClock, formatSpeed } from '../ui/format.js';
 import { buildNames } from '../ui/names.js';
 
@@ -26,11 +27,14 @@ const TEXT_STYLE = {
 
 const KEY_NAMES = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'];
 const CHRONICLE_LINES = 8;
+/** Events kept for the chronicle, so that changing the filter shows past ones. */
+const CHRONICLE_KEEP = 200;
 
 const HELP = [
   'Glisser / flèches : déplacer   Molette / + − : zoom   Clic : inspecter',
   'Espace : pause   1–5 : vitesse   6 : max   L : jusqu’à l’aube   N : prochain événement',
   'F : suivre l’individu   M : ce qu’il croit savoir   Échap : désélectionner',
+  'T : accélération automatique   C : filtre de la chronique',
 ];
 
 const SKIP_LABEL = {
@@ -48,8 +52,10 @@ export class UiScene extends Phaser.Scene {
     this.tables = buildWorldTables(worldData, resourceData);
     const projects = buildProjects(projectData, buildGoalTable(aiGoals));
     this.names = buildNames(this.tables, buildCatalog(recipeData, this.tables), projects);
-    /** @type {string[]} */
+    /** @type {import('../sim/core/events.js').SimEvent[]} */
     this.chronicle = [];
+    this.filter = 1;
+    this.auto = false;
     this.agentSelected = false;
     this.following = false;
   }
@@ -65,6 +71,7 @@ export class UiScene extends Phaser.Scene {
     this.footer = this.add.text(12, 0, `Graine ${seed}   ${version}`, small).setScrollFactor(0);
     this.help = this.add.text(0, 0, HELP, small).setScrollFactor(0);
     this.chronicleText = this.add.text(12, 0, '', small).setScrollFactor(0).setVisible(false);
+    this.colonyText = this.add.text(12, 0, '', small).setScrollFactor(0).setVisible(false);
     this.inspection = this.add
       .text(0, 12, '', { ...TEXT_STYLE, fontSize: '13px' })
       .setScrollFactor(0)
@@ -104,11 +111,41 @@ export class UiScene extends Phaser.Scene {
     keyboard.on('keydown-SIX', () => sim.setSpeed('max'));
     keyboard.on('keydown-L', () => sim.skip(SkipKind.DAWN));
     keyboard.on('keydown-N', () => sim.skip(SkipKind.EVENT));
+    keyboard.on('keydown-C', () => {
+      this.filter = (this.filter + 1) % FILTERS.length;
+      this.drawChronicle();
+      if (this.auto) sim.setAuto(true, this.alerts());
+    });
+    keyboard.on('keydown-T', () => {
+      this.auto = !this.auto;
+      sim.setAuto(this.auto, this.alerts());
+    });
+  }
+
+  /**
+   * Event types that interrupt the automatic acceleration: those of the current filter (the
+   * "important" ones when the filter shows everything).
+   * @returns {string[]}
+   */
+  alerts() {
+    return FILTERS[this.filter].types ?? FILTERS[1].types;
+  }
+
+  /** @returns {void} */
+  drawChronicle() {
+    const filter = FILTERS[this.filter];
+    const lines = this.chronicle
+      .filter((e) => passes(e, filter))
+      .slice(-CHRONICLE_LINES)
+      .map((e) => formatEvent(e, balance.time, this.names));
+    this.chronicleText.setText([`Chronique (${filter.name})`, ...lines]).setVisible(true);
+    this.layout();
   }
 
   /** @returns {void} */
   layout() {
     const { width, height } = this.scale;
+    this.colonyText.setPosition(12, this.status.y + this.status.height + 8);
     this.footer.setPosition(12, height - this.footer.height - 12);
     this.chronicleText.setPosition(12, this.footer.y - this.chronicleText.height - 8);
     this.help.setPosition(width - this.help.width - 12, height - this.help.height - 12);
@@ -132,17 +169,20 @@ export class UiScene extends Phaser.Scene {
     const lines = [
       'Pixel Civilisation',
       formatClock(frame.time),
-      `Vitesse ${speed}${frame.skip ? ` ${SKIP_LABEL[frame.skip]}` : ''}`,
+      `Vitesse ${speed}${frame.skip ? ` ${SKIP_LABEL[frame.skip]}` : ''}${frame.auto ? ' auto' : ''}`,
       `Individus ${frame.agents.length}`,
       `${Math.round(this.game.loop.actualFps)} img/s`,
     ];
     this.status.setText(lines);
 
     if (frame.events.length > 0) {
-      for (const e of frame.events) this.chronicle.push(formatEvent(e, balance.time, this.names));
-      this.chronicle = this.chronicle.slice(-CHRONICLE_LINES);
-      this.chronicleText.setText(['Chronique', ...this.chronicle]).setVisible(true);
+      this.chronicle.push(...frame.events);
+      const extra = this.chronicle.length - CHRONICLE_KEEP;
+      if (extra > 0) this.chronicle.splice(0, extra);
+      this.drawChronicle();
     }
+    const colony = formatColony(frame.colony);
+    this.colonyText.setText(colony).setVisible(colony.length > 0);
 
     if (this.agentSelected && frame.selected) {
       const panel = formatAgent(frame.selected, this.names, balance.time);
