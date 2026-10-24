@@ -29,7 +29,10 @@ export class Hasher {
    */
   uint32(value) {
     const v = value >>> 0;
-    return this.byte(v).byte(v >>> 8).byte(v >>> 16).byte(v >>> 24);
+    return this.byte(v)
+      .byte(v >>> 8)
+      .byte(v >>> 16)
+      .byte(v >>> 24);
   }
 
   /**
