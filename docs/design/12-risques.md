@@ -7,7 +7,7 @@
 | Coût de calcul de l'IA avec des centaines d'individus | Simulation lente, vitesse effective basse | Décisions étalées sur 10 cycles, GOAP plafonné, plans mis en cache et partagés, blocs gelés |
 | Comportements dégénérés (boucles, inaction, oscillation) | Simulation sans intérêt | Inertie des objectifs, détection de blocage (même plan échoué 3 fois → pénalité), journal de décisions, tests de scénarios |
 | Croissance exponentielle de la population | Saturation de la machine | Coût de réplication, ressources finies, délai minimal, plafond technique de sécurité |
-| Extinction précoce | Partie terminée en quelques minutes | Équilibrage des premières heures via la simulation headless sur 100 graines |
+| Extinction précoce | Partie terminée en quelques minutes | Équilibrage des premières heures via la simulation headless sur 100 graines. Mesure J3 : 1 décès sur 100 graines en 10 jours (graine 76), dans une région de montagnes et de déserts sans baies sur son trajet ; l'apprentissage de « où pousse la nourriture » (J7) doit le réduire |
 | Explosion combinatoire de la découverte | Pixel qui expérimente sans fin | Heuristique de curiosité, coût réel des essais, mémoire des échecs |
 | IA trop gourmande pour la vitesse visée | Accélération plafonnée, observateur qui attend | Budget en unités de travail, dégradation douce de la simulation mentale avec la population, Workers penseurs, mesure continue dans la CI |
 | Parallélisme non déterministe | Parties impossibles à reproduire | Application des décisions dans l'ordre des identifiants, flux aléatoire par individu, test K = 1 contre K = 4 |

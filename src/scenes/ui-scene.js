@@ -18,12 +18,12 @@ const TEXT_STYLE = {
 };
 
 const KEY_NAMES = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'];
-const CHRONICLE_LINES = 6;
+const CHRONICLE_LINES = 8;
 
 const HELP = [
   'Glisser / flèches : déplacer   Molette / + − : zoom   Clic : inspecter',
   'Espace : pause   1–5 : vitesse   6 : max   L : jusqu’à l’aube   N : prochain événement',
-  'F : suivre l’individu   Échap : désélectionner',
+  'F : suivre l’individu   M : ce qu’il croit savoir   Échap : désélectionner',
 ];
 
 const SKIP_LABEL = {
@@ -130,7 +130,7 @@ export class UiScene extends Phaser.Scene {
     this.status.setText(lines);
 
     if (frame.events.length > 0) {
-      for (const e of frame.events) this.chronicle.push(formatEvent(e, balance.time));
+      for (const e of frame.events) this.chronicle.push(formatEvent(e, balance.time, this.tables));
       this.chronicle = this.chronicle.slice(-CHRONICLE_LINES);
       this.chronicleText.setText(['Chronique', ...this.chronicle]).setVisible(true);
     }

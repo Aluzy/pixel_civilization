@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import balance from '../../data/balance.json' with { type: 'json' };
 import resourceData from '../../data/resources.json' with { type: 'json' };
 import worldData from '../../data/world.json' with { type: 'json' };
 import { visibleRect } from '../render/camera-math.js';
@@ -23,7 +24,16 @@ const PHASE_SHADE = {
   dawn: { color: 0x2a2a40, alpha: 0.18 },
 };
 
-const DEPTH = { chunks: 0, shade: 20, selection: 25, agents: 30 };
+const DEPTH = { chunks: 0, shade: 20, memory: 22, selection: 25, agents: 30 };
+
+// Memory layer: explored cells fade from fresh to stale; places are outlined in their colour.
+const LAYER = {
+  exploredColor: 0xffffff,
+  exploredFresh: 0.22,
+  exploredStale: 0.03,
+  staleTicks: balance.exploration.staleDays * balance.time.ticksPerDay,
+  waterColor: 0x6fd3ff,
+};
 
 /**
  * Draws the world: chunks streamed by the worker, the day/night shade and the individuals.
@@ -43,6 +53,7 @@ export class WorldScene extends Phaser.Scene {
     /** @type {number} Selected individual, or -1. */
     this.selectedAgent = -1;
     this.following = false;
+    this.memoryLayer = false;
   }
 
   create() {
@@ -64,6 +75,9 @@ export class WorldScene extends Phaser.Scene {
       .setDepth(DEPTH.selection)
       .setVisible(false);
 
+    this.memoryGraphics = this.add.graphics().setDepth(DEPTH.memory);
+    this.resourceColors = this.tables.resources.map((r) => Number.parseInt(r.color.slice(1), 16));
+
     this.controls = new CameraControls(this, {
       zoomSteps: ZOOM_STEPS,
       onClick: (x, y) => this.pick(x, y),
@@ -72,6 +86,7 @@ export class WorldScene extends Phaser.Scene {
     const keyboard = this.input.keyboard;
     keyboard.on('keydown-F', () => this.setFollowing(!this.following));
     keyboard.on('keydown-ESC', () => this.clearSelection());
+    keyboard.on('keydown-M', () => this.setMemoryLayer(!this.memoryLayer));
 
     const offReady = sim.onReady(({ spawn }) => camera.centerOn(spawn.x + 0.5, spawn.y + 0.5));
     const offChunk = sim.onChunk((chunk) => this.chunks.add(chunk));
@@ -153,6 +168,46 @@ export class WorldScene extends Phaser.Scene {
       if (agent) this.selection.setPosition(agent.x, agent.y).setVisible(true);
       else this.clearSelection();
     }
+    this.drawMemory(frame);
+  }
+
+  /**
+   * Toggles the layer "what it believes it knows" for the selected individual.
+   * @param {boolean} on
+   * @returns {void}
+   */
+  setMemoryLayer(on) {
+    this.memoryLayer = on;
+    if (this.selectedAgent >= 0) this.sim.select(this.selectedAgent, on);
+    if (!on) this.memoryGraphics.clear();
+    this.game.events.emit('memory-layer-changed', on);
+  }
+
+  /**
+   * Draws explored cells and remembered places of the selected individual.
+   * @param {{ tick: number, selected: object | null }} frame
+   * @returns {void}
+   */
+  drawMemory(frame) {
+    const g = this.memoryGraphics;
+    g.clear();
+    const agent = frame.selected;
+    if (!this.memoryLayer || !agent) return;
+    if (agent.exploration) {
+      const { cellSize, cells } = agent.exploration;
+      for (let i = 0; i < cells.length; i += 3) {
+        const age = Math.min(1, (frame.tick - cells[i + 2]) / LAYER.staleTicks);
+        const alpha = LAYER.exploredFresh + (LAYER.exploredStale - LAYER.exploredFresh) * age;
+        g.fillStyle(LAYER.exploredColor, alpha);
+        g.fillRect(cells[i] * cellSize, cells[i + 1] * cellSize, cellSize, cellSize);
+      }
+    }
+    const width = 2 / this.cameras.main.zoom;
+    for (const p of agent.memory) {
+      const color = p.subject === 0 ? LAYER.waterColor : this.resourceColors[p.subject - 1];
+      g.lineStyle(width, color, 0.25 + 0.75 * p.strength);
+      g.strokeRect(p.x - 1, p.y - 1, 3, 3);
+    }
   }
 
   /**
@@ -175,7 +230,7 @@ export class WorldScene extends Phaser.Scene {
     }
     if (best >= 0) {
       this.selectedAgent = best;
-      this.sim.select(best);
+      this.sim.select(best, this.memoryLayer);
       this.game.events.emit('agent-selected', best);
       return;
     }
@@ -189,6 +244,7 @@ export class WorldScene extends Phaser.Scene {
     this.selectedAgent = -1;
     this.setFollowing(false);
     this.selection.setVisible(false);
+    this.memoryGraphics.clear();
     this.game.events.emit('agent-selected', -1);
   }
 

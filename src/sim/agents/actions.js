@@ -1,6 +1,8 @@
 import { EventType } from '../core/events.js';
 import { PACK } from '../world/chunk-store.js';
 import { Action } from './action-types.js';
+import { consolidate, forgetEmptied } from './beliefs.js';
+import { WATER_SUBJECT } from './memory.js';
 
 /** Bits of AgentStore.flags: first experiences, reported once each in the chronicle. */
 export const Flag = Object.freeze({ DRANK: 1, ATE: 2, SLEPT: 4, CRITICAL: 8 });
@@ -116,7 +118,10 @@ export function stepAction(state, ctx, id) {
       }
       firstTime(state, ctx, id, Flag.DRANK, EventType.FIRST_DRINK);
       agents.thirst[id] = Math.max(0, agents.thirst[id] - ctx.balance.actions.drinkPerTick);
-      if (agents.thirst[id] === 0) finish(ctx, id);
+      if (agents.thirst[id] === 0) {
+        consolidate(state, ctx, id, WATER_SUBJECT);
+        finish(ctx, id);
+      }
       return;
     }
     case Action.FORAGE: {
@@ -136,7 +141,12 @@ export function stepAction(state, ctx, id) {
         finish(ctx, id);
         return;
       }
-      if (state.world.lastTakeDepleted) ctx.scheduleRegrowth(state, x, y, taken);
+      if (state.world.lastTakeDepleted) {
+        ctx.scheduleRegrowth(state, x, y, taken);
+        forgetEmptied(ctx, id, taken, x, y);
+      } else {
+        consolidate(state, ctx, id, taken);
+      }
       const nutrition = ctx.nutrition[taken];
       const full = agents.hunger[id] < nutrition / 2;
       if (!full) {

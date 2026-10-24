@@ -14,6 +14,8 @@ Le joueur observe sans intervenir. L'interface sert à comprendre ce qui se pass
 
 L'observateur accélère librement ; le jeu le ramène à vitesse normale quand quelque chose d'intéressant se produit.
 
+Touches d'observation : F suivre l'individu, M calque de sa mémoire, Échap désélectionner.
+
 | Commande | Effet | Raccourci |
 | --- | --- | --- |
 | Pause | Arrête la simulation, l'inspection reste possible | Espace |
@@ -31,7 +33,7 @@ Le raccourci « jusqu'à l'aube » est L (lever du jour) et non A, déjà utilis
 
 ## Inspection
 
-Implémenté au J2 : un clic à moins de 1,2 case d'un individu le sélectionne (sinon la case est inspectée). Le panneau montre PV, faim, soif, fatigue et curiosité en barres, l'objectif et l'action en cours, ce qu'il porte, le nombre de lieux connus, et ses 4 dernières décisions avec les trois meilleurs objectifs et leurs scores. F fait suivre l'individu par la caméra, Échap désélectionne.
+Implémenté au J2 et au J3 : un clic à moins de 1,2 case d'un individu le sélectionne (sinon la case est inspectée). Au J3, le panneau liste aussi la mémoire (« Mémoire 12/20 ») et ses 5 lieux les plus forts avec une barre de force et la date de dernière observation. La touche M affiche le calque « ce qu'il croit savoir » : les zones explorées (plus claires quand elles sont récentes) et un carré par lieu mémorisé, dans la couleur de sa ressource (bleu clair pour l'eau), d'autant plus net que le souvenir est fort. Le panneau montre PV, faim, soif, fatigue et curiosité en barres, l'objectif et l'action en cours, ce qu'il porte, le nombre de lieux connus, et ses 4 dernières décisions avec les trois meilleurs objectifs et leurs scores. F fait suivre l'individu par la caméra, Échap désélectionne.
 
 Clic sur un individu → panneau latéral (cible complète) :
 
@@ -61,7 +63,7 @@ Activables séparément, superposés en semi-transparence : ressources connues d
 
 ## Chronique
 
-Au J2, la chronique affiche les 6 derniers événements en bas à gauche : premier pas, première gorgée d'eau, premier repas, premier sommeil, santé critique, mort.
+Au J2, la chronique affiche les 6 derniers événements en bas à gauche : premier pas, première gorgée d'eau, premier repas, premier sommeil, santé critique, mort. Au J3 elle en montre 8 et ajoute les événements de mémoire : lieu oublié, croyance fausse, recherche sans savoir où, lieu introuvable, lieu redécouvert.
 
 Fil d'événements générés automatiquement, horodatés en jour et heure de jeu :
 

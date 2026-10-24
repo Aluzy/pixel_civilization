@@ -10,6 +10,11 @@ export const EventType = Object.freeze({
   FIRST_SLEEP: 'firstSleep',
   HEALTH_CRITICAL: 'healthCritical',
   DEATH: 'death',
+  FORGOT_PLACE: 'forgotPlace',
+  WRONG_BELIEF: 'wrongBelief',
+  SEARCHING: 'searching',
+  NOT_FOUND: 'notFound',
+  REDISCOVERED: 'rediscovered',
 });
 
 /** Events kept in memory; older ones are dropped (the count keeps growing). */
@@ -23,6 +28,7 @@ const MAX_EVENTS = 500;
  * @property {number} agent - Entity id concerned, or -1.
  * @property {number} x
  * @property {number} y
+ * @property {number} subject - What the event is about (water = 0, resource id), or -1.
  */
 
 export class EventLog {
@@ -39,10 +45,11 @@ export class EventLog {
    * @param {number} agent
    * @param {number} x
    * @param {number} y
+   * @param {number} [subject=-1]
    * @returns {void}
    */
-  push(tick, type, agent, x, y) {
-    this.events.push({ seq: this.count++, tick, type, agent, x, y });
+  push(tick, type, agent, x, y, subject = -1) {
+    this.events.push({ seq: this.count++, tick, type, agent, x, y, subject });
     if (this.events.length > MAX_EVENTS) this.events.shift();
   }
 

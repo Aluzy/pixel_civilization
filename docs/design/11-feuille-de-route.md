@@ -51,6 +51,8 @@ Réalisé : survie 10 jours sur 60 graines sur 60 (test automatique sur 10 grain
 
 **Sortie** : on voit le pixel oublier un lieu, échouer à le retrouver, puis le redécouvrir par exploration.
 
+Réalisé : mémoire à force et oubli, souvenirs flous, carte d'exploration personnelle, calque M. La séquence complète est rare quand la mémoire fonctionne bien (le pixel n'oublie que des lieux lointains) : 3 graines sur 150 en 40 jours. Graine de démonstration : **47** — il oublie le point d'eau (8, −7) au jour 11, le cherche au jour 19 d'après un souvenir flou, ne le trouve pas, puis le redécouvre le soir même (test automatique). Survie 10 jours : 99 graines sur 100.
+
 ## J4 — Fabrication (`v0.5.0`)
 
 - Stations, `data/recipes.json`, fabrication, construction de l'abri.

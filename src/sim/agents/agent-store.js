@@ -1,5 +1,10 @@
-import { Action, PLACE_KINDS } from './action-types.js';
+import { Action } from './action-types.js';
+import { ExplorationMap } from './exploration-map.js';
 import { Journal } from './journal.js';
+import { Memory } from './memory.js';
+
+/** Kinds of chronicle events about memory, each with its own cooldown per agent. */
+export const MEMORY_EVENT_KINDS = 5;
 
 /** Longest path an agent can hold; paths never leave its perception window (radius ≤ 22). */
 export const PATH_MAX = 2048;
@@ -14,13 +19,13 @@ export class AgentStore {
    * @param {number} options.max - Maximum number of simultaneous agents.
    * @param {number} options.resourceCount - Number of resource ids (excluding 0).
    * @param {number} options.journalSize
-   * @param {number} options.placesPerKind - Remembered places per kind.
+   * @param {{ capacity: number, cellSize: number }} options.exploration
    */
-  constructor({ max, resourceCount, journalSize, placesPerKind }) {
+  constructor({ max, resourceCount, journalSize, exploration }) {
     this.max = max;
     this.resourceSlots = resourceCount + 1;
     this.journalSize = journalSize;
-    this.placesPerKind = placesPerKind;
+    this.exploration = exploration;
     /** One past the highest id ever used: loops stop there. */
     this.highWater = 0;
     this.aliveCount = 0;
@@ -70,9 +75,12 @@ export class AgentStore {
     this.path = [];
     this.pathLength = new Uint16Array(max);
     this.pathIndex = new Uint16Array(max);
-    // Minimal memory of places: x, y, tick per slot.
-    this.places = new Int32Array(max * PLACE_KINDS * placesPerKind * 3);
-    this.placeCount = new Uint8Array(max * PLACE_KINDS);
+    /** @type {Memory[]} Places each agent remembers (capacity = its Mémoire attribute). */
+    this.memory = [];
+    /** @type {ExplorationMap[]} Where each agent has been, and when. */
+    this.explored = [];
+    /** Last tick each kind of memory event was reported, to keep the chronicle readable. */
+    this.memoryEventTick = new Int32Array(max * MEMORY_EVENT_KINDS);
     /** @type {import('../core/rng.js').Rng[]} One random stream per agent. */
     this.rng = [];
     /** @type {Journal[]} */
@@ -127,7 +135,9 @@ export class AgentStore {
     if (!this.path[id]) this.path[id] = new Int32Array(PATH_MAX * 2);
     this.pathLength[id] = 0;
     this.pathIndex[id] = 0;
-    this.placeCount.fill(0, id * PLACE_KINDS, (id + 1) * PLACE_KINDS);
+    this.memory[id] = new Memory(attributes.memory);
+    this.explored[id] = new ExplorationMap(this.exploration.capacity, this.exploration.cellSize);
+    this.memoryEventTick.fill(-1e9, id * MEMORY_EVENT_KINDS, (id + 1) * MEMORY_EVENT_KINDS);
     this.rng[id] = rng;
     this.journal[id] = new Journal(this.journalSize);
     return id;
@@ -208,6 +218,8 @@ export class AgentStore {
       h.typedArray(this.path[id].subarray(0, this.pathLength[id] * 2));
       h.uint32(this.pathIndex[id]);
       h.typedArray(this.rng[id].s);
+      this.memory[id].hashInto(h);
+      this.explored[id].hashInto(h);
     }
   }
 }

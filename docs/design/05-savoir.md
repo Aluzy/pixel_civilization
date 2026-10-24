@@ -8,9 +8,20 @@ Le savoir existe à trois niveaux :
 | Social | Parole, imitation | Nul | Volatile | Imprécise |
 | Écrit | Cartes, livres, bibliothèques | Ressources et temps | Durable, mais destructible | Exacte à la date d'écriture |
 
-## Mémoire minimale du jalon J2
+## État au jalon J3
 
-Avant le modèle complet ci-dessous (jalon J3), l'individu tient une **mémoire minimale** : 4 lieux par type (eau, nourriture), sans oubli dans le temps. Un lieu vu proche d'un lieu déjà connu (4 cases ou moins) le met à jour ; quand les emplacements sont pleins, le plus ancien est remplacé. Un lieu mémorisé entièrement visible qui n'est plus valable (eau disparue, buisson vidé) est oublié. C'est déjà une croyance : elle peut être périmée.
+Implémenté dans `src/sim/agents/memory.js`, `perception.js`, `beliefs.js` et `systems/memory-system.js` ; constantes dans `data/balance.json` (`memory`).
+
+- **Sujets** : l'eau et chaque ressource. À chaque perception, l'individu mémorise le lieu atteignable le plus proche de chaque sujet visible.
+- **Capacité** : l'attribut Mémoire (20). Mémoire pleine : le nouveau lieu chasse le plus faible, s'il est plus faible que lui.
+- **Saillance** (force initiale) : eau et nourriture 1, autres ressources 0,5.
+- **Oubli** : `s(t) = s0 × e^(−(t − t0)/τ)`, τ initial 3 jours, oubli sous 0,1 (soit environ 7 jours sans revoir le lieu). L'exponentielle est calculée par `expNeg` (`src/sim/core/math.js`), identique sur tous les navigateurs (décision 0005). Balayage tous les 100 cycles.
+- **Rafraîchissement** : revoir un lieu mémorisé (entièrement visible) le ramène au moins à sa saillance. Sa position reste celle du premier souvenir, pour éviter que deux souvenirs dérivent l'un sur l'autre.
+- **Consolidation** : utiliser un lieu (boire, cueillir) le remet à 1 et multiplie τ par 1,5, dans la limite de 60 jours.
+- **Souvenirs flous** (décision 0007) : un souvenir faible est rappelé à une position décalée, jusqu'à 12 cases pour un souvenir presque éteint. L'individu peut ainsi se rendre au mauvais endroit, ne rien y trouver et oublier le lieu (« ne retrouve pas »).
+- **Lieux perdus** : les 8 derniers lieux oubliés sont gardés de côté. S'il revoit l'un d'eux encore valable, c'est une redécouverte.
+- **Croyances fausses** : un lieu entièrement visible qui n'est plus valable est retiré (« se trompait »). Un buisson que l'individu vide lui-même est retiré sans bruit.
+- **Chronique** : oubli, erreur, recherche sans savoir où, lieu introuvable, redécouverte, pour l'eau et la nourriture seulement, au plus une fois toutes les 600 cycles par type et par individu.
 
 ## Mémoire individuelle
 
