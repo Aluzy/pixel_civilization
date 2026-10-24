@@ -48,7 +48,7 @@ Ces règles ne se négocient pas. Une modification qui en viole une doit être r
 2. **Déterminisme total.** Une même graine et une même séquence de cycles produisent exactement le même monde.
    - Interdits dans `src/sim/` : `Math.random()`, `Date.now()`, `performance.now()`, `new Date()`, l'ordre d'itération d'objets non garanti pour une logique décisionnelle.
    - Tout aléatoire passe par le générateur à graine `src/sim/core/rng.js` (un flux par sous-système, et un flux par individu).
-   - Pas de fonctions mathématiques au résultat variable selon le navigateur : `Math.exp`, `Math.pow`, `Math.log`, trigonométrie, `**` (décision 0005). `+`, `×`, `/`, `floor`, `round`, `sqrt` sont sûrs.
+   - Pas de fonctions mathématiques au résultat variable selon le navigateur : `Math.exp`, `Math.pow`, `Math.log`, trigonométrie, `**` (décision 0005). `+`, `×`, `/`, `floor`, `round`, `sqrt` sont sûrs ; pour une exponentielle, utiliser `expNeg` de `src/sim/core/math.js`.
    - Le temps de jeu se compte **en cycles** (`tick`), jamais en millisecondes réelles.
    - La vitesse (×1, ×64, Max) ne change que le nombre de cycles exécutés par seconde réelle, jamais la logique d'un cycle.
 3. **Données plutôt que code.** Ressources, couleurs, recettes, stations, constantes d'équilibrage sont dans `data/*.json`. Aucun nombre magique d'équilibrage dans le code : il est lu depuis `data/balance.json`.

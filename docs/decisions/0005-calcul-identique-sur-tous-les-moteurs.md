@@ -16,3 +16,7 @@ Dans `src/sim/`, ces fonctions et l'opérateur `**` sont interdits. Les courbes 
 
 - Les parties restent reproductibles d'un navigateur à l'autre.
 - Les distances se comparent au carré ; une racine carrée reste permise quand la vraie distance est nécessaire.
+
+## Complément (J3)
+
+L'oubli suit une exponentielle (courbe d'Ebbinghaus). `src/sim/core/math.js` fournit `expNeg(x)` = e^(−x), calculée par réduction de l'argument puis série de Taylor, avec uniquement `+`, `-`, `×`, `/` : même résultat au bit près sur tous les moteurs, écart relatif à `Math.exp` inférieur à 10⁻¹² (testé).

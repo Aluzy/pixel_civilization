@@ -19,7 +19,3 @@ export const ACTION_NAMES = Object.freeze([
   'dort',
   'se repose',
 ]);
-
-/** Kinds of remembered places (minimal J2 memory, see docs/design/05-savoir.md). */
-export const Place = Object.freeze({ WATER: 0, FOOD: 1 });
-export const PLACE_KINDS = 2;

@@ -1,10 +1,10 @@
 import aiGoals from '../../data/ai-goals.json' with { type: 'json' };
 import resourceData from '../../data/resources.json' with { type: 'json' };
 import worldData from '../../data/world.json' with { type: 'json' };
-import { ACTION_NAMES, Action, Place } from './agents/action-types.js';
+import { ACTION_NAMES, Action } from './agents/action-types.js';
 import { AgentStore } from './agents/agent-store.js';
 import { MAX_RADIUS, Navigator } from './agents/navigation.js';
-import { placeAt, placeCount } from './agents/places.js';
+import { WATER_SUBJECT } from './agents/memory.js';
 import { buildGoalTable } from './ai/utility.js';
 import { describeTick, phaseIndexAt } from './core/clock.js';
 import { EventLog, EventType } from './core/events.js';
@@ -75,8 +75,26 @@ export const RNG_STREAMS = Object.freeze(['world', 'threats', 'ai', 'social', 'l
  * @property {Float64Array} scores - Scratch utility scores.
  * @property {import('./agents/behaviors.js').Plan} plan - Scratch plan.
  * @property {(id: number) => number} capacity - Units an agent can carry.
+ * @property {number} placeTau - Initial memory time constant, in ticks.
+ * @property {number} maxTau - Longest memory time constant, in ticks.
+ * @property {number} staleTicks - Age at which an explored area counts as unknown again.
+ * @property {Uint8Array} waterSubjects - Memory subject mask for water.
+ * @property {number} firstEdible - A food subject, for "searching for food" events.
+ * @property {Int32Array} nearestBySubject - Scratch: nearest window cell per resource.
+ * @property {Int32Array} exploreTarget - Scratch: x, y of a chosen exploration target.
+ * @property {Int32Array} recallTarget - Scratch: x, y where a memory is believed to be.
  * @property {(state: SimState, x: number, y: number, resource: number) => void} scheduleRegrowth
  */
+
+/**
+ * @param {number} slots - Number of memory subjects (resources + water).
+ * @returns {Uint8Array} Subject mask selecting water only.
+ */
+function waterMask(slots) {
+  const mask = new Uint8Array(slots);
+  mask[WATER_SUBJECT] = 1;
+  return mask;
+}
 
 /**
  * Builds the shared context for a simulation.
@@ -145,6 +163,14 @@ function buildContext(balance, tables, agents, seedKey) {
     scores: new Float64Array(GOAL_TABLE.goals.length),
     plan: { action: 0, x: 0, y: 0, note: 0 },
     capacity: (id) => agents.force[id] * balance.agent.carryPerForce,
+    placeTau: balance.memory.placeTauDays * time.ticksPerDay,
+    maxTau: balance.memory.maxTauDays * time.ticksPerDay,
+    staleTicks: balance.exploration.staleDays * time.ticksPerDay,
+    waterSubjects: waterMask(resourceSlots),
+    firstEdible: Math.max(0, edible.indexOf(1)),
+    nearestBySubject: new Int32Array(resourceSlots),
+    exploreTarget: new Int32Array(2),
+    recallTarget: new Int32Array(2),
     scheduleRegrowth(state, x, y, resource) {
       const delay = regrowTicks[resource];
       if (delay <= 0) return;
@@ -182,7 +208,7 @@ export class Simulation {
       max: balance.agent.maxEntities,
       resourceCount: tables.resources.length,
       journalSize: balance.ai.journalSize,
-      placesPerKind: balance.ai.knownPlacesPerKind,
+      exploration: balance.exploration,
     });
     const seedKey = seedToKey(seed);
     /** @type {SimState} */
@@ -280,9 +306,10 @@ export class Simulation {
   /**
    * Full description of one agent for the inspector, or null if it does not exist.
    * @param {number} id
+   * @param {boolean} [withMap=false] - Include the explored cells (for the memory layer).
    * @returns {object | null}
    */
-  describeAgent(id) {
+  describeAgent(id, withMap = false) {
     const a = this.state.agents;
     if (id < 0 || id >= a.highWater || a.alive[id] !== 1) return null;
     const goals = this.ctx.goals.goals;
@@ -291,11 +318,20 @@ export class Simulation {
       const n = a.carried(id, r);
       if (n > 0) inventory.push({ resource: r, count: n });
     }
-    const places = (kind) => {
-      const list = [];
-      for (let s = 0; s < placeCount(a, id, kind); s++) list.push(placeAt(a, id, kind, s));
-      return list;
-    };
+    const memory = a.memory[id];
+    const tick = this.state.tick;
+    const remembered = [];
+    for (let i = 0; i < memory.count; i++) {
+      remembered.push({
+        subject: memory.subject[i],
+        x: memory.x[i],
+        y: memory.y[i],
+        quantity: memory.quantity[i],
+        seen: memory.seen[i],
+        strength: memory.strength(i, tick),
+      });
+    }
+    remembered.sort((p, q) => q.strength - p.strength);
     return {
       id,
       x: a.x[id],
@@ -321,8 +357,13 @@ export class Simulation {
       goal: a.goal[id] >= 0 ? goals[a.goal[id]].name : '—',
       action: ACTION_NAMES[a.action[id]],
       asleep: a.asleep[id] === 1,
-      knownWater: places(Place.WATER),
-      knownFood: places(Place.FOOD),
+      exploration: withMap
+        ? { cellSize: a.explored[id].cellSize, cells: a.explored[id].entries() }
+        : null,
+      memory: remembered,
+      memoryCapacity: memory.capacity,
+      knownWater: remembered.filter((p) => p.subject === WATER_SUBJECT),
+      knownFood: remembered.filter((p) => this.ctx.edible[p.subject] === 1),
       journal: a.journal[id].latest(6).map((e) => ({
         ...e,
         goal: goals[e.goal]?.name ?? '—',

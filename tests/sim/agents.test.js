@@ -1,21 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import balance from '../../data/balance.json' with { type: 'json' };
-import { Place } from '../../src/sim/agents/action-types.js';
 import { AgentStore } from '../../src/sim/agents/agent-store.js';
 import { Journal } from '../../src/sim/agents/journal.js';
-import {
-  forgetPlace,
-  nearestPlace,
-  placeAt,
-  placeCount,
-  rememberPlace,
-} from '../../src/sim/agents/places.js';
 import { nextPhaseStart } from '../../src/sim/core/clock.js';
 import { createRng } from '../../src/sim/core/rng.js';
 
 /** @returns {AgentStore} */
 function store() {
-  return new AgentStore({ max: 4, resourceCount: 3, journalSize: 5, placesPerKind: 2 });
+  return new AgentStore({
+    max: 4,
+    resourceCount: 3,
+    journalSize: 5,
+    exploration: { capacity: 64, cellSize: 8 },
+  });
 }
 
 /**
@@ -61,31 +58,12 @@ describe('AgentStore', () => {
   });
 });
 
-describe('remembered places', () => {
-  it('merges nearby sightings and replaces the oldest when full', () => {
+describe('agent memory', () => {
+  it('sizes each memory from the Mémoire attribute', () => {
     const agents = store();
     const id = spawn(agents, 0);
-    rememberPlace(agents, id, Place.WATER, 10, 10, 1);
-    rememberPlace(agents, id, Place.WATER, 12, 11, 2);
-    expect(placeCount(agents, id, Place.WATER)).toBe(1);
-    rememberPlace(agents, id, Place.WATER, 50, 50, 3);
-    rememberPlace(agents, id, Place.WATER, -40, 0, 4);
-    expect(placeCount(agents, id, Place.WATER)).toBe(2);
-    const kept = [0, 1].map((s) => placeAt(agents, id, Place.WATER, s));
-    expect(kept).toContainEqual({ x: 50, y: 50 });
-    expect(kept).toContainEqual({ x: -40, y: 0 });
-  });
-
-  it('returns the nearest place and forgets on demand', () => {
-    const agents = store();
-    const id = spawn(agents, 0);
-    rememberPlace(agents, id, Place.FOOD, 30, 0, 1);
-    rememberPlace(agents, id, Place.FOOD, 5, 0, 2);
-    const slot = nearestPlace(agents, id, Place.FOOD);
-    expect(placeAt(agents, id, Place.FOOD, slot)).toEqual({ x: 5, y: 0 });
-    forgetPlace(agents, id, Place.FOOD, slot);
-    expect(placeCount(agents, id, Place.FOOD)).toBe(1);
-    expect(nearestPlace(agents, id, Place.WATER)).toBe(-1);
+    expect(agents.memory[id].capacity).toBe(balance.agent.start.memory);
+    expect(agents.memory[id].count).toBe(0);
   });
 });
 

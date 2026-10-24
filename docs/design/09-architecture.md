@@ -80,20 +80,21 @@ export const Needs = { hunger: new Float32Array(MAX), thirst: new Float32Array(M
 
 L'ordre est fixe et documenté ; le modifier exige une décision dans `docs/decisions/`.
 
-État au J2 (`src/sim/systems/index.js`) :
+État au J3 (`src/sim/systems/index.js`) :
 
 1. `timeSystem` — avance l'horloge, met à jour l'obscurité.
 2. `worldSystem` — repousse des ressources renouvelables (file triée par cycle).
 3. `needsSystem` — évolution des jauges, dégâts des besoins critiques, régénération.
-4. `decisionSystem` — perception, Utility AI, comportements ; réévaluation tous les 10 cycles décalée par identifiant, ou immédiate quand l'action se termine.
-5. `actionSystem` — exécution des actions (déplacement, boire, cueillir, manger, dormir).
-6. `lifecycleSystem` — mort.
+4. `memorySystem` — oubli des lieux devenus trop faibles (tous les 100 cycles).
+5. `decisionSystem` — perception, Utility AI, comportements ; réévaluation tous les 10 cycles décalée par identifiant, ou immédiate quand l'action se termine.
+6. `actionSystem` — exécution des actions (déplacement, boire, cueillir, manger, dormir).
+7. `lifecycleSystem` — mort.
 
 Ordre cible, à mesure que les jalons ajoutent les systèmes : time, world, threat, needs, perception, memory, decision, action, combat, social, lifecycle, harmony, event.
 
 Chaque système reçoit `(state, ctx)` : `state` contient tout ce qui définit la partie (hashé), `ctx` les tables lues dans `data/`, des valeurs dérivées (taux par cycle, obscurité courante) et des tampons de travail réutilisés.
 
-Les individus vivent dans `src/sim/agents/` : `agent-store.js` (composants en tableaux typés), `navigation.js`, `perception.js`, `places.js` (mémoire minimale), `behaviors.js`, `actions.js`, `journal.js`. L'IA de choix est dans `src/sim/ai/` (`curves.js`, `utility.js`).
+Les individus vivent dans `src/sim/agents/` : `agent-store.js` (composants en tableaux typés), `navigation.js`, `perception.js`, `memory.js` (lieux, force, oubli), `beliefs.js` (saillance, rappel flou, consolidation, événements), `exploration-map.js`, `behaviors.js`, `actions.js`, `journal.js`. `src/sim/core/math.js` fournit `expNeg`, une exponentielle déterministe. L'IA de choix est dans `src/sim/ai/` (`curves.js`, `utility.js`).
 
 ## Aléatoire et déterminisme
 
@@ -112,7 +113,7 @@ Messages typés, objets simples ; les gros volumes passent en `ArrayBuffer` tran
 | Rendu → Worker | `pause` / `resume` | — |
 | Rendu → Worker | `skipTo` | `{ until: 'event' \| 'dawn' \| { day } }` |
 | Rendu → Worker | `viewport` | rectangle visible en cases `{ x0, y0, x1, y1 }` |
-| Rendu → Worker | `select` | individu à décrire dans chaque `frame` (`id`, ou −1) |
+| Rendu → Worker | `select` | individu à décrire dans chaque `frame` (`id`, ou −1) ; `withMap` ajoute sa carte d'exploration (calque mémoire) |
 | Rendu → Worker | `skip` | `{ kind: 'dawn' \| 'event' }` : pleine vitesse jusqu'à l'aube ou jusqu'au prochain événement, puis ×1 |
 | Worker → Rendu | `frame` | cycle, heure, vitesse demandée et effective, saut en cours, positions des individus (interpolées le long du chemin), nouveaux événements, fiche de l'individu sélectionné |
 | Worker → Rendu | `chunk` | `cx`, `cy` et copies transférables des tableaux biome, ressource, quantité, altitude |

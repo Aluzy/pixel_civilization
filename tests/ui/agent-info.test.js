@@ -34,3 +34,31 @@ describe('chronicle', () => {
     expect(formatEvent(death, balance.time)).toBe('J4 06:00 · Mort de l’individu #0.');
   });
 });
+
+describe('memory chronicle', () => {
+  it('describes forgetting, failing and rediscovering places', () => {
+    const at = { seq: 1, tick: 0, agent: 0, x: 4, y: -7 };
+    const water = { ...at, subject: 0 };
+    const berries = { ...at, subject: 1 };
+    expect(formatEvent({ ...water, type: 'forgotPlace' }, balance.time, WORLD_TABLES)).toBe(
+      'J1 06:00 · L’individu #0 a oublié un point d’eau (4, -7).',
+    );
+    expect(formatEvent({ ...berries, type: 'notFound' }, balance.time, WORLD_TABLES)).toBe(
+      'J1 06:00 · L’individu #0 ne retrouve pas un lieu de baies dont il se souvenait.',
+    );
+    expect(formatEvent({ ...water, type: 'rediscovered' }, balance.time, WORLD_TABLES)).toBe(
+      'J1 06:00 · L’individu #0 retrouve un point d’eau oublié (4, -7).',
+    );
+    expect(formatEvent({ ...berries, type: 'searching' }, balance.time, WORLD_TABLES)).toBe(
+      'J1 06:00 · L’individu #0 cherche de quoi manger sans savoir où.',
+    );
+  });
+
+  it('lists remembered places with their strength in the panel', () => {
+    const sim = new Simulation({ seed: 3, balance });
+    sim.step(1200);
+    const text = formatAgent(sim.describeAgent(0), WORLD_TABLES, balance.time).join('\n');
+    expect(text).toMatch(/Mémoire \d+\/20/);
+    expect(text).toMatch(/Eau +\(-?\d+, -?\d+\) +[█░]{8} vu J1/);
+  });
+});

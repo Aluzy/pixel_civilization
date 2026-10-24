@@ -107,10 +107,11 @@ export class SimClient {
   /**
    * Chooses the agent described in each frame (`frame.selected`), or none with -1.
    * @param {number} id
+   * @param {boolean} [withMap=false] - Also send its exploration map (memory layer).
    * @returns {void}
    */
-  select(id) {
-    this.worker.postMessage({ type: ToWorker.SELECT, id });
+  select(id, withMap = false) {
+    this.worker.postMessage({ type: ToWorker.SELECT, id, withMap });
   }
 
   /**

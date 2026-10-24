@@ -30,6 +30,8 @@ let running = false;
 let nextEventSeq = 0;
 /** @type {number} Agent shown in the inspector, or -1. */
 let selected = -1;
+/** Whether the inspector also wants the selected agent's exploration map. */
+let selectedWithMap = false;
 /**
  * Fast-forward in progress: until a tick (dawn) or until a new event appears.
  * @type {{ kind: string, untilTick: number, afterSeq: number } | null}
@@ -61,7 +63,7 @@ function sendFrame() {
     skip: skip?.kind ?? null,
     agents: sim.agentPositions(),
     events,
-    selected: selected >= 0 ? sim.describeAgent(selected) : null,
+    selected: selected >= 0 ? sim.describeAgent(selected, selectedWithMap) : null,
   });
 }
 
@@ -202,6 +204,7 @@ self.onmessage = (event) => {
       break;
     case ToWorker.SELECT:
       selected = Number.isInteger(message.id) ? message.id : -1;
+      selectedWithMap = message.withMap === true;
       sendFrame();
       break;
     case ToWorker.SKIP:

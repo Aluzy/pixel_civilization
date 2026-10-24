@@ -34,10 +34,11 @@ describe('survival of the first individual', () => {
 
   it('depletes the bushes it eats from, then lets them grow back', () => {
     const sim = new Simulation({ seed: 5, balance });
-    sim.step(3 * balance.time.ticksPerDay);
+    for (let day = 0; day < 10 && sim.state.regrowth.length === 0; day++) {
+      sim.step(balance.time.ticksPerDay);
+    }
     expect(sim.world.modifiedChunks().length).toBeGreaterThan(0);
-    const regrowthQueued = sim.state.regrowth.length;
-    expect(regrowthQueued).toBeGreaterThan(0);
+    expect(sim.state.regrowth.length).toBeGreaterThan(0);
     const first = sim.state.regrowth[0];
     sim.step(first.tick - sim.tick);
     const tile = sim.world.tileAt(first.x, first.y);

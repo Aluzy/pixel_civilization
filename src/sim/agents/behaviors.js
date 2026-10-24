@@ -1,13 +1,13 @@
-import { Action, Place } from './action-types.js';
+import { EventType } from '../core/events.js';
+import { Action } from './action-types.js';
+import { memoryEvent, recall } from './beliefs.js';
 import { PlanNote } from './journal.js';
+import { WATER_SUBJECT } from './memory.js';
 import { perceive } from './perception.js';
-import { forgetPlace, nearestPlace, placeX, placeY } from './places.js';
 
 // Turns a chosen goal into a concrete action, using only what the agent perceives and remembers.
 // Hand-written per goal in J2; the GOAP planner (J4) generalises this.
 
-const DIRS_X = Int8Array.from([1, 1, 0, -1, -1, -1, 0, 1]);
-const DIRS_Y = Int8Array.from([0, 1, 1, 1, 0, -1, -1, -1]);
 const EXPLORE_ATTEMPTS = 4;
 /** An exploration target closer than this (Chebyshev, tiles) counts as reached. */
 const EXPLORE_REACHED = 2;
@@ -59,19 +59,33 @@ function startHere(ctx, id, action) {
 }
 
 /**
- * Heads for a remembered place of `kind`. Forgets places that cannot be approached.
+ * Heads for the nearest remembered place whose subject is flagged in `subjects`, as the agent
+ * recalls it (weak memories are blurred). Drops places that cannot be approached from here, and
+ * forgets those it cannot find where it believed they were.
+ * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
  * @param {number} id
- * @param {number} kind
+ * @param {Uint8Array} subjects
  * @param {Plan} plan
  * @returns {boolean}
  */
-function goToRemembered(ctx, id, kind, plan) {
+function goToRemembered(state, ctx, id, subjects, plan) {
+  const agents = ctx.agents;
+  const memory = agents.memory[id];
+  const target = ctx.recallTarget;
   for (;;) {
-    const slot = nearestPlace(ctx.agents, id, kind);
-    if (slot < 0) return false;
-    const tx = placeX(ctx.agents, id, kind, slot);
-    const ty = placeY(ctx.agents, id, kind, slot);
+    const i = memory.nearest(subjects, agents.x[id], agents.y[id]);
+    if (i < 0) return false;
+    recall(ctx, id, i, state.tick, target);
+    const tx = target[0];
+    const ty = target[1];
+    const gap = Math.max(Math.abs(tx - agents.x[id]), Math.abs(ty - agents.y[id]));
+    if (gap <= EXPLORE_REACHED) {
+      // Standing where it believed the place was, and it is not in sight: the memory failed.
+      memoryEvent(state, ctx, id, EventType.NOT_FOUND, tx, ty, memory.subject[i]);
+      memory.forget(i, state.tick);
+      continue;
+    }
     const cell = ctx.nav.toward(tx, ty);
     if (cell >= 0 && moveTo(ctx, id, cell, Action.NONE)) {
       plan.action = Action.MOVE;
@@ -81,31 +95,51 @@ function goToRemembered(ctx, id, kind, plan) {
       return true;
     }
     // No way to get closer from here: the belief is useless, drop it.
-    forgetPlace(ctx.agents, id, kind, slot);
+    memory.remove(i);
   }
 }
 
 /**
- * Walks towards the current exploration target, choosing a new random heading when needed.
+ * Nothing known for this need: report the search (once in a while) and explore.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {number} subject - Representative subject of the need (water, or a food).
+ * @param {Plan} plan
+ * @returns {void}
+ */
+function search(state, ctx, id, subject, plan) {
+  const a = ctx.agents;
+  memoryEvent(state, ctx, id, EventType.SEARCHING, a.x[id], a.y[id], subject);
+  explore(state, ctx, id, plan, ctx.balance.ai.searchLeg);
+}
+
+/**
+ * Walks towards the current exploration target. A new target is chosen, when needed, on the
+ * frontier of the agent's own exploration map: the least known direction, at a random distance.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
  * @param {number} id
  * @param {Plan} plan
+ * @param {number[]} [legRange] - Distance range of a new target (default: curiosity legs).
  * @returns {boolean}
  */
-function explore(state, ctx, id, plan) {
+function explore(state, ctx, id, plan, legRange = ctx.balance.ai.exploreLeg) {
   const agents = ctx.agents;
   const rng = agents.rng[id];
-  const [legMin, legMax] = ctx.balance.ai.exploreLeg;
+  const legMin = legRange[0];
+  const legMax = legRange[1];
   for (let attempt = 0; attempt <= EXPLORE_ATTEMPTS; attempt++) {
     const gapX = Math.abs(agents.exploreX[id] - agents.x[id]);
     const gapY = Math.abs(agents.exploreY[id] - agents.y[id]);
     const reached = Math.max(gapX, gapY) <= EXPLORE_REACHED;
     if (agents.exploring[id] !== 1 || reached || attempt > 0) {
-      const d = rng.int(0, 7);
       const leg = rng.int(legMin, legMax);
-      agents.exploreX[id] = agents.x[id] + DIRS_X[d] * leg;
-      agents.exploreY[id] = agents.y[id] + DIRS_Y[d] * leg;
+      const out = ctx.exploreTarget;
+      const map = agents.explored[id];
+      map.frontier(agents.x[id], agents.y[id], leg, state.tick, ctx.staleTicks, rng, out);
+      agents.exploreX[id] = out[0];
+      agents.exploreY[id] = out[1];
       agents.exploring[id] = 1;
     }
     const cell = ctx.nav.toward(agents.exploreX[id], agents.exploreY[id]);
@@ -172,8 +206,8 @@ export function planGoal(state, ctx, id, goal, plan) {
         plan.note = PlanNote.SEEN;
         return;
       }
-      if (goToRemembered(ctx, id, Place.WATER, plan)) return;
-      explore(state, ctx, id, plan);
+      if (goToRemembered(state, ctx, id, ctx.waterSubjects, plan)) return;
+      search(state, ctx, id, WATER_SUBJECT, plan);
       return;
     }
     case 'eat': {
@@ -196,8 +230,8 @@ export function planGoal(state, ctx, id, goal, plan) {
         plan.note = PlanNote.SEEN;
         return;
       }
-      if (goToRemembered(ctx, id, Place.FOOD, plan)) return;
-      explore(state, ctx, id, plan);
+      if (goToRemembered(state, ctx, id, ctx.edible, plan)) return;
+      search(state, ctx, id, ctx.firstEdible, plan);
       return;
     }
     case 'sleep':

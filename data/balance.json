@@ -52,7 +52,19 @@
   "ai": {
     "decisionInterval": 10,
     "exploreLeg": [16, 40],
-    "knownPlacesPerKind": 4,
-    "journalSize": 50
-  }
+    "journalSize": 50,
+    "searchLeg": [32, 64]
+  },
+  "memory": {
+    "placeTauDays": 3,
+    "consolidation": 1.5,
+    "maxTauDays": 60,
+    "forgetThreshold": 0.1,
+    "sweepInterval": 100,
+    "sameRadius": 4,
+    "salience": { "water": 1, "edible": 1, "other": 0.5 },
+    "eventCooldown": 600,
+    "maxBlur": 12
+  },
+  "exploration": { "cellSize": 8, "capacity": 1024, "staleDays": 3 }
 }
