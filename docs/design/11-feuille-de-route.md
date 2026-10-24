@@ -2,6 +2,16 @@
 
 Le développement avance en huit jalons. Chacun produit une version jouable publiée sur GitHub Pages. **Un jalon n'est commencé que lorsque le précédent remplit son critère de sortie.**
 
+L'IA monte en niveau au fil des jalons (niveaux définis dans [06-ia](06-ia.md)) :
+
+| Jalon | Niveau d'IA ajouté |
+| --- | --- |
+| J2 | 1 — Utility AI |
+| J3–J4 | 2 — GOAP et cartes d'influence |
+| J4–J5 | 3 — Projets à long terme et simulation mentale |
+| J5 | 4 — Modèle des autres et coopération |
+| J7 | 5 et 6 — Apprentissage par l'expérience, génome et évolution |
+
 ## J0 — Socle (`v0.1.0`)
 
 - Projet Vite + Phaser 4, scripts npm, ESLint, Prettier, Vitest.
@@ -44,6 +54,8 @@ Le développement avance en huit jalons. Chacun produit une version jouable publ
 - Stations, `data/recipes.json`, fabrication, construction de l'abri.
 - Découverte par l'essai avec heuristique de curiosité, souvenirs d'échec.
 - Planificateur GOAP complet, avec cache.
+- Budget de réflexion en unités de travail.
+- Premiers projets à long terme (HTN) pour l'individu seul : abri, outils.
 - Menaces : prédateurs ; combat ; objectifs Sécurité et Équipement.
 
 **Sortie** : sans aide, le pixel découvre l'établi, une arme, un outil et construit un abri avant le jour 5 sur au moins 8 graines sur 10.
@@ -53,9 +65,12 @@ Le développement avance en huit jalons. Chacun produit une version jouable publ
 - Conditions et coût de réplication, mutations, naissance sans mémoire.
 - Tableau noir collectif, générateurs de tâches, réservations, rôles émergents.
 - Transmission orale et imitation.
+- Projets de colonie sur le tableau noir ; simulation mentale pour les décisions stratégiques (site du camp, expéditions, fuir ou combattre).
+- Modèle des autres : fiches sociales, coopération, spécialisation par avantage comparatif.
+- Workers penseurs (parallélisme multi-cœurs) avec test d'égalité de hash entre K = 1 et K = 4.
 - Chronique et filtres d'alerte, accélération automatique.
 
-**Sortie** : une colonie d'au moins 20 individus reste stable (pas d'extinction, pas d'explosion) pendant 30 jours sur 8 graines sur 10.
+**Sortie** : une colonie d'au moins 20 individus reste stable (pas d'extinction, pas d'explosion) pendant 30 jours sur 8 graines sur 10, et l'inspecteur montre au moins un comportement préparatoire (stock constitué pour un projet) et une coopération à plusieurs.
 
 ## J6 — Écrit (`v0.7.0`)
 
@@ -69,9 +84,11 @@ Le développement avance en huit jalons. Chacun produit une version jouable publ
 - Score d'harmonie et ses composantes, tâches qui ciblent la composante la plus faible, aménagement du territoire.
 - Tableau de bord avec courbes, calques complets, accessibilité.
 - Arbre technologique complet (four, fonderie, métaux), équilibrage via la simulation headless, optimisations.
+- Apprentissage par l'expérience (estimations bayésiennes simples, affichées dans l'inspecteur).
+- Génome de décision hérité et muté ; graphiques de distribution des gènes.
 
-**Sortie** : une partie de 100 jours avec 500 individus reste fluide à ×16 et produit une chronique lisible ; le score d'harmonie progresse sur la majorité des graines testées.
+**Sortie** : une partie de 100 jours avec 500 individus reste fluide à ×16 et produit une chronique lisible ; le score d'harmonie progresse sur la majorité des graines testées ; sur 100 jours, au moins un gène montre une dérive nette de sa moyenne dans la population.
 
 ## Après la v1 (pistes)
 
-Colonies multiples qui se rencontrent, vieillissement, saisons, agriculture, son, sauvegarde et partage de parties.
+Colonies multiples qui se rencontrent, vieillissement, saisons, agriculture, livres de conseils (évolution culturelle), son, sauvegarde et partage de parties.

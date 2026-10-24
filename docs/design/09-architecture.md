@@ -28,6 +28,8 @@ pixel_civilization/
 │   ├── resources.json       # ressources, couleurs, biomes
 │   ├── recipes.json         # recettes et stations
 │   ├── ai-goals.json        # objectifs, considérations, courbes
+│   ├── ai-projects.json     # méthodes de décomposition des projets (HTN)
+│   ├── genome.json          # gènes de décision, plages, mutation
 │   └── balance.json         # toutes les constantes d'équilibrage
 ├── src/
 │   ├── main.js              # configuration Phaser, création du Worker
@@ -41,7 +43,8 @@ pixel_civilization/
 │       ├── world/           # génération, blocs, régénération, menaces
 │       ├── ecs/             # entités, composants (tableaux typés), registre
 │       ├── systems/         # un fichier par système (voir ordre ci-dessous)
-│       ├── ai/              # utility, goap, influence, blackboard, tasks
+│       ├── ai/              # utility, goap, htn, imagination, influence, blackboard,
+│       │                    # social-model, learning, genome, thinkers (Workers penseurs)
 │       ├── knowledge/       # mémoire, cartes, livres, bibliothèques, transmission
 │       ├── crafting/        # recettes, stations, découverte
 │       └── harmony/         # score d'harmonie
@@ -81,10 +84,10 @@ L'ordre est fixe et documenté ; le modifier exige une décision dans `docs/deci
 5. `perceptionSystem` — perception de chaque individu.
 6. `memorySystem` — mise à jour et oubli (balayage tous les 100 cycles).
 7. `decisionSystem` — Utility AI et GOAP, étalés et sur interruption.
-8. `actionSystem` — exécution des actions (mouvement, récolte, fabrication, construction, lecture, écriture).
+8. `actionSystem` — exécution des actions (mouvement, récolte, fabrication, construction, lecture, écriture), puis mise à jour de l'expérience apprise à la fin de chaque action.
 9. `combatSystem` — résolution des combats.
 10. `socialSystem` — transmission orale, imitation, tableau noir.
-11. `lifecycleSystem` — réplication, mort.
+11. `lifecycleSystem` — réplication (héritage et mutation des attributs et du génome), mort.
 12. `harmonySystem` — à chaque aube.
 13. `eventSystem` — collecte des événements pour la chronique et le rendu.
 
@@ -121,6 +124,31 @@ Le Worker n'envoie que ce qui intersecte le `viewport` (plus une marge d'un bloc
 - Mode Max : le Worker enchaîne les cycles et n'envoie `frame` que 10 fois par seconde.
 - Saut à l'événement : le Worker tourne en mode Max jusqu'à ce que `eventSystem` émette un événement correspondant aux filtres, puis repasse à ×1.
 - Rendu à 60 images par seconde, positions interpolées entre deux `frame` à ×1 et ×4.
+
+## Budget de calcul de l'IA
+
+Le rendu minimal tourne sur la carte graphique et coûte peu ; la simulation tourne sur le processeur. La puissance disponible pour l'IA se partage entre trois termes :
+
+**nombre d'individus × intelligence par individu × vitesse d'accélération**
+
+### Règles
+
+- **L'intelligence ne dépend jamais de la vitesse ni de la machine.** Le budget de réflexion d'un cycle est exprimé en unités de travail (nœuds de recherche, tirages simulés) et fixé par `balance.json` et la population, pas par le temps réel. Une machine lente donne une vitesse effective plus faible, jamais des décisions différentes : c'est la condition du déterminisme.
+- **Dégradation douce avec la population** : au-delà d'un seuil (ex. 200 individus), l'horizon et le nombre de tirages de la simulation mentale diminuent par paliers définis dans `balance.json`.
+- **Répartition par importance** : les décisions courantes coûtent peu, les décisions stratégiques sont rares et mises en file d'attente (voir [06-ia](06-ia.md), « Budget de réflexion »).
+- **Objectif de performance** : 500 individus à ×1 en moins de 4 ms par cycle (valeur actuelle de `CLAUDE.md`), mesuré par la simulation headless et suivi dans la CI.
+
+### Parallélisme sur plusieurs cœurs (à partir de J5)
+
+- Un Worker **coordinateur** possède l'état. Il délègue la phase de décision à K Workers **penseurs** (K = nombre de cœurs − 2, au plus 6).
+- Chaque cycle de décision : le coordinateur envoie un instantané en lecture seule des données utiles (croyances, jauges, tableau noir) ; chaque penseur traite une tranche fixe d'individus (par identifiant) et renvoie des décisions ; le coordinateur les applique **dans l'ordre des identifiants**. Le résultat est identique quel que soit K, ce que vérifie un test (K = 1 et K = 4 donnent le même hash).
+- Chaque individu a son propre flux aléatoire dérivé de `(graine, identifiant, cycle)`, pour que le tirage ne dépende pas du penseur qui le traite.
+- GitHub Pages n'envoie pas les en-têtes COOP/COEP nécessaires à `SharedArrayBuffer`. Par défaut, les instantanés passent donc par des `ArrayBuffer` transférables. Si la copie devient le goulot d'étranglement, on évaluera un service worker qui ajoute ces en-têtes (technique `coi-serviceworker`) ; cela fera l'objet d'une décision dans `docs/decisions/`.
+
+### Carte graphique (WebGPU, optionnel)
+
+- Les calculs flottants sur GPU ne sont pas garantis identiques d'une carte à l'autre. Le GPU n'est donc utilisé que pour ce qui **n'influence pas** la simulation (calques d'affichage, visualisations), ou pour des calculs en entiers vérifiés identiques au résultat CPU.
+- Toute décision d'IA reste calculée sur le processeur.
 
 ## Rendu Phaser
 

@@ -9,6 +9,7 @@ Ce fichier est lu en premier par tout agent qui travaille sur ce dépôt. Il fix
 - 1 pixel = 1 unité. Le noir pur `#000000` est réservé aux individus.
 - Les ressources sont des pixels de couleur ; la fabrication combine des couleurs sur des pixels de transformation (stations).
 - Chaque individu a des besoins hiérarchisés, une mémoire limitée qui oublie, et découvre les recettes en essayant.
+- Le rendu volontairement minimal laisse la puissance de calcul à l'**IA, qui est le cœur du jeu** : elle planifie à long terme, imagine des futurs possibles, se représente les autres, apprend de son expérience et évolue de génération en génération (niveaux 1 à 6 de `docs/design/06-ia.md`).
 - Le savoir se transmet par la parole, l'imitation, les cartes et les livres rangés en bibliothèque.
 - L'objectif de la colonie est un score d'harmonie mesurable.
 
@@ -50,8 +51,9 @@ Ces règles ne se négocient pas. Une modification qui en viole une doit être r
 3. **Données plutôt que code.** Ressources, couleurs, recettes, stations, constantes d'équilibrage sont dans `data/*.json`. Aucun nombre magique d'équilibrage dans le code : il est lu depuis `data/balance.json`.
 4. **ECS léger.** Entités = identifiants entiers. Composants = tableaux typés (`Float32Array`, `Uint16Array`…) indexés par entité. Systèmes = fonctions pures `(state, ctx) => void` exécutées dans un ordre fixe (voir `docs/design/09-architecture.md`).
 5. **Croyances, pas omniscience.** Un individu ne décide qu'à partir de ce qu'il perçoit et de sa mémoire. Le code d'IA ne lit jamais directement la grille du monde au-delà du rayon de perception.
-6. **Explicabilité.** Toute décision d'IA écrit une entrée courte dans le journal de l'individu (objectif choisi, scores concurrents, plan).
-7. **Performance.** Pas d'allocation d'objets dans les boucles chaudes de simulation (réutiliser les tampons). Budget : 500 individus à ×1 en moins de 4 ms par cycle sur un portable moyen.
+6. **Explicabilité.** Toute décision d'IA écrit une entrée courte dans le journal de l'individu (objectif choisi, scores concurrents, plan). Tout ce que l'IA apprend (estimations, génome) est lisible et affichable dans l'inspecteur.
+7. **Budget de réflexion déterministe.** La quantité de calcul de l'IA se mesure en unités de travail (nœuds explorés, tirages simulés) fixées par `balance.json` et la population, jamais en millisecondes. Une machine lente ralentit la vitesse effective, jamais la qualité des décisions. En parallèle (Workers penseurs), les décisions sont appliquées dans l'ordre des identifiants, avec un flux aléatoire par individu.
+8. **Performance.** Pas d'allocation d'objets dans les boucles chaudes de simulation (réutiliser les tampons). Budget : 500 individus à ×1 en moins de 4 ms par cycle sur un portable moyen.
 
 ## Conventions de code
 
@@ -94,7 +96,7 @@ Pour chaque tâche :
 | Individu, attributs, besoins, réplication | `docs/design/03-individu.md` |
 | Fabrication par la couleur, stations, découverte | `docs/design/04-fabrication.md` |
 | Mémoire, oubli, cartes, livres, bibliothèques | `docs/design/05-savoir.md` |
-| Moteur comportemental (Utility AI, GOAP, influence, tableau noir) | `docs/design/06-ia.md` |
+| Moteur comportemental (niveaux d'IA, Utility AI, GOAP, HTN, simulation mentale, modèle des autres, apprentissage, génome) | `docs/design/06-ia.md` |
 | Score d'harmonie | `docs/design/07-harmonie.md` |
 | Interface d'observation et contrôle du temps | `docs/design/08-interface.md` |
 | Architecture, ECS, Worker, rendu, protocole | `docs/design/09-architecture.md` |
@@ -106,7 +108,9 @@ Pour chaque tâche :
 ## Ce qu'il ne faut pas faire
 
 - Ajouter TypeScript, un framework d'interface (React, Vue) ou un moteur physique.
-- Introduire un réseau de neurones ou de l'apprentissage automatique : l'IA est symbolique et explicable.
+- Introduire un réseau de neurones ou un modèle entraîné hors de la partie. L'apprentissage **pendant** la partie est voulu (expérience, évolution du génome), mais par des mécanismes symboliques, bornés et affichables.
+- Simplifier l'IA pour gagner des images par seconde : on gagne du calcul ailleurs (rendu, gel des blocs, parallélisme), pas sur l'intelligence.
+- Utiliser le GPU pour un calcul qui influence les décisions (résultats flottants non garantis identiques d'une machine à l'autre).
 - Donner au joueur un moyen d'agir sur la simulation (il n'est qu'observateur ; seuls le temps, la caméra, l'inspection et la graine sont contrôlables).
 - Scénariser des événements : tout doit émerger des règles.
 - Modifier `data/balance.json` sans expliquer la raison dans le message de commit.
