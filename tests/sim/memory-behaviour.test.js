@@ -35,22 +35,27 @@ describe('memory in play', () => {
     expect(drift).toBeLessThanOrEqual(balance.memory.maxBlur);
   });
 
-  // Seed 61 tells the J3 story: it forgets the water at (-12, -46) on day 8, looks for it on
-  // day 14 from a blurred memory, misses it ("not found"), then rediscovers it moments later.
-  it('forgets a place, fails to find it, then rediscovers it (J3 exit, seed 61)', () => {
-    const sim = new Simulation({ seed: 61, balance });
+  // Seed 20 tells the J3 story: individual #14 forgets the water at (-12, 7) on day 10, looks for
+  // it on day 14 from a blurred memory, misses it ("not found"), then rediscovers it moments later.
+  it('forgets a place, fails to find it, then rediscovers it (J3 exit, seed 20)', () => {
+    const sim = new Simulation({ seed: 20, balance });
     sim.step(15 * DAY);
     const events = sim.events.events;
     const story = events.flatMap((forgot, i) => {
       if (forgot.type !== EventType.FORGOT_PLACE) return [];
       const failed = events.findIndex(
-        (e, j) => j > i && e.type === EventType.NOT_FOUND && e.subject === forgot.subject,
+        (e, j) =>
+          j > i &&
+          e.type === EventType.NOT_FOUND &&
+          e.agent === forgot.agent &&
+          e.subject === forgot.subject,
       );
       if (failed < 0) return [];
       const found = events.findIndex(
         (e, k) =>
           k > failed &&
           e.type === EventType.REDISCOVERED &&
+          e.agent === forgot.agent &&
           e.subject === forgot.subject &&
           e.x === forgot.x &&
           e.y === forgot.y,
@@ -61,7 +66,6 @@ describe('memory in play', () => {
     const { forgot, failed, found } = story[0];
     expect(forgot.tick).toBeLessThan(failed.tick);
     expect(failed.tick).toBeLessThan(found.tick);
-    expect(sim.agents.aliveCount).toBe(1);
   });
 
   it('marks the areas it sees as explored', () => {

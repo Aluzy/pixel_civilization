@@ -5,7 +5,16 @@ import { Action } from './action-types.js';
 import { consolidate, forgetEmptied } from './beliefs.js';
 import { besideStructure, harvestMultiplier, inShelter, structureAt } from './equipment.js';
 import { WATER_SUBJECT } from './memory.js';
-import { notice } from './perception.js';
+import { notice, perceptionRadius } from './perception.js';
+import {
+  atCamp,
+  campOf,
+  deposit,
+  onBuilt,
+  releaseTask,
+  takeMaterials,
+} from '../colony/colony-logic.js';
+import { replicate } from '../colony/replication.js';
 
 /** Bits of AgentStore.flags: first experiences, reported once each in the chronicle. */
 export const Flag = Object.freeze({
@@ -207,6 +216,47 @@ export function stepAction(state, ctx, id) {
         finish(ctx, id);
       }
       return;
+    case Action.DEPOSIT: {
+      // At the camp: bring the task's goods to the stock, or (builder) take the materials.
+      const colony = campOf(state, ctx, id);
+      if (colony && atCamp(ctx, colony, id) && agents.taskProject[id] >= 0) {
+        if (agents.taskBuild[id] === 1) {
+          if (!takeMaterials(colony, ctx, id)) releaseTask(state, ctx, id);
+        } else if (deposit(state, ctx, colony, id) > 0 && agents.delivers[id] === 1) {
+          state.events.push(state.tick, EventType.FIRST_DELIVERY, id, agents.x[id], agents.y[id]);
+        }
+      }
+      finish(ctx, id);
+      return;
+    }
+    case Action.TAKE: {
+      // Food from the pantry, up to a meal's reserve.
+      const colony = campOf(state, ctx, id);
+      if (colony && atCamp(ctx, colony, id)) {
+        let want = ctx.balance.actions.carryReserve;
+        for (let r = 1; r < ctx.edible.length && want > 0; r++) {
+          if (ctx.edible[r] !== 1) continue;
+          const n = Math.min(want, colony.stock[r], ctx.capacity(id) - agents.carriedTotal(id));
+          if (n <= 0) continue;
+          colony.stock[r] -= n;
+          agents.addCarried(id, r, n, state.tick);
+          want -= n;
+        }
+        let left = 0;
+        for (let r = 1; r < ctx.edible.length; r++)
+          if (ctx.edible[r] === 1) left += colony.stock[r];
+        agents.pantrySeen[id] = Math.min(65535, left);
+      }
+      finish(ctx, id);
+      return;
+    }
+    case Action.REPLICATE:
+      agents.actionProgress[id] += 1;
+      if (agents.actionProgress[id] >= ctx.balance.replication.durationTicks) {
+        replicate(state, ctx, id);
+        finish(ctx, id);
+      }
+      return;
     default:
       return;
   }
@@ -242,6 +292,8 @@ function harvest(state, ctx, id) {
     return;
   }
   agents.addCarried(id, taken, 1, state.tick);
+  const habit = id * agents.goodSlots + taken;
+  if (agents.gathered[habit] < 65535) agents.gathered[habit]++;
   if (state.world.lastTakeDepleted) {
     ctx.scheduleRegrowth(state, x, y, taken);
     forgetEmptied(ctx, id, taken, x, y);
@@ -300,17 +352,58 @@ function craft(state, ctx, id) {
       return;
     }
   }
+  const book = agents.recipes[id];
+  if (book.wrong[r] === 1) {
+    // A recipe heard with an error: half the ingredients are wasted, the belief is dropped and
+    // the attempt is remembered as a failure.
+    for (const input of recipe.inputs)
+      agents.addCarried(id, input.good, -Math.ceil(input.count / 2));
+    book.forget(r);
+    book.recordFailure(recipe.station, recipe.mask, state.tick, ctx.failureTau);
+    state.events.push(state.tick, EventType.MISTAKEN, id, x, y, r);
+    return;
+  }
   for (const input of recipe.inputs) agents.addCarried(id, input.good, -input.count);
   const m = ctx.balance.memory;
-  agents.recipes[id].use(r, state.tick, m.consolidation, ctx.maxTau);
+  book.use(r, state.tick, m.consolidation, ctx.maxTau);
   agents.recordMade(id, r, state.tick);
   if (building) {
     state.world.setStructure(x, y, recipe.output);
     notice(state, ctx, id, ctx.catalog.resourceCount + recipe.output, x, y, 0);
     state.events.push(state.tick, EventType.BUILT, id, x, y, r);
+    agents.builds[id]++;
+    onBuilt(state, ctx, id, recipe.output, x, y);
   } else {
     agents.addCarried(id, recipe.output, 1, state.tick);
     state.events.push(state.tick, EventType.CRAFTED, id, x, y, r);
+  }
+  imitate(state, ctx, id, r);
+}
+
+/**
+ * Those who watched a recipe being made (awake, within their perception) note the maker's skill
+ * and may learn it (docs/design/04-fabrication.md, « Imitation »).
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} maker
+ * @param {number} r
+ * @returns {void}
+ */
+function imitate(state, ctx, maker, r) {
+  const a = ctx.agents;
+  const cfg = ctx.balance.social;
+  for (let id = 0; id < a.highWater; id++) {
+    if (id === maker || a.alive[id] !== 1 || a.asleep[id] === 1) continue;
+    const radius = perceptionRadius(ctx, id, ctx.dark);
+    if (Math.abs(a.x[id] - a.x[maker]) > radius || Math.abs(a.y[id] - a.y[maker]) > radius) {
+      continue;
+    }
+    const model = a.social[id];
+    model.skills[model.sheet(maker, state.tick)] |= 1 << r;
+    const book = a.recipes[id];
+    if (book.knows(r) || a.rng[id].next() >= cfg.imitationChance) continue;
+    book.learn(r, state.tick, ctx.recipeTau, cfg.imitationStrength);
+    state.events.push(state.tick, EventType.IMITATED, id, a.x[id], a.y[id], r);
   }
 }
 

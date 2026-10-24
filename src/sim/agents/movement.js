@@ -112,6 +112,28 @@ export function search(state, ctx, id, subject, plan) {
 }
 
 /**
+ * A colony member explores around its camp: a target farther than `exploreLeash` from the camp
+ * is brought back onto that circle, so that excursions come home.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {Int32Array} out - Target x, y, adjusted in place.
+ * @returns {void}
+ */
+function leash(state, ctx, id, out) {
+  const c = ctx.agents.colony[id];
+  if (c < 0 || !state.colonies[c].hasCamp) return;
+  const colony = state.colonies[c];
+  const dx = out[0] - colony.campX;
+  const dy = out[1] - colony.campY;
+  const d = Math.sqrt(dx * dx + dy * dy);
+  const max = ctx.balance.colony.exploreLeash;
+  if (d <= max) return;
+  out[0] = colony.campX + Math.round((dx * max) / d);
+  out[1] = colony.campY + Math.round((dy * max) / d);
+}
+
+/**
  * Walks towards the current exploration target. A new target is chosen, when needed, on the
  * frontier of the agent's own exploration map: the least known direction, at a random distance.
  * @param {import('../simulation.js').SimState} state
@@ -135,6 +157,7 @@ export function explore(state, ctx, id, plan, legRange = ctx.balance.ai.exploreL
       const out = ctx.exploreTarget;
       const map = agents.explored[id];
       map.frontier(agents.x[id], agents.y[id], leg, state.tick, ctx.staleTicks, rng, out);
+      leash(state, ctx, id, out);
       agents.exploreX[id] = out[0];
       agents.exploreY[id] = out[1];
       agents.exploring[id] = 1;

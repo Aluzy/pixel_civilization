@@ -10,6 +10,9 @@ export const Action = Object.freeze({
   HARVEST: 7,
   CRAFT: 8,
   EXPERIMENT: 9,
+  DEPOSIT: 10,
+  TAKE: 11,
+  REPLICATE: 12,
 });
 
 /** Display names for the inspector, indexed by {@link Action}. */
@@ -24,6 +27,9 @@ export const ACTION_NAMES = Object.freeze([
   'récolte',
   'fabrique',
   'expérimente',
+  'dépose à la réserve',
+  'prend à la réserve',
+  'se réplique',
 ]);
 
 /**
@@ -33,5 +39,10 @@ export const ACTION_NAMES = Object.freeze([
  * @returns {boolean}
  */
 export function isFocused(action) {
-  return action === Action.HARVEST || action === Action.CRAFT || action === Action.EXPERIMENT;
+  return (
+    action === Action.HARVEST ||
+    action === Action.CRAFT ||
+    action === Action.EXPERIMENT ||
+    action === Action.REPLICATE
+  );
 }

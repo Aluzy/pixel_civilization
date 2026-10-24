@@ -43,6 +43,11 @@ export function needsSystem(state, ctx) {
       a.hp[id] = Math.min(a.maxHp[id], a.hp[id] + r.regen);
     }
 
+    // Replication conditions: fed for a while, unhurt for days.
+    if (a.hunger[id] >= ctx.balance.replication.fedBelow) a.hungryTick[id] = state.tick;
+    if (a.hp[id] < a.prevHp[id]) a.hurtTick[id] = state.tick;
+    a.prevHp[id] = a.hp[id];
+
     const threshold = (a.maxHp[id] * n.healthCriticalEvent) / 100;
     if (a.hp[id] < threshold && (a.flags[id] & Flag.CRITICAL) === 0) {
       a.flags[id] |= Flag.CRITICAL;

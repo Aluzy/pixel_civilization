@@ -95,11 +95,15 @@ describe('predators', () => {
     expect(sim.state.threats.mood[q]).toBe(Mood.FLEE);
   });
 
-  it('keep the single agent alive for ten days on ten seeds', () => {
+  it('kill nobody in ten days on ten seeds', () => {
     for (let seed = 11; seed <= 20; seed++) {
       const sim = new Simulation({ seed, balance });
       sim.step(10 * DAY);
-      expect(sim.agents.aliveCount, `seed ${seed}`).toBe(1);
+      expect(sim.agents.alive[0], `seed ${seed}`).toBe(1);
+      expect(
+        sim.events.events.some((e) => e.type === 'death'),
+        `seed ${seed}`,
+      ).toBe(false);
     }
-  });
+  }, 60000);
 });

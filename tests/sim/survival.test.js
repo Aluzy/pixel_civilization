@@ -3,7 +3,8 @@ import balance from '../../data/balance.json' with { type: 'json' };
 import { EventType } from '../../src/sim/core/events.js';
 import { Simulation } from '../../src/sim/simulation.js';
 
-// J2 exit criterion: the lone pixel survives 10 days without intervention.
+// J2 exit criterion: the first pixel survives 10 days without intervention (since J5 it may have
+// replicated meanwhile; nobody dies).
 const SEEDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 const DAYS = 10;
 
@@ -12,7 +13,7 @@ describe('survival of the first individual', () => {
     it(`survives ${DAYS} days (seed ${seed})`, () => {
       const sim = new Simulation({ seed, balance });
       sim.step(DAYS * balance.time.ticksPerDay);
-      expect(sim.agents.aliveCount).toBe(1);
+      expect(sim.agents.alive[0]).toBe(1);
       const types = new Set(sim.events.events.map((e) => e.type));
       expect(types.has(EventType.FIRST_DRINK)).toBe(true);
       expect(types.has(EventType.FIRST_MEAL)).toBe(true);

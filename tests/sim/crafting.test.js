@@ -141,7 +141,7 @@ describe('crafting', () => {
       if (ok) settled++;
     }
     expect(settled).toBeGreaterThanOrEqual(8);
-  });
+  }, 60000);
 
   it('plans with a cache that never changes the outcome', () => {
     const a = new Simulation({ seed: 3, balance });

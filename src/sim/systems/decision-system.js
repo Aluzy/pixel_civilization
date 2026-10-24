@@ -5,7 +5,10 @@ import { attackMultiplier, carriesKind, inShelter } from '../agents/equipment.js
 import { perceptionRadius } from '../agents/perception.js';
 import { fillBeliefs } from '../agents/work.js';
 import { PlanStatus, Step } from '../ai/planner.js';
+import { imagineFight } from '../ai/imagination.js';
 import { INPUT, scoreGoals } from '../ai/utility.js';
+import { atCamp, campOf, shareBoard } from '../colony/colony-logic.js';
+import { roomToReplicate } from '../colony/replication.js';
 import { EventType } from '../core/events.js';
 
 /**
@@ -86,7 +89,10 @@ function senseInputs(state, ctx, id) {
   input[INPUT.darkness] = ctx.darkness;
   input[INPUT.one] = 1;
   const memory = a.memory[id];
-  input[INPUT.needShelter] = memory.nearest(ctx.shelterSubjects, 0, 0) < 0 ? 1 : 0;
+  // A colony member knows its home: the camp's shelters are its beds.
+  const home = campOf(state, ctx, id);
+  const sheltered = home !== null || memory.nearest(ctx.shelterSubjects, 0, 0) >= 0;
+  input[INPUT.needShelter] = sheltered ? 0 : 1;
   input[INPUT.needWeapon] = carriesKind(ctx, id, 'weapon') ? 0 : 1;
   input[INPUT.needTool] = carriesKind(ctx, id, 'tool') ? 0 : 1;
   // Danger: the nearest predator in sight, unless the agent is safe in its shelter.
@@ -94,9 +100,23 @@ function senseInputs(state, ctx, id) {
   const p = state.threats.nearest(a.x[id], a.y[id], radius);
   const safe = p < 0 || inShelter(state, ctx, a.x[id], a.y[id]);
   input[INPUT.danger] = safe ? 0 : 1 - state.threats.lastDistance / (radius + 1);
-  const health = a.hp[id] / a.maxHp[id];
-  const strong = attackMultiplier(ctx, id) > 1;
-  input[INPUT.vulnerability] = strong ? 0.1 + 0.8 * (1 - health) : 0.5 + 0.5 * (1 - health);
+  // Fight or flee: imagined fights against the predator in sight (only when one is there).
+  if (input[INPUT.danger] > 0) {
+    const self = ctx.imagined;
+    self.hp = a.hp[id];
+    self.maxHp = a.maxHp[id];
+    self.attack = a.attack[id] * attackMultiplier(ctx, id);
+    self.defense = a.defense[id];
+    const risk = imagineFight(self, ctx.balance.threats, ctx.balance.imagination, a.rng[id]);
+    a.fightRisk[id] = risk;
+    input[INPUT.vulnerability] = 0.15 + 0.85 * risk;
+  } else {
+    input[INPUT.vulnerability] = 0;
+  }
+  // Colony: a task in hand, or open tasks seen on the blackboard; room for a replica.
+  const hasTask = a.taskProject[id] >= 0;
+  input[INPUT.colonyTask] = hasTask ? 1 : a.tasksSeen[id] === 1 ? 0.8 : 0;
+  input[INPUT.canReplicate] = roomToReplicate(state, ctx, id) ? 1 : 0;
 }
 
 /**
@@ -124,6 +144,10 @@ export function decisionSystem(state, ctx) {
     const due = (state.tick + id) % interval === 0 && (!busy || starving(ctx, id));
     if (!due && a.needsDecision[id] === 0) continue;
 
+    // At the camp, the blackboard is read and written from time to time.
+    const colony = campOf(state, ctx, id);
+    const boardDue = state.tick - a.boardTick[id] >= ctx.balance.colony.boardInterval;
+    if (colony && boardDue && atCamp(ctx, colony, id)) shareBoard(state, ctx, colony, id);
     senseInputs(state, ctx, id);
     const favoured = projectGoal(state, ctx, id);
     const current = a.goal[id];

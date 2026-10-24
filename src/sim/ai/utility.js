@@ -16,6 +16,8 @@ export const INPUT = Object.freeze({
   needTool: 8,
   danger: 9,
   vulnerability: 10,
+  colonyTask: 11,
+  canReplicate: 12,
 });
 
 const INPUT_COUNT = Object.keys(INPUT).length;

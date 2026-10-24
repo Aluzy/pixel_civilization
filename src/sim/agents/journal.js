@@ -25,6 +25,9 @@ export const PlanNote = Object.freeze({
   TRIAL: 7, // Trying a combination to discover a recipe.
   FLEEING: 8, // Running away from a predator.
   SHELTER: 9, // Going to (or staying in) its shelter.
+  COLONY: 10, // Working on a colony task.
+  REPLICATION: 11, // Preparing or doing a replication.
+  PANTRY: 12, // Taking food from the colony's stock.
 });
 
 /**

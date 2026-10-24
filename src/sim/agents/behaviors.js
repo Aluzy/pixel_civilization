@@ -5,6 +5,8 @@ import { inShelter } from './equipment.js';
 import { explore, goToRemembered, moveTo, search, startHere } from './movement.js';
 import { perceive } from './perception.js';
 import { pursue } from './work.js';
+import { campOf } from '../colony/colony-logic.js';
+import { colonyWork, goToCamp, prepareReplication } from './colony-work.js';
 
 // Turns a chosen goal into a concrete action, using only what the agent perceives and remembers.
 // Survival goals are hand-written; crafting goals follow the GOAP planner (work.js).
@@ -63,35 +65,20 @@ export function planGoal(state, ctx, id, goal, plan) {
       search(state, ctx, id, WATER_SUBJECT, plan);
       return;
     }
-    case 'eat': {
-      if (carriesFood(ctx, id)) {
-        startHere(ctx, id, Action.EAT);
-        plan.action = Action.EAT;
-        plan.note = PlanNote.CARRIED;
-        return;
-      }
-      const cell = nav.nearestResource(ctx.edible);
-      if (cell === nav.center) {
-        startHere(ctx, id, Action.FORAGE);
-        plan.action = Action.FORAGE;
-        return;
-      }
-      if (cell >= 0 && moveTo(ctx, id, cell, Action.FORAGE)) {
-        plan.action = Action.MOVE;
-        plan.x = nav.cellX(cell);
-        plan.y = nav.cellY(cell);
-        plan.note = PlanNote.SEEN;
-        return;
-      }
-      if (goToRemembered(state, ctx, id, ctx.edible, plan)) return;
-      search(state, ctx, id, ctx.firstEdible, plan);
+    case 'eat':
+      eatBehaviour(state, ctx, id, plan);
       return;
-    }
     case 'sleep':
       goToSleep(state, ctx, id, plan);
       return;
     case 'flee':
       flee(state, ctx, id, plan);
+      return;
+    case 'colony':
+      colonyWork(state, ctx, id, plan);
+      return;
+    case 'replicate':
+      prepareReplication(state, ctx, id, plan, eatBehaviour);
       return;
     case 'explore':
       explore(state, ctx, id, plan);
@@ -102,6 +89,53 @@ export function planGoal(state, ctx, id, goal, plan) {
       else startHere(ctx, id, Action.IDLE);
     }
   }
+}
+
+/**
+ * Eating: what it carries, else food in sight, else the colony's pantry if it believes there is
+ * some and the camp is not far, else a remembered place, else searching.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {import('./movement.js').Plan} plan
+ * @returns {void}
+ */
+export function eatBehaviour(state, ctx, id, plan) {
+  const nav = ctx.nav;
+  const agents = ctx.agents;
+  if (carriesFood(ctx, id)) {
+    startHere(ctx, id, Action.EAT);
+    plan.action = Action.EAT;
+    plan.note = PlanNote.CARRIED;
+    return;
+  }
+  const cell = nav.nearestResource(ctx.edible);
+  if (cell === nav.center) {
+    startHere(ctx, id, Action.FORAGE);
+    plan.action = Action.FORAGE;
+    return;
+  }
+  if (cell >= 0 && moveTo(ctx, id, cell, Action.FORAGE)) {
+    plan.action = Action.MOVE;
+    plan.x = nav.cellX(cell);
+    plan.y = nav.cellY(cell);
+    plan.note = PlanNote.SEEN;
+    return;
+  }
+  const colony = campOf(state, ctx, id);
+  if (colony && agents.pantrySeen[id] > 0) {
+    const range = ctx.balance.ai.shelterRange;
+    const far = Math.max(
+      Math.abs(colony.campX - agents.x[id]),
+      Math.abs(colony.campY - agents.y[id]),
+    );
+    if (far <= range && goToCamp(ctx, colony, id, Action.TAKE, plan)) {
+      plan.note = PlanNote.PANTRY;
+      return;
+    }
+  }
+  if (goToRemembered(state, ctx, id, ctx.edible, plan)) return;
+  search(state, ctx, id, ctx.firstEdible, plan);
 }
 
 /**
@@ -145,6 +179,9 @@ function goToSleep(state, ctx, id, plan) {
     plan.note = PlanNote.SHELTER;
     return;
   }
+  // Home: the nearest shelter of its colony, which a member never forgets.
+  const colony = campOf(state, ctx, id);
+  if (colony && colony.shelterCount > 0 && goHome(ctx, colony, id, plan)) return;
   const memory = agents.memory[id];
   const i = memory.nearest(ctx.shelterSubjects, agents.x[id], agents.y[id]);
   const range = ctx.balance.ai.shelterRange;
@@ -155,6 +192,40 @@ function goToSleep(state, ctx, id, plan) {
     return;
   }
   startHere(ctx, id, Action.SLEEP);
+}
+
+/**
+ * Heads for the nearest shelter of the colony, if within `homeRange`, to sleep there.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} colony
+ * @param {number} id
+ * @param {import('./movement.js').Plan} plan
+ * @returns {boolean}
+ */
+function goHome(ctx, colony, id, plan) {
+  const a = ctx.agents;
+  let best = -1;
+  let bestD = Infinity;
+  for (let k = 0; k < colony.shelterCount; k++) {
+    const d = Math.max(
+      Math.abs(colony.shelterX[k] - a.x[id]),
+      Math.abs(colony.shelterY[k] - a.y[id]),
+    );
+    if (d < bestD) {
+      bestD = d;
+      best = k;
+    }
+  }
+  if (best < 0 || bestD > ctx.balance.colony.homeRange) return false;
+  const cell = ctx.nav.toward(colony.shelterX[best], colony.shelterY[best]);
+  if (cell < 0 || !moveTo(ctx, id, cell, bestD <= ctx.nav.radius ? Action.SLEEP : Action.NONE)) {
+    return false;
+  }
+  plan.action = Action.MOVE;
+  plan.x = colony.shelterX[best];
+  plan.y = colony.shelterY[best];
+  plan.note = PlanNote.SHELTER;
+  return true;
 }
 
 /**

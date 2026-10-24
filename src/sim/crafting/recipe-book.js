@@ -18,6 +18,8 @@ export class RecipeBook {
     this.s0 = new Float64Array(recipeCount);
     this.t0 = new Int32Array(recipeCount);
     this.tau = new Float64Array(recipeCount);
+    /** 1 if the agent believes a wrong version of the recipe (heard with an error). */
+    this.wrong = new Uint8Array(recipeCount);
     this.failureSlots = failureSlots;
     this.failStation = new Int32Array(failureSlots).fill(-1);
     this.failMask = new Int32Array(failureSlots);
@@ -45,16 +47,20 @@ export class RecipeBook {
   }
 
   /**
-   * Learns a recipe at full strength.
+   * Learns a recipe, at full strength unless told otherwise (heard or imitated).
    * @param {number} r
    * @param {number} tick
    * @param {number} tau
+   * @param {number} [strength=1]
+   * @param {boolean} [wrong=false] - Learnt with an error: it will fail when used.
    * @returns {boolean} True if it was not known.
    */
-  learn(r, tick, tau) {
+  learn(r, tick, tau, strength = 1, wrong = false) {
     const fresh = this.known[r] !== 1;
+    if (!fresh && this.strength(r, tick) >= strength) return false;
     this.known[r] = 1;
-    this.s0[r] = 1;
+    this.wrong[r] = wrong ? 1 : 0;
+    this.s0[r] = strength;
     this.t0[r] = tick;
     if (fresh || this.tau[r] < tau) this.tau[r] = tau;
     return fresh;
@@ -82,6 +88,7 @@ export class RecipeBook {
    */
   forget(r) {
     this.known[r] = 0;
+    this.wrong[r] = 0;
   }
 
   /**
@@ -143,7 +150,7 @@ export class RecipeBook {
     }
     for (let r = 0; r < this.recipeCount; r++) {
       if (this.known[r] === 1 && this.strength(r, tick) < threshold) {
-        this.known[r] = 0;
+        this.forget(r);
         return r;
       }
     }
@@ -156,6 +163,7 @@ export class RecipeBook {
    */
   hashInto(h) {
     h.typedArray(this.known).typedArray(this.s0).typedArray(this.t0).typedArray(this.tau);
+    h.typedArray(this.wrong);
     h.typedArray(this.failStation).typedArray(this.failMask).typedArray(this.failT0);
     h.uint32(this.failNext);
   }

@@ -155,7 +155,7 @@ function atStation(state, ctx, id, station, action, plan) {
  * @param {import('./movement.js').Plan} plan
  * @returns {void}
  */
-function useRecipe(state, ctx, id, r, plan) {
+export function useRecipe(state, ctx, id, r, plan) {
   const recipe = ctx.catalog.recipes[r];
   const nav = ctx.nav;
   ctx.agents.craftRecipe[id] = r;

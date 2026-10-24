@@ -10,6 +10,7 @@ export const ToWorker = Object.freeze({
   VIEWPORT: 'viewport',
   SELECT: 'select',
   SKIP: 'skip',
+  AUTO: 'auto',
 });
 
 /** Kinds of "fast-forward until…" requests. */
