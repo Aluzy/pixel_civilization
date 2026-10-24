@@ -51,7 +51,7 @@ Réalisé : survie 10 jours sur 60 graines sur 60 (test automatique sur 10 grain
 
 **Sortie** : on voit le pixel oublier un lieu, échouer à le retrouver, puis le redécouvrir par exploration.
 
-Réalisé : mémoire à force et oubli, souvenirs flous, carte d'exploration personnelle, calque M. La séquence complète est rare quand la mémoire fonctionne bien (le pixel n'oublie que des lieux lointains) : 3 graines sur 150 en 40 jours. Graine de démonstration : **47** — il oublie le point d'eau (8, −7) au jour 11, le cherche au jour 19 d'après un souvenir flou, ne le trouve pas, puis le redécouvre le soir même (test automatique). Survie 10 jours : 99 graines sur 100.
+Réalisé : mémoire à force et oubli, souvenirs flous, carte d'exploration personnelle, calque M. La séquence complète est rare quand la mémoire fonctionne bien (le pixel n'oublie que des lieux lointains) : 3 graines sur 150 en 40 jours. Graine de démonstration : **47** — il oublie le point d'eau (8, −7) au jour 11, le cherche au jour 19 d'après un souvenir flou, ne le trouve pas, puis le redécouvre le soir même. Depuis le J4, le comportement a changé et c'est la graine **61** qui sert de test : point d'eau (−12, −46) oublié au jour 8, introuvable au jour 14, retrouvé quelques instants plus tard. Survie 10 jours : 99 graines sur 100.
 
 ## J4 — Fabrication (`v0.5.0`)
 
@@ -63,6 +63,8 @@ Réalisé : mémoire à force et oubli, souvenirs flous, carte d'exploration per
 - Menaces : prédateurs ; combat ; objectifs Sécurité et Équipement.
 
 **Sortie** : sans aide, le pixel découvre l'établi, une arme, un outil et construit un abri avant le jour 5 sur au moins 8 graines sur 10.
+
+Réalisé : 10 graines sur 10 (graines 1 à 10, test automatique), 28 sur 30 sur les graines 11 à 40, entre 2,4 et 4,7 jours. Stations et abri posés sur une couche « construction » des blocs, découverte par l'essai guidée par ce que l'individu sait déjà, GOAP à rebours avec cache partagé et budget de 300 nœuds, premier projet HTN « S'installer », prédateurs, combat et fuite. L'individu survit 10 jours sur 30 graines sur 30 et 20 jours sur 40 sur 40. Ajouts non prévus : les minerais exigent une pioche (sans quoi les matériaux à combiner étaient trop nombreux), les actions de travail et le sommeil ne sont plus interrompus par les réévaluations périodiques. Reporté : couleur des produits dérivée des ingrédients, feu de camp et cuisson, défense de l'abri remplacée par une protection complète (décisions 0008 à 0010).
 
 ## J5 — Réplication et colonie (`v0.6.0`)
 

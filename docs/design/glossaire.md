@@ -10,6 +10,12 @@
 | Ressource | Matière récoltable représentée par une couleur | `resource` |
 | Station | Pixel de transformation qui permet des recettes | `station` |
 | Recette | Combinaison station + ingrédients → produit | `recipe` |
+| Bien | Ressource ou objet qui peut être porté, avec un identifiant commun | `good` |
+| Objet | Bien fabriqué (arme, outil), actif tant qu'il est porté | `item` |
+| Construction | Station ou abri posé sur la couche `structure` d'un bloc | `structure` |
+| Essai | Tentative station + ensemble de matériaux pour découvrir une recette | `trial` |
+| Échec | Essai raté retenu en mémoire pour ne pas le refaire | `failure` |
+| Prédateur | Menace qui chasse les individus hors abri | `threat` |
 | Jauge | Niveau d'un besoin, de 0 (satisfait) à 100 (critique) | `need` |
 | Souvenir | Élément de mémoire typé, avec une force | `memory` |
 | Force (d'un souvenir) | Valeur de 0 à 1 qui décroît avec le temps | `strength` |

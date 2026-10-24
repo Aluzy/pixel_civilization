@@ -23,6 +23,11 @@ Implémenté dans `src/sim/agents/memory.js`, `perception.js`, `beliefs.js` et `
 - **Croyances fausses** : un lieu entièrement visible qui n'est plus valable est retiré (« se trompait »). Un buisson que l'individu vide lui-même est retiré sans bruit.
 - **Chronique** : oubli, erreur, recherche sans savoir où, lieu introuvable, redécouverte, pour l'eau et la nourriture seulement, au plus une fois toutes les 600 cycles par type et par individu.
 
+## État au jalon J4
+
+- Recettes et échecs ont leur propre mémoire (`src/sim/crafting/recipe-book.js`), à côté des 20 emplacements de lieux : un emplacement par recette du catalogue et un anneau de 32 échecs (décision 0008). Même loi d'oubli : recettes τ = 10 jours, consolidées ×1,5 à chaque fabrication ; échecs τ = 5 jours. Une recette oubliée doit être redécouverte (événement « a oublié comment faire »).
+- Les lieux comptent maintenant aussi les stations et constructions (force initiale 1, τ = 15 jours) et les dangers (prédateur vu : force 0,8, τ = 2 jours, jamais « corrigés » par la vue puisqu'un animal bouge).
+
 ## Mémoire individuelle
 
 ### Souvenirs
