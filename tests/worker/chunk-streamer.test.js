@@ -65,3 +65,23 @@ describe('ChunkStreamer', () => {
     expect(sent.every(nearFar)).toBe(true);
   });
 });
+
+describe('ChunkStreamer resending', () => {
+  it('sends a changed chunk again, first, and keeps it queued across view changes', () => {
+    const s = new ChunkStreamer(store(), { sendMargin: 1, keepMargin: 2 });
+    s.setViewport(ONE_CHUNK);
+    drain(s);
+    s.resend(1, 1);
+    s.resend(1, 1);
+    s.setViewport({ x0: 5, y0: 5, x1: CHUNK_SIZE - 5, y1: CHUNK_SIZE - 5 });
+    expect(drain(s)).toEqual(['1,1']);
+  });
+
+  it('ignores changes to chunks the renderer does not hold', () => {
+    const s = new ChunkStreamer(store(), { sendMargin: 0, keepMargin: 0 });
+    s.setViewport(ONE_CHUNK);
+    drain(s);
+    s.resend(30, 30);
+    expect(drain(s)).toEqual([]);
+  });
+});

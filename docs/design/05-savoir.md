@@ -8,6 +8,10 @@ Le savoir existe à trois niveaux :
 | Social | Parole, imitation | Nul | Volatile | Imprécise |
 | Écrit | Cartes, livres, bibliothèques | Ressources et temps | Durable, mais destructible | Exacte à la date d'écriture |
 
+## Mémoire minimale du jalon J2
+
+Avant le modèle complet ci-dessous (jalon J3), l'individu tient une **mémoire minimale** : 4 lieux par type (eau, nourriture), sans oubli dans le temps. Un lieu vu proche d'un lieu déjà connu (4 cases ou moins) le met à jour ; quand les emplacements sont pleins, le plus ancien est remplacé. Un lieu mémorisé entièrement visible qui n'est plus valable (eau disparue, buisson vidé) est oublié. C'est déjà une croyance : elle peut être périmée.
+
 ## Mémoire individuelle
 
 ### Souvenirs

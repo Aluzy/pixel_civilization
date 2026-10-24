@@ -35,7 +35,7 @@ npm run build        # build de production dans dist/
 npm run preview      # servir le build localement
 npm run lint         # ESLint (vérifie aussi les interdits de src/sim)
 npm run format       # Prettier
-npm run sim -- --seed 42 --days 30   # simulation headless (à créer au jalon J2)
+npm run sim -- --seed 42 --days 30   # simulation headless : rapport par jour, code de sortie 1 si l'individu meurt
 ```
 
 Les interdits de `src/sim/` sont vérifiés deux fois : par ESLint (`eslint.config.js`) et par le test `tests/sim/purity.test.js`.
@@ -47,7 +47,8 @@ Ces règles ne se négocient pas. Une modification qui en viole une doit être r
 1. **Simulation et rendu sont séparés.** Tout le code de simulation vit dans `src/sim/` et tourne dans un Web Worker, cadencé en temps réel par `src/worker/` (seul endroit côté Worker qui lit l'horloge réelle). `src/sim/` n'importe **jamais** Phaser, le DOM, `window` ou `document`. Le rendu (`src/render/`, `src/scenes/`, `src/ui/`) ne modifie jamais l'état de simulation : il envoie des messages au Worker.
 2. **Déterminisme total.** Une même graine et une même séquence de cycles produisent exactement le même monde.
    - Interdits dans `src/sim/` : `Math.random()`, `Date.now()`, `performance.now()`, `new Date()`, l'ordre d'itération d'objets non garanti pour une logique décisionnelle.
-   - Tout aléatoire passe par le générateur à graine `src/sim/core/rng.js` (un flux par sous-système).
+   - Tout aléatoire passe par le générateur à graine `src/sim/core/rng.js` (un flux par sous-système, et un flux par individu).
+   - Pas de fonctions mathématiques au résultat variable selon le navigateur : `Math.exp`, `Math.pow`, `Math.log`, trigonométrie, `**` (décision 0005). `+`, `×`, `/`, `floor`, `round`, `sqrt` sont sûrs.
    - Le temps de jeu se compte **en cycles** (`tick`), jamais en millisecondes réelles.
    - La vitesse (×1, ×64, Max) ne change que le nombre de cycles exécutés par seconde réelle, jamais la logique d'un cycle.
 3. **Données plutôt que code.** Ressources, couleurs, recettes, stations, constantes d'équilibrage sont dans `data/*.json`. Aucun nombre magique d'équilibrage dans le code : il est lu depuis `data/balance.json`.

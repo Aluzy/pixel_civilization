@@ -10,5 +10,49 @@
       { "name": "dawn", "fraction": 0.1 }
     ],
     "speedSteps": [1, 4, 16, 64, 256]
+  },
+  "agent": {
+    "maxEntities": 512,
+    "start": {
+      "hp": 100,
+      "force": 10,
+      "speed": 2,
+      "attack": 5,
+      "defense": 2,
+      "perception": 8,
+      "memory": 20
+    },
+    "startNeeds": 30,
+    "carryPerForce": 2
+  },
+  "needs": {
+    "hungerPerDay": 50,
+    "thirstPerDay": 100,
+    "fatiguePerDayAwake": 80,
+    "fatigueRecoveryPerDayAsleep": 400,
+    "curiosityPerDay": 120,
+    "curiosityReliefPerDayExploring": 300,
+    "effortMultiplier": 1.3,
+    "critical": 100,
+    "damagePerDayPerCriticalNeed": 150,
+    "regenPerDay": 40,
+    "regenBelowNeed": 60,
+    "wakeFatigue": 5,
+    "healthCriticalEvent": 30
+  },
+  "actions": {
+    "drinkPerTick": 2,
+    "eatTicksPerUnit": 2,
+    "harvestForceScale": 20,
+    "nightPerceptionFactor": 0.5,
+    "minPerception": 3,
+    "carryReserve": 6,
+    "eatUntilHunger": 5
+  },
+  "ai": {
+    "decisionInterval": 10,
+    "exploreLeg": [16, 40],
+    "knownPlacesPerKind": 4,
+    "journalSize": 50
   }
 }

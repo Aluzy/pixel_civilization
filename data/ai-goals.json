@@ -1,0 +1,50 @@
+{
+  "levels": ["survival", "safety", "equipment", "efficiency", "knowledge", "harmony"],
+  "suppression": 0.9,
+  "inertia": 0.3,
+  "urgency": {
+    "survival": {
+      "inputs": ["hunger", "thirst", "fatigue"],
+      "curve": { "type": "smoothstep", "lo": 0.3, "hi": 0.9 }
+    }
+  },
+  "goals": [
+    {
+      "id": "drink",
+      "name": "Boire",
+      "level": "survival",
+      "considerations": [
+        { "input": "thirst", "curve": { "type": "smoothstep", "lo": 0.25, "hi": 0.75 } }
+      ]
+    },
+    {
+      "id": "eat",
+      "name": "Manger",
+      "level": "survival",
+      "considerations": [
+        { "input": "hunger", "curve": { "type": "smoothstep", "lo": 0.3, "hi": 0.85 } }
+      ]
+    },
+    {
+      "id": "sleep",
+      "name": "Dormir",
+      "level": "survival",
+      "considerations": [
+        { "input": "fatigue", "curve": { "type": "smoothstep", "lo": 0.4, "hi": 0.95 } },
+        { "input": "darkness", "curve": { "type": "linear", "m": 0.65, "b": 0.35 } }
+      ]
+    },
+    {
+      "id": "explore",
+      "name": "Explorer",
+      "level": "knowledge",
+      "considerations": [{ "input": "curiosity", "curve": { "type": "linear", "m": 0.6, "b": 0 } }]
+    },
+    {
+      "id": "rest",
+      "name": "Se reposer",
+      "level": "survival",
+      "considerations": [{ "input": "one", "curve": { "type": "constant", "value": 0.08 } }]
+    }
+  ]
+}

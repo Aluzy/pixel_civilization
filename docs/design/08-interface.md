@@ -19,7 +19,7 @@ L'observateur accélère librement ; le jeu le ramène à vitesse normale quand 
 | Pause | Arrête la simulation, l'inspection reste possible | Espace |
 | Paliers | ×1, ×4, ×16, ×64, ×256, Max | 1 à 6 |
 | Saut à l'événement | Pleine vitesse jusqu'au prochain événement marquant, puis ×1 | N |
-| Jusqu'à l'aube | Pleine vitesse jusqu'à la prochaine aube | A |
+| Jusqu'à l'aube | Pleine vitesse jusqu'à la prochaine aube | L |
 | Jusqu'au jour… | Pleine vitesse jusqu'à un jour choisi | — |
 | Accélération automatique | Option : +1 palier après 10 s réelles sans événement ; retour à ×1 à chaque événement | T |
 
@@ -27,9 +27,13 @@ L'observateur accélère librement ; le jeu le ramène à vitesse normale quand 
 - **Rendu allégé** : au-delà de ×64, l'écran se rafraîchit 10 fois par seconde sans interpolation ; en mode Max, seuls le tableau de bord et la chronique sont mis à jour.
 - **Vitesse effective** : si la machine ne suit pas la vitesse demandée, l'interface affiche la vitesse réellement atteinte.
 
+Le raccourci « jusqu'à l'aube » est L (lever du jour) et non A, déjà utilisé pour déplacer la caméra (WASD).
+
 ## Inspection
 
-Clic sur un individu → panneau latéral :
+Implémenté au J2 : un clic à moins de 1,2 case d'un individu le sélectionne (sinon la case est inspectée). Le panneau montre PV, faim, soif, fatigue et curiosité en barres, l'objectif et l'action en cours, ce qu'il porte, le nombre de lieux connus, et ses 4 dernières décisions avec les trois meilleurs objectifs et leurs scores. F fait suivre l'individu par la caméra, Échap désélectionne.
+
+Clic sur un individu → panneau latéral (cible complète) :
 
 - attributs, jauges (barres), inventaire ;
 - objectif en cours et plan (liste d'actions, action courante surlignée) ;
@@ -56,6 +60,8 @@ Activables séparément, superposés en semi-transparence : ressources connues d
 - Évolution du génome : distribution de chaque gène dans la population au fil des jours.
 
 ## Chronique
+
+Au J2, la chronique affiche les 6 derniers événements en bas à gauche : premier pas, première gorgée d'eau, premier repas, premier sommeil, santé critique, mort.
 
 Fil d'événements générés automatiquement, horodatés en jour et heure de jeu :
 

@@ -12,6 +12,8 @@ import { formatTile } from '../ui/tile-info.js';
 export const ZOOM_STEPS = [1, 2, 3, 4, 6, 8, 12, 16];
 const START_ZOOM = 8;
 const VIEWPORT_SYNC_MS = 100;
+/** A click this close to an individual (in tiles, from its centre) selects it. */
+const PICK_RADIUS = 1.2;
 
 // Darkness over the world by day phase: colour and opacity. Individuals stay visible above it.
 const PHASE_SHADE = {
@@ -25,6 +27,7 @@ const DEPTH = { chunks: 0, shade: 20, selection: 25, agents: 30 };
 
 /**
  * Draws the world: chunks streamed by the worker, the day/night shade and the individuals.
+ * Handles selection: a click picks an individual if one is close, otherwise a tile.
  */
 export class WorldScene extends Phaser.Scene {
   constructor() {
@@ -33,6 +36,13 @@ export class WorldScene extends Phaser.Scene {
     /** @type {string} */
     this.lastViewportKey = '';
     this.lastViewportSync = 0;
+    /** @type {Map<number, Phaser.GameObjects.Rectangle>} */
+    this.agentRects = new Map();
+    /** @type {{ id: number, x: number, y: number }[]} */
+    this.agents = [];
+    /** @type {number} Selected individual, or -1. */
+    this.selectedAgent = -1;
+    this.following = false;
   }
 
   create() {
@@ -53,24 +63,19 @@ export class WorldScene extends Phaser.Scene {
       .setStrokeStyle(0.15, 0xffffff, 0.95)
       .setDepth(DEPTH.selection)
       .setVisible(false);
-    // 1 pixel = 1 unit; pure black is reserved for individuals.
-    this.individual = this.add
-      .rectangle(0, 0, 1, 1, 0x000000)
-      .setOrigin(0, 0)
-      .setDepth(DEPTH.agents)
-      .setVisible(false);
 
     this.controls = new CameraControls(this, {
       zoomSteps: ZOOM_STEPS,
-      onClick: (x, y) => this.inspect(Math.floor(x), Math.floor(y)),
+      onClick: (x, y) => this.pick(x, y),
     });
 
-    const offReady = sim.onReady(({ spawn }) => {
-      this.individual.setPosition(spawn.x, spawn.y).setVisible(true);
-      camera.centerOn(spawn.x + 0.5, spawn.y + 0.5);
-    });
+    const keyboard = this.input.keyboard;
+    keyboard.on('keydown-F', () => this.setFollowing(!this.following));
+    keyboard.on('keydown-ESC', () => this.clearSelection());
+
+    const offReady = sim.onReady(({ spawn }) => camera.centerOn(spawn.x + 0.5, spawn.y + 0.5));
     const offChunk = sim.onChunk((chunk) => this.chunks.add(chunk));
-    const offFrame = sim.onFrame((frame) => this.applyPhase(frame.time.phase));
+    const offFrame = sim.onFrame((frame) => this.applyFrame(frame));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       offReady();
       offChunk();
@@ -86,6 +91,10 @@ export class WorldScene extends Phaser.Scene {
    */
   update(_time, delta) {
     this.controls.update(delta);
+    if (this.following && this.selectedAgent >= 0) {
+      const agent = this.agents.find((a) => a.id === this.selectedAgent);
+      if (agent) this.cameras.main.centerOn(agent.x + 0.5, agent.y + 0.5);
+    }
     const rect = visibleRect(this.controls.view());
     this.shade.setPosition(rect.x0, rect.y0).setScale(rect.x1 - rect.x0, rect.y1 - rect.y0);
     this.selection.setStrokeStyle(2 / this.cameras.main.zoom, 0xffffff, 0.95);
@@ -115,12 +124,81 @@ export class WorldScene extends Phaser.Scene {
   }
 
   /**
-   * @param {string} phase
+   * @param {{ time: { phase: string }, agents: { id: number, x: number, y: number }[] }} frame
    * @returns {void}
    */
-  applyPhase(phase) {
-    const shade = PHASE_SHADE[phase] ?? PHASE_SHADE.day;
+  applyFrame(frame) {
+    const shade = PHASE_SHADE[frame.time.phase] ?? PHASE_SHADE.day;
     this.shade.setFillStyle(shade.color, shade.alpha);
+
+    this.agents = frame.agents;
+    const seen = new Set();
+    for (const a of frame.agents) {
+      seen.add(a.id);
+      let rect = this.agentRects.get(a.id);
+      if (!rect) {
+        // 1 pixel = 1 unit; pure black is reserved for individuals.
+        rect = this.add.rectangle(0, 0, 1, 1, 0x000000).setOrigin(0, 0).setDepth(DEPTH.agents);
+        this.agentRects.set(a.id, rect);
+      }
+      rect.setPosition(a.x, a.y);
+    }
+    for (const [id, rect] of this.agentRects) {
+      if (seen.has(id)) continue;
+      rect.destroy();
+      this.agentRects.delete(id);
+    }
+    if (this.selectedAgent >= 0) {
+      const agent = frame.agents.find((a) => a.id === this.selectedAgent);
+      if (agent) this.selection.setPosition(agent.x, agent.y).setVisible(true);
+      else this.clearSelection();
+    }
+  }
+
+  /**
+   * Selects the individual under a click, or inspects the tile.
+   * @param {number} wx - World x of the click.
+   * @param {number} wy
+   * @returns {void}
+   */
+  pick(wx, wy) {
+    let best = -1;
+    let bestD2 = PICK_RADIUS * PICK_RADIUS;
+    for (const a of this.agents) {
+      const dx = a.x + 0.5 - wx;
+      const dy = a.y + 0.5 - wy;
+      const d2 = dx * dx + dy * dy;
+      if (d2 <= bestD2) {
+        bestD2 = d2;
+        best = a.id;
+      }
+    }
+    if (best >= 0) {
+      this.selectedAgent = best;
+      this.sim.select(best);
+      this.game.events.emit('agent-selected', best);
+      return;
+    }
+    this.clearSelection();
+    this.inspect(Math.floor(wx), Math.floor(wy));
+  }
+
+  /** @returns {void} */
+  clearSelection() {
+    if (this.selectedAgent >= 0) this.sim.select(-1);
+    this.selectedAgent = -1;
+    this.setFollowing(false);
+    this.selection.setVisible(false);
+    this.game.events.emit('agent-selected', -1);
+  }
+
+  /**
+   * @param {boolean} on
+   * @returns {void}
+   */
+  setFollowing(on) {
+    this.following = on && this.selectedAgent >= 0;
+    this.game.events.emit('follow-changed', this.following);
   }
 
   /**

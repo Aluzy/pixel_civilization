@@ -10,44 +10,46 @@
       "id": "water",
       "name": "Eau",
       "color": "#4a6b86",
+      "speed": 0,
       "when": { "altitude": [0, 0.3] }
     },
     {
       "id": "shore",
       "name": "Berge",
       "color": "#d3c79e",
+      "speed": 0.9,
       "when": { "altitude": [0.3, 0.33] }
     },
     {
       "id": "mountain",
       "name": "Montagne",
       "color": "#b9b6aa",
+      "speed": 0.5,
       "when": { "altitude": [0.75, 1.01] }
     },
     {
       "id": "marsh",
       "name": "Marais",
       "color": "#7d8a5d",
+      "speed": 0.6,
       "when": { "altitude": [0.33, 0.42], "humidity": [0.68, 1.01] }
     },
     {
       "id": "desert",
       "name": "Désert",
       "color": "#ddd3a6",
+      "speed": 0.85,
       "when": { "humidity": [0, 0.3], "temperature": [0.55, 1.01] }
     },
     {
       "id": "forest",
       "name": "Forêt",
       "color": "#728c5e",
+      "speed": 0.8,
       "when": { "humidity": [0.52, 1.01] }
     },
-    {
-      "id": "plain",
-      "name": "Plaine",
-      "color": "#b8c590",
-      "when": {}
-    }
+    { "id": "plain", "name": "Plaine", "color": "#b8c590", "speed": 1, "when": {} }
   ],
-  "spawn": { "biomes": ["plain", "forest"], "maxRadius": 512 }
+  "spawn": { "biomes": ["plain", "forest"], "maxRadius": 512 },
+  "darkness": { "day": 0.1, "dusk": 0.6, "night": 1, "dawn": 0.6 }
 }

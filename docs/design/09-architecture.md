@@ -80,19 +80,20 @@ export const Needs = { hunger: new Float32Array(MAX), thirst: new Float32Array(M
 
 L'ordre est fixe et documenté ; le modifier exige une décision dans `docs/decisions/`.
 
-1. `timeSystem` — avance l'horloge, gère jour/nuit.
-2. `worldSystem` — régénération, propagation du feu, intempéries, activation et gel des blocs.
-3. `threatSystem` — déplacement des prédateurs.
-4. `needsSystem` — évolution des jauges.
-5. `perceptionSystem` — perception de chaque individu.
-6. `memorySystem` — mise à jour et oubli (balayage tous les 100 cycles).
-7. `decisionSystem` — Utility AI et GOAP, étalés et sur interruption.
-8. `actionSystem` — exécution des actions (mouvement, récolte, fabrication, construction, lecture, écriture), puis mise à jour de l'expérience apprise à la fin de chaque action.
-9. `combatSystem` — résolution des combats.
-10. `socialSystem` — transmission orale, imitation, tableau noir.
-11. `lifecycleSystem` — réplication (héritage et mutation des attributs et du génome), mort.
-12. `harmonySystem` — à chaque aube.
-13. `eventSystem` — collecte des événements pour la chronique et le rendu.
+État au J2 (`src/sim/systems/index.js`) :
+
+1. `timeSystem` — avance l'horloge, met à jour l'obscurité.
+2. `worldSystem` — repousse des ressources renouvelables (file triée par cycle).
+3. `needsSystem` — évolution des jauges, dégâts des besoins critiques, régénération.
+4. `decisionSystem` — perception, Utility AI, comportements ; réévaluation tous les 10 cycles décalée par identifiant, ou immédiate quand l'action se termine.
+5. `actionSystem` — exécution des actions (déplacement, boire, cueillir, manger, dormir).
+6. `lifecycleSystem` — mort.
+
+Ordre cible, à mesure que les jalons ajoutent les systèmes : time, world, threat, needs, perception, memory, decision, action, combat, social, lifecycle, harmony, event.
+
+Chaque système reçoit `(state, ctx)` : `state` contient tout ce qui définit la partie (hashé), `ctx` les tables lues dans `data/`, des valeurs dérivées (taux par cycle, obscurité courante) et des tampons de travail réutilisés.
+
+Les individus vivent dans `src/sim/agents/` : `agent-store.js` (composants en tableaux typés), `navigation.js`, `perception.js`, `places.js` (mémoire minimale), `behaviors.js`, `actions.js`, `journal.js`. L'IA de choix est dans `src/sim/ai/` (`curves.js`, `utility.js`).
 
 ## Aléatoire et déterminisme
 
@@ -111,12 +112,15 @@ Messages typés, objets simples ; les gros volumes passent en `ArrayBuffer` tran
 | Rendu → Worker | `pause` / `resume` | — |
 | Rendu → Worker | `skipTo` | `{ until: 'event' \| 'dawn' \| { day } }` |
 | Rendu → Worker | `viewport` | rectangle visible en cases `{ x0, y0, x1, y1 }` |
-| Rendu → Worker | `inspect` | identifiant d'entité ou position |
-| Worker → Rendu | `frame` | cycle, positions des individus visibles (transférable), blocs modifiés dans la vue |
+| Rendu → Worker | `select` | individu à décrire dans chaque `frame` (`id`, ou −1) |
+| Rendu → Worker | `skip` | `{ kind: 'dawn' \| 'event' }` : pleine vitesse jusqu'à l'aube ou jusqu'au prochain événement, puis ×1 |
+| Worker → Rendu | `frame` | cycle, heure, vitesse demandée et effective, saut en cours, positions des individus (interpolées le long du chemin), nouveaux événements, fiche de l'individu sélectionné |
 | Worker → Rendu | `chunk` | `cx`, `cy` et copies transférables des tableaux biome, ressource, quantité, altitude |
 | Worker → Rendu | `stats` | tableau de bord, vitesse effective |
 | Worker → Rendu | `events` | nouveaux événements de chronique |
 | Worker → Rendu | `inspection` | détail d'une entité ou d'une case |
+
+Les blocs modifiés par la simulation (ressource cueillie ou repoussée) sont renvoyés en priorité s'ils sont chez le rendu.
 
 Le Worker n'envoie que ce qui intersecte le `viewport` plus une marge (`CHUNK_SEND_MARGIN` = 1 bloc), du plus proche au plus lointain, dans un budget de 6 ms par tranche (`src/worker/chunk-streamer.js`). Le rendu garde les blocs à moins de `CHUNK_KEEP_MARGIN` = 2 blocs de la vue et libère les autres ; le Worker oublie les mêmes, car les deux côtés utilisent la même fonction `chunksInRect`. Aucun message de déchargement n'est donc nécessaire. L'inspection d'une case lit la copie locale du bloc côté rendu, sans aller-retour.
 

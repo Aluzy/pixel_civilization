@@ -47,7 +47,9 @@ export function chunksInRect(rect, margin) {
   const list = [];
   for (let cy = cy0; cy <= cy1; cy++) {
     for (let cx = cx0; cx <= cx1; cx++) {
-      list.push({ cx, cy, d: (cx - midX) ** 2 + (cy - midY) ** 2 });
+      const dx = cx - midX;
+      const dy = cy - midY;
+      list.push({ cx, cy, d: dx * dx + dy * dy });
     }
   }
   list.sort((a, b) => a.d - b.d || a.cy - b.cy || a.cx - b.cx);

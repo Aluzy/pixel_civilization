@@ -1,6 +1,6 @@
 {
   "name": "pixel-civilization",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "An observation simulation where a lone black pixel builds a harmonious civilization.",
   "private": true,
   "type": "module",
@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "sim": "node tools/headless-sim.js"
   },
   "dependencies": {
     "phaser": "^4.2.1"

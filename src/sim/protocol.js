@@ -8,6 +8,14 @@ export const ToWorker = Object.freeze({
   PAUSE: 'pause',
   RESUME: 'resume',
   VIEWPORT: 'viewport',
+  SELECT: 'select',
+  SKIP: 'skip',
+});
+
+/** Kinds of "fast-forward until…" requests. */
+export const SkipKind = Object.freeze({
+  DAWN: 'dawn',
+  EVENT: 'event',
 });
 
 export const FromWorker = Object.freeze({

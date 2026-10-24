@@ -42,6 +42,38 @@ function phaseBoundaries(time) {
 }
 
 /**
+ * Index of the day phase at a tick, without allocating (used every tick by the simulation).
+ * @param {number} tick
+ * @param {TimeConfig} time
+ * @returns {number} Index into `time.phases`.
+ */
+export function phaseIndexAt(tick, time) {
+  const boundaries = phaseBoundaries(time);
+  const tickOfDay = tick % time.ticksPerDay;
+  let i = 0;
+  while (i < boundaries.length - 1 && tickOfDay >= boundaries[i]) i++;
+  return i;
+}
+
+/**
+ * First tick strictly after `tick` at which the given phase begins.
+ * @param {number} tick
+ * @param {TimeConfig} time
+ * @param {string} phase
+ * @returns {number}
+ */
+export function nextPhaseStart(tick, time, phase) {
+  const boundaries = phaseBoundaries(time);
+  const index = time.phases.findIndex((p) => p.name === phase);
+  if (index < 0) throw new Error(`Unknown phase: ${phase}`);
+  const offset = index === 0 ? 0 : boundaries[index - 1];
+  const day = Math.floor(tick / time.ticksPerDay);
+  let start = day * time.ticksPerDay + offset;
+  if (start <= tick) start += time.ticksPerDay;
+  return start;
+}
+
+/**
  * Converts a tick count into calendar information. Pure function of its inputs.
  * @param {number} tick
  * @param {TimeConfig} time
