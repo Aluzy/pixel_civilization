@@ -110,7 +110,7 @@ Réalisé (en partie) :
 
 Chantier ouvert après le J7 (décision 0020) pour la vision suivante : des menaces qui comptent, des combattants, l'agriculture découverte par l'essai, la cuisine, une économie de métiers, des richesses (or, pierres précieuses), des migrations qui fondent de nouvelles colonies, des forteresses autour des trésors et des conflits entre colonies. Inspiration pour l'agriculture, la cuisine et le marché : [Aluzy/family_farm](https://github.com/Aluzy/family_farm). Conception : [13-agriculture-cuisine](13-agriculture-cuisine.md), [14-economie](14-economie.md), [15-colonies-et-migration](15-colonies-et-migration.md), [16-guerre-et-forteresses](16-guerre-et-forteresses.md).
 
-Avant le J8 : fusionner le J7 et trancher son point ouvert (500 individus dans une partie ordinaire, que l'agriculture du J9 rend atteignable ; proposition : déplacer ce point dans la sortie du J9).
+Le point ouvert du J7 (500 individus dans une partie ordinaire) passe dans la sortie du J9, dont l'agriculture le rend atteignable.
 
 Ordre retenu : chaque jalon s'appuie sur le précédent et reste jouable seul.
 
@@ -120,7 +120,12 @@ Ordre retenu : chaque jalon s'appuie sur le précédent et reste jouable seul.
 - Jauge de sécurité dans la pyramide des besoins, nourrie par le danger perçu et appris.
 - Compétence de combat apprise, rôle de garde (veille de nuit, chasse aux tanières), bouclier et armure de peau, combat de groupe dans la simulation mentale.
 
-**Sortie** : sur 10 graines et 60 jours, des pixels meurent de prédateurs (au moins 1 par partie en moyenne) et tuent au moins 3 fois plus de prédateurs qu'au J7 ; un rôle de garde apparaît ; la part des décisions de sécurité double, sans extinction.
+**Sortie** : sur 10 graines et 60 jours, des pixels meurent de prédateurs (au moins 1 par partie en moyenne) et tuent au moins 3 fois plus de prédateurs qu'au J7 ; un rôle de garde apparaît ; les décisions de sécurité prennent au moins 1 % du temps des pixels (0,004 % au J7), sans extinction.
+
+Réalisé :
+- **Sortie** : sur 10 graines et 60 jours, 1,9 pixel tué par un prédateur par partie (0,1 au J7), 63,2 prédateurs tués par partie (4,4 au J7), 5 à 11 gardes au plus fort sur chaque graine, 9,0 % des décisions pour la sécurité, 45 à 106 individus au jour 60, aucune extinction ; test automatique sur ces 10 graines. `npm run bench` (500 fondateurs, 100 jours) : 1,04 ms par cycle en moyenne, 1,63 ms le pire jour, toujours sous les 6,25 ms de ×16.
+- **Ajouts** : tanières et meutes qui encerclent, rentrent guérir et abandonnent tard ; abris isolés forcés ; blessures lentes à guérir ; carcasse et peau ; jauge de peur et objectif Se cacher ; compétence de combat apprise ; bouclier et armure de peau ; rôle de garde (veille de nuit, équipement de jour, chasse aux tanières) ; combat de groupe dans la simulation mentale ; filtre « danger » de la chronique (décision 0021, détail dans [16](16-guerre-et-forteresses.md)).
+- **Reporté** : PV des abris et palissades (J12), ralentissement des blessés graves, viande à cuire (J9), métier de soldat payé (J10), escorte (J11).
 
 ### J9 — Agriculture et cuisine (`v0.10.0`)
 

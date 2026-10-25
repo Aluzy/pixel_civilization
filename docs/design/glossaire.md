@@ -52,7 +52,12 @@
 | Comptoir | Acheteur et vendeur de la colonie au marché, à prix à coefficient (vision v2) | `counter` |
 | Trésor | Or, écus, pierres précieuses et objets rares gardés par la colonie (vision v2) | `treasury` |
 | Enceinte | Mur fermé avec porte autour du trésor et des abris (vision v2) | `wall` |
-| Meute | Groupe de prédateurs partis d'une même tanière (vision v2) | `pack` |
+| Meute | Groupe de prédateurs partis d'une même tanière (J8) | `pack` |
+| Tanière | Construction des prédateurs près d'une colonie, d'où part sa meute ; destructible (J8) | `den` |
+| Peur | Jauge de 0 à 100 nourrie par le danger vécu ou vu, qui porte l'objectif Se cacher (J8) | `fear` |
+| Compétence de combat | Expérience de 0 à 1 apprise à chaque coup, multiplie attaque et défense jusqu'à ×1,5 (J8) | `combatSkill` |
+| Garde | Membre en poste qui veille la nuit et chasse les tanières connues (J8) | `guards` |
+| Carcasse | Ressource laissée par un prédateur tué ; pourrit, donne une peau (J8) | `carcass` |
 | Expédition | Groupe qui quitte sa colonie pour en fonder une autre (vision v2) | `expedition` |
 | Raid | Troupe envoyée par une colonie piller une autre (vision v2) | `raid` |
 | Projet | But à long terme décomposé en sous-tâches (HTN) | `project` |
