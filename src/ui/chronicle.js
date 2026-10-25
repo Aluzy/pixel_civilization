@@ -75,6 +75,15 @@ const TEXT = {
   [EventType.HARVEST]: (who) => `Première moisson de la colonie, par ${who}.`,
 };
 
+// What a completed colony project did, by project kind.
+const PROJECT_TEXT = {
+  3: 'bâtit une bibliothèque',
+  4: 'plante un champ',
+  5: 'bâtit sa salle du trésor',
+  6: 'achève son enceinte',
+  7: 'élève une tour sur son enceinte',
+};
+
 // Events about places, not individuals.
 const PLACE_TEXT = {
   [EventType.FIRE]: (c) =>
@@ -114,6 +123,8 @@ export const FILTERS = Object.freeze([
       EventType.FIRST_JOB,
       EventType.COLONY_FOUNDED,
       EventType.FIRST_TRADE,
+      EventType.ENCLOSURE_PLANNED,
+      EventType.ENCLOSURE_CLOSED,
     ],
   },
   {
@@ -133,6 +144,8 @@ export const FILTERS = Object.freeze([
       EventType.EXPEDITION,
       EventType.COLONY_FOUNDED,
       EventType.FIRST_TRADE,
+      EventType.ENCLOSURE_PLANNED,
+      EventType.ENCLOSURE_CLOSED,
     ],
   },
   {
@@ -173,6 +186,8 @@ export const FILTERS = Object.freeze([
       EventType.DEN_DESTROYED,
       EventType.SHELTER_FORCED,
       EventType.GUARD,
+      EventType.ENCLOSURE_PLANNED,
+      EventType.ENCLOSURE_CLOSED,
     ],
   },
 ]);
@@ -239,6 +254,13 @@ export function formatEvent(event, time, names) {
     text =
       `Première caravane de la colonie n°${event.other} chez la colonie n°${event.subject}, ` +
       `menée par ${who}.`;
+  } else if (event.type === EventType.ENCLOSURE_PLANNED) {
+    const why = event.other === 0 ? 'le danger' : 'la valeur de son trésor';
+    text =
+      `La colonie n°${event.subject} décide d’entourer son trésor d’une enceinte ` +
+      `(${why}) : la porte sera ${where}.`;
+  } else if (event.type === EventType.ENCLOSURE_CLOSED) {
+    text = `L’enceinte de la colonie n°${event.subject} est fermée : ${who} pose le dernier pan ${where}.`;
   } else if (event.type === EventType.FIRST_PURCHASE) {
     const from = event.other >= 0 ? ` : il venait de l’individu #${event.other}` : '';
     text = `Premier achat ${ofName(good)} au comptoir, par ${who}${from}.`;
@@ -254,8 +276,7 @@ export function formatEvent(event, time, names) {
     text = `Naissance de ${who}, réplique de l’individu #${event.subject}.`;
   } else if (event.type === EventType.COLONY_PROJECT) {
     const kind = event.subject & 15;
-    const what =
-      kind === 3 ? 'bâtit une bibliothèque' : kind === 4 ? 'plante un champ' : 'bâtit un abri';
+    const what = PROJECT_TEXT[kind] ?? 'bâtit un abri';
     text = `La colonie ${what} ${where}, œuvre de ${event.subject >> 4} individu(s).`;
   }
   return `${shortClock(event.tick, time)} · ${text.charAt(0).toUpperCase()}${text.slice(1)}`;

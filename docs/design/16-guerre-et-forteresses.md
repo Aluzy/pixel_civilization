@@ -1,6 +1,6 @@
 # 16 — Menaces, combattants, conflits et forteresses
 
-> Chantier préparé après le J7 (décision 0020). Les sections 1 et 2 sont implémentées au J8 (décision 0021, voir « Ce que fait le J8 ») ; les sections 3 et 4 restent à faire. Valeurs 🟡 à caler.
+> Chantier préparé après le J7 (décision 0020). Les sections 1 et 2 sont implémentées au J8 (décision 0021, voir « Ce que fait le J8 »), la section 3 au J12 (décision 0025, voir « Ce que fait le J12 ») ; la section 4 reste à faire. Valeurs 🟡 à caler.
 
 ## Le constat (J7)
 
@@ -63,6 +63,59 @@ Mesures (10 graines, 60 jours) :
 - **Murs** : nouvelles constructions **infranchissables** (palissade de bois, mur de pierre, mur de brique), **porte** (franchissable par les membres, pas par les autres ni les prédateurs), **tour** (une garde y voit plus loin et frappe mieux). Les constructions sont franchissables aujourd'hui : la navigation doit apprendre les obstacles (coût infini, portes conditionnelles).
 - **Forteresse émergente** : quand le danger perçu ou la valeur du trésor dépasse un seuil, la colonie ouvre un projet **enceinte** : un mur fermé autour du trésor et des abris, avec une porte. Le tracé est calculé par la colonie à partir de ses constructions (enveloppe convexe du J7 élargie d'une case), puis découpé en tâches « bâtir ce segment ».
 - Les murs comptent dans l'ordre spatial (compacité) et créent une nouvelle catégorie de zone (défense).
+
+## Ce que fait le J12
+
+Implémenté au J12 (décision 0025). Là où il s'écarte de la section 3, c'est ce qui suit qui vaut.
+
+**Or et pierres précieuses** : deux ressources nouvelles, à extraire à la pioche de pierre.
+
+- L'or se trouve en montagne et, plus rare, au désert ; les pierres précieuses en haute montagne.
+- Leur prix de base est leur valeur (40 et 80 écus), pas le travail de les extraire.
+- Le mineur les vend au comptoir. Ce ne sont pas des matériaux : on ne les essaie pas dans des recettes, on les garde.
+- Le comptoir ne les paie qu'avec les écus dont il peut se passer : au-delà de 100 écus par membre. Sinon l'or vidait la caisse, et le comptoir ne pouvait plus payer la nourriture.
+
+**Salle du trésor** (pierre 8, argile 4, bâtie au camp) : projet ouvert dès 30 membres. Elle garde l'or, les pierres précieuses et les écus du comptoir. Sa **valeur** est la somme des écus et de l'or et des pierres au prix du comptoir. Le bloc Colonie de l'inspecteur montre son contenu.
+
+**Danger ressenti** : chaque jour, le danger de la colonie est multiplié par 0,8, et augmente de 1 si un membre a été attaqué près du camp ce jour-là.
+
+**Murs, porte, tour** :
+
+- **Palissade** (bois 2) : infranchissable pour tous.
+- **Porte** (bois 4, argile 2) : les individus passent, les prédateurs non. Au J12, elle laisse passer tout individu, même d'une autre colonie (les caravanes doivent atteindre le comptoir). La réserver aux membres viendra avec les conflits du J13.
+- **Tour** (pierre 6, fibre 2) : posée sur le mur, à la place de la palissade voisine d'une porte (un angle ne se gravit pas : ses deux voisines sur l'anneau sont des murs, et l'on ne coupe pas les coins). Un individu y monte ; un prédateur ne la franchit pas. Le garde de nuit y veille : il voit 6 cases plus loin et frappe ×1,5.
+- Le mur de pierre et le mur de brique sont reportés.
+
+**L'enceinte** : quand la colonie a sa salle du trésor et que son danger atteint 2, ou la valeur du trésor 8 000 écus, elle ouvre le projet **Enceinte**.
+
+- **Tracé** : un rectangle autour de la salle du trésor et des abris, stations et bibliothèques à 12 cases au plus d'elle, élargi d'une à trois cases : la marge dont l'anneau croise le moins de constructions. Pas plus de 40 cases de côté. Ce rectangle remplace l'enveloppe convexe de la section 3 : un anneau à angles droits ne laisse aucun passage en diagonale.
+- **Portes** : une au milieu de chaque côté où l'on peut se tenir (la section 3 n'en prévoyait qu'une : avec une seule, tout le trafic du camp faisait le tour du mur, et la moitié des colonies cessaient de grandir). **Tour** à côté de la première porte.
+- **Chantier** : les portes d'abord, puis la palissade par lots de 10 pans. Le bâtisseur prend les matériaux d'un lot à la réserve. Il se poste à côté du pan le plus proche de lui et le bâtit depuis là, jamais sur une case occupée.
+- Une parcelle sur le tracé est abandonnée ; une ressource y est défrichée. Les cases d'eau comptent comme fermées. Aucune construction nouvelle ne se pose sur le tracé.
+- Le dernier pan n'est pas posé tant qu'un prédateur est à l'intérieur.
+- **Fermée**, l'enceinte est un événement de chronique. Un projet **Tour** suit.
+
+**Les prédateurs** ne traversent ni mur, ni porte, ni tour, et aucun n'apparaît dans une enceinte fermée. Un anneau d'une case d'épaisseur les tient à deux cases de quiconque est à l'intérieur : ils ne peuvent pas frapper par-dessus. Chaque entrée d'un prédateur dans une enceinte fermée compte comme une intrusion (attendu : aucune).
+
+**Navigation avec obstacles** : la recherche de chemin locale (fenêtre de perception) traite murs et prédateurs comme infranchissables. Un mur plus long que la fenêtre la piégerait, alors un individu passe par des points de route :
+
+- pour sortir, la case juste derrière la porte qui fait le trajet le plus court ; pour entrer, de même parmi les portes des côtés devant lesquels il se trouve ;
+- d'un côté sans porte, d'abord l'angle extérieur, le long du mur ;
+- pour une cible de l'autre côté d'une enceinte, l'angle le plus proche.
+
+Les enceintes sont des constructions visibles : chacun connaît leur tracé et leur porte, comme on voit un mur de loin.
+
+Mesures (10 graines, 150 jours) :
+
+| Mesure | Valeur |
+| --- | --- |
+| Enceinte fermée autour du trésor | 10 graines sur 10, du jour 24 au jour 71 |
+| Tour bâtie | 10 sur 10 |
+| Intrusions de prédateurs | 0 |
+| Population au jour 150 | 198 à 450 (48 à 500 au J11) |
+| Au moins deux colonies au jour 150 | 6 graines sur 10 (8 au J11) |
+
+**Ce qui reste à faire** : agrandir l'enceinte quand la colonie déborde ses murs (les abris bâtis après restent dehors), murs de pierre et de brique, points de vie des murs, ordre spatial et zone de défense dans l'harmonie.
 
 ## 4. Conflits entre colonies (J13)
 

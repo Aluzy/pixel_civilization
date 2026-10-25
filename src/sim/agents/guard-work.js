@@ -92,6 +92,22 @@ export function guardBehaviour(state, ctx, id, plan) {
       if (approach(ctx, id, t.x[p], t.y[p], Action.ATTACK, plan)) return;
     }
   }
+  // With a tower on the wall, the watch is kept from its top.
+  if (colony.hasTower) {
+    if (a.x[id] === colony.towerX && a.y[id] === colony.towerY) {
+      startHere(ctx, id, Action.IDLE);
+      plan.action = Action.IDLE;
+      return;
+    }
+    const cell = ctx.nav.cellAt(colony.towerX, colony.towerY);
+    if (cell >= 0 && ctx.nav.reachable(cell) && moveTo(ctx, id, cell, Action.IDLE)) {
+      plan.action = Action.MOVE;
+      plan.x = colony.towerX;
+      plan.y = colony.towerY;
+      return;
+    }
+    if (approach(ctx, id, colony.towerX, colony.towerY, Action.IDLE, plan)) return;
+  }
   // A round: a point on a ring around the camp, drawn from the agent's own stream.
   const ring = ctx.balance.colony.campRadius + s.guardRing;
   const rng = a.rng[id];

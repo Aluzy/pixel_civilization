@@ -1,8 +1,10 @@
 import { claimFreeStock, openTasks, releaseTask } from '../colony/colony-logic.js';
-import { ProjectKind } from '../colony/colony-store.js';
+import { Enclosure, ProjectKind } from '../colony/colony-store.js';
+import { planEnclosure, updateDanger, wallNeeds, wantsEnclosure } from '../colony/fortress.js';
+import { PACK } from '../world/chunk-store.js';
 import { fieldResource, openField } from '../colony/field.js';
 import { Component } from '../colony/harmony.js';
-import { countFarmJobs } from '../farming/farm-jobs.js';
+import { FarmJob, countFarmJobs } from '../farming/farm-jobs.js';
 import { updateExpedition } from '../colony/migration.js';
 
 /**
@@ -17,16 +19,22 @@ export function colonySystem(state, ctx) {
   const cfg = ctx.balance.colony;
   if (state.tick % cfg.taskInterval !== 0) return;
   const a = ctx.agents;
-  for (const colony of state.colonies) colony.members = 0;
+  for (const colony of state.colonies) {
+    colony.members = 0;
+    colony.gleaning = 0;
+  }
   for (let id = 0; id < a.highWater; id++) {
     if (a.alive[id] !== 1 || a.colony[id] < 0) continue;
     state.colonies[a.colony[id]].members++;
+    if (a.farmJob[id] === FarmJob.GLEAN) state.colonies[a.colony[id]].gleaning++;
     if (a.taskProject[id] >= 0 && state.tick - a.taskTick[id] > cfg.reservationTicks) {
       releaseTask(state, ctx, id);
     }
   }
+  const dawn = state.tick % ctx.balance.time.ticksPerDay === 0;
   for (const colony of state.colonies) {
     if (!colony.hasCamp || colony.members === 0) continue;
+    if (dawn) updateDanger(state, ctx, colony);
     updateExpedition(state, ctx, colony);
     // Shelters: one at a time for a small colony, more at once as it grows (a large colony has
     // many hands to gather the materials).
@@ -51,6 +59,7 @@ export function colonySystem(state, ctx) {
       const slot = colony.freeSlot();
       if (slot >= 0) openBuildProject(state, ctx, colony, slot, ProjectKind.LIBRARY, 'library');
     }
+    fortress(state, ctx, colony);
     // Plant what is over-harvested near the camp when durability or spatial order is the weakest
     // point, and berries when stability or well-being is (food to spare is what lets it grow).
     const focus = colony.focus;
@@ -93,13 +102,59 @@ export function colonySystem(state, ctx) {
 }
 
 /**
+ * Treasures and fortresses (docs/design/16-guerre-et-forteresses.md): a treasure room once the
+ * colony is large enough, an enclosure around it when danger or wealth calls for it, then a tower
+ * on the wall.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} colony
+ * @returns {void}
+ */
+function fortress(state, ctx, colony) {
+  const cfg = ctx.balance.fortress;
+  if (
+    !colony.hasTreasure &&
+    colony.members >= cfg.treasureMembers &&
+    colony.findProject(ProjectKind.TREASURE) < 0
+  ) {
+    const slot = colony.freeSlot();
+    if (slot >= 0) openBuildProject(state, ctx, colony, slot, ProjectKind.TREASURE, 'treasury');
+  }
+  if (wantsEnclosure(ctx, colony)) {
+    const slot = colony.freeSlot();
+    if (slot >= 0 && planEnclosure(state, ctx, colony)) {
+      const p = colony.projects[slot];
+      p.clear();
+      p.kind = ProjectKind.ENCLOSURE;
+      p.number = 1;
+      p.startTick = state.tick;
+    }
+  }
+  const s = colony.findProject(ProjectKind.ENCLOSURE);
+  if (s >= 0 && colony.projects[s].builder < 0) {
+    if (colony.encState === Enclosure.BUILDING) wallNeeds(ctx, colony, colony.projects[s]);
+    else colony.projects[s].clear();
+  }
+  const towerTile = state.world.packedAt(colony.towerX, colony.towerY) >>> PACK.STRUCTURE_SHIFT;
+  if (
+    colony.encState === Enclosure.CLOSED &&
+    !colony.hasTower &&
+    towerTile === ctx.wallCode &&
+    colony.findProject(ProjectKind.TOWER) < 0
+  ) {
+    const slot = colony.freeSlot();
+    if (slot >= 0) openBuildProject(state, ctx, colony, slot, ProjectKind.TOWER, 'tower');
+  }
+}
+
+/**
  * Opens a project to build a structure of the given catalogue kind at the camp.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
  * @param {import('../colony/colony-store.js').Colony} colony
  * @param {number} slot
  * @param {number} kind - {@link ProjectKind}.
- * @param {string} structureKind - "shelter" or "library".
+ * @param {string} structureKind - "shelter", "library", "treasury" or "tower".
  * @returns {void}
  */
 function openBuildProject(state, ctx, colony, slot, kind, structureKind) {
@@ -113,7 +168,12 @@ function openBuildProject(state, ctx, colony, slot, kind, structureKind) {
   p.recipe = r;
   let open = 0;
   for (const q of colony.projects) if (q !== p && q.kind === kind) open++;
-  p.number = (kind === ProjectKind.SHELTER ? colony.sheltersBuilt : colony.libraryCount) + open + 1;
+  p.number =
+    kind === ProjectKind.SHELTER
+      ? colony.sheltersBuilt + open + 1
+      : kind === ProjectKind.LIBRARY
+        ? colony.libraryCount + open + 1
+        : 1;
   p.startTick = state.tick;
   for (const input of ctx.catalog.recipes[r].inputs) p.needs[input.good] = input.count;
   claimFreeStock(colony, p);

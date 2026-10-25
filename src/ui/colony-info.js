@@ -8,7 +8,7 @@ const COMPONENTS = ['stabilité', 'durabilité', 'ordre spatial', 'savoir', 'bie
  * Lines of the colony panel (from Simulation#describeColony): population, beds, stock, the
  * projects in progress with what they still need and who worked on them, the libraries, the
  * counter (treasury, jobs, prices), its filiation, expedition and relations with the other
- * colonies, and the colony's knowledge (known, written, lost).
+ * colonies, its treasure and enclosure, and the colony's knowledge (known, written, lost).
  * @param {object | null} colony
  * @param {{ id: number, members: number }[]} [colonies] - All colonies, for the list.
  * @returns {string[]}
@@ -108,6 +108,7 @@ export function formatColony(colony, colonies = []) {
         `${r.trades} caravane(s)`,
     );
   }
+  lines.push(...formatFortress(colony.fortress));
   if (colony.scribe >= 0) lines.push(`Scribe : #${colony.scribe}`);
   if (colony.inventor >= 0) lines.push(`Inventeur : #${colony.inventor}`);
   if (colony.guards?.length) lines.push(`Gardes : ${colony.guards.map((g) => `#${g}`).join(' ')}`);
@@ -118,5 +119,37 @@ export function formatColony(colony, colonies = []) {
     if (k.saved.length > 0) lines.push(`Sauvé par un livre : ${k.saved.join(', ')}`);
     if (k.recovered.length > 0) lines.push(`Retrouvé : ${k.recovered.join(', ')}`);
   }
+  return lines;
+}
+
+/**
+ * Lines about the treasure and the enclosure (from Simulation#describeFortress).
+ * @param {object | undefined} f
+ * @returns {string[]}
+ */
+export function formatFortress(f) {
+  if (!f) return [];
+  const lines = [];
+  if (f.treasure) {
+    const goods = f.goods.map((g) => `${g.name.toLowerCase()} ${g.count}`).join(', ');
+    lines.push(
+      `Trésor (${f.treasure.x}, ${f.treasure.y}) : ${f.coins} écus, ${goods} · valeur ${f.value}`,
+    );
+  }
+  const e = f.enclosure;
+  if (e) {
+    const state = e.closed
+      ? `fermée le jour ${e.closedDay}`
+      : `en chantier depuis le jour ${e.plannedDay}, ${e.built}/${e.total} pans`;
+    const built = e.gates.filter((g) => g.built);
+    const gate =
+      built.length > 0
+        ? `porte(s) ${built.map((g) => `(${g.x}, ${g.y})`).join(' ')}`
+        : `${e.gates.length} porte(s) à bâtir`;
+    const tower = e.tower ? ` · tour (${e.tower.x}, ${e.tower.y})` : '';
+    lines.push(`Enceinte ${state} · ${gate}${tower}`);
+    if (e.closed) lines.push(`Intrusions de prédateurs depuis : ${e.breaches}`);
+  }
+  if (f.danger >= 0.5) lines.push(`Danger ressenti au camp : ${f.danger.toFixed(1)}`);
   return lines;
 }

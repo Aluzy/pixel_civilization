@@ -22,6 +22,7 @@ export const Action = Object.freeze({
   SOW: 19,
   STOCK: 20,
   FETCH: 21,
+  BUILD: 22,
 });
 
 /** Display names for the inspector, indexed by {@link Action}. */
@@ -48,6 +49,7 @@ export const ACTION_NAMES = Object.freeze([
   'sème',
   'range à la réserve',
   'prend des ingrédients',
+  'bâtit un mur',
 ]);
 
 /**
@@ -63,6 +65,7 @@ export function isFocused(action) {
     action === Action.EXPERIMENT ||
     action === Action.REPLICATE ||
     action === Action.WRITE ||
-    action === Action.READ
+    action === Action.READ ||
+    action === Action.BUILD
   );
 }

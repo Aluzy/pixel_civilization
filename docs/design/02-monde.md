@@ -51,6 +51,8 @@ Chaque case de ressource contient une quantité (1 à 255 unités). Récolter re
 | Cuivre | Orange | Montagne | Non | Outil de pierre requis |
 | Charbon | Gris anthracite (≠ noir pur) | Montagne | Non | Outil de pierre requis |
 | Fer | Gris-bleu | Montagne profonde | Non | Outil de cuivre requis |
+| Or | Jaune d'or | Montagne, désert (rare) | Non | Outil de pierre requis (J12) |
+| Pierres précieuses | Turquoise | Haute montagne | Non | Outil de pierre requis (J12) |
 | Gibier | Jaune | Forêt, plaine | Oui, se déplace et se reproduit | Arme requise (faune, ajoutée au jalon J4) |
 
 La palette exacte (codes hexadécimaux) est définie dans `data/resources.json`. Règles de palette :

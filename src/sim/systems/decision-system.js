@@ -17,7 +17,7 @@ import { atCamp, campOf, shareBoard } from '../colony/colony-logic.js';
 import { roomToReplicate } from '../colony/replication.js';
 import { carriesWriting, wantsMap } from '../knowledge/writing.js';
 import { senseCooking } from '../agents/cook-work.js';
-import { FarmJob } from '../farming/farm-jobs.js';
+import { FarmJob, releaseFarm } from '../farming/farm-jobs.js';
 import { considerJob, saleGood } from '../economy/jobs.js';
 import { senseMigration } from '../colony/migration.js';
 import { senseTrade } from '../agents/trade-work.js';
@@ -175,6 +175,8 @@ function senseInputs(state, ctx, id) {
   senseSafety(state, ctx, id, home);
   // Farming: a job in hand, or free jobs seen on the blackboard, for those who know how to sow.
   const sower = home !== null && ctx.plotRecipe >= 0 && a.recipes[id].knows(ctx.plotRecipe);
+  // A farm job held by one who forgot how to sow is given back (it would hold it for ever).
+  if (!sower && a.farmJob[id] !== FarmJob.NONE) releaseFarm(state, ctx, id);
   const farming = a.farmJob[id] !== FarmJob.NONE;
   input[INPUT.farmWork] = sower ? (farming ? 1 : a.farmSeen[id] === 1 ? 0.8 : 0) : 0;
   input[INPUT.cookDuty] = senseCooking(state, ctx, id, home) ? 1 : 0;

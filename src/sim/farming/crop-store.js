@@ -85,6 +85,18 @@ export class CropStore {
   }
 
   /**
+   * Gives up a plot (a wall is built on it): it belongs to no colony any more and grows nothing.
+   * @param {number} p
+   * @returns {void}
+   */
+  retire(p) {
+    this.colony[p] = -1;
+    this.stage[p] = FALLOW;
+    this.claim[p] = -1;
+    this.index.delete(CropStore.key(this.x[p], this.y[p]));
+  }
+
+  /**
    * @param {import('../core/hash.js').Hasher} h
    * @returns {void}
    */

@@ -374,6 +374,10 @@ export function onBuilt(state, ctx, id, code, x, y) {
     colony.sheltersBuilt++;
   } else if (ctx.catalog.structures[code - 1].kind === 'library') {
     colony.addLibrary(x, y, state.tick);
+  } else if (code === ctx.treasuryCode && !colony.hasTreasure) {
+    colony.hasTreasure = true;
+    colony.treasureX = x;
+    colony.treasureY = y;
   }
   const a = ctx.agents;
   const slot = a.taskProject[id];

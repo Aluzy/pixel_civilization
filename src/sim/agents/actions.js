@@ -28,6 +28,7 @@ import { noteDelivery } from './experience.js';
 import { researcher } from './work.js';
 import { harvestedPlot } from '../systems/farm-system.js';
 import { fetchInputs, stockProduce, tillDone, waterPlot, sowPlot } from '../farming/farm-jobs.js';
+import { buildSegment } from '../colony/fortress.js';
 import {
   libraryBeside,
   lookAtLibrary,
@@ -140,9 +141,10 @@ export function stepAction(state, ctx, id) {
       const path = agents.path[id];
       const nx = path[index * 2];
       const ny = path[index * 2 + 1];
-      const biome = state.world.packedAt(nx, ny) & PACK.MASK;
-      const factor = ctx.biomeSpeed[biome];
-      if (factor <= 0) {
+      const packed = state.world.packedAt(nx, ny);
+      const factor = ctx.biomeSpeed[packed & PACK.MASK];
+      // A wall built across the path since it was planned: replan.
+      if (factor <= 0 || ctx.blocksAgent[packed >>> PACK.STRUCTURE_SHIFT] === 1) {
         finish(ctx, id);
         return;
       }
@@ -235,6 +237,13 @@ export function stepAction(state, ctx, id) {
       agents.actionProgress[id] += 1;
       if (agents.actionProgress[id] >= ctx.catalog.recipes[agents.craftRecipe[id]].duration) {
         craft(state, ctx, id);
+        finish(ctx, id);
+      }
+      return;
+    case Action.BUILD:
+      agents.actionProgress[id] += 1;
+      if (agents.actionProgress[id] >= ctx.catalog.recipes[agents.craftRecipe[id]].duration) {
+        buildSegment(state, ctx, id);
         finish(ctx, id);
       }
       return;
@@ -671,6 +680,7 @@ export function isEffort(action) {
     action === Action.MOVE ||
     action === Action.FORAGE ||
     action === Action.HARVEST ||
-    action === Action.CRAFT
+    action === Action.CRAFT ||
+    action === Action.BUILD
   );
 }

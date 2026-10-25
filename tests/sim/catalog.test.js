@@ -32,7 +32,7 @@ describe('catalog', () => {
     );
     const spear = matchRecipe(catalog, workbench, mask('wood', 'fiber'));
     expect(catalog.recipes[spear].id).toBe('spear');
-    expect(matchRecipe(catalog, BARE_HANDS, mask('wood'))).toBe(-1);
+    expect(matchRecipe(catalog, BARE_HANDS, mask('fiber'))).toBe(-1);
     expect(matchRecipe(catalog, workbench, mask('wood', 'fiber', 'clay'))).toBe(-1);
   });
 

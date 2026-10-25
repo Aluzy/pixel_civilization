@@ -62,7 +62,10 @@ export function sell(state, ctx, colony, id, good, units) {
   colony.stock[good] += units;
   colony.inToday[good] += units;
   const due = bidOf(colony.price[good]) * units;
-  const pay = due < colony.treasury ? due : colony.treasury > 0 ? colony.treasury : 0;
+  // Gold and gems are paid only with the écus the counter can spare: the rest keeps the market of
+  // food and materials going.
+  const spare = ctx.treasureGoods[good] === 1 ? treasureSpare(ctx, colony) : colony.treasury;
+  const pay = due < spare ? due : spare > 0 ? spare : 0;
   a.coins[id] += pay;
   a.earnedToday[id] += pay;
   colony.treasury -= pay;
@@ -75,6 +78,17 @@ export function sell(state, ctx, colony, id, good, units) {
     state.events.push(state.tick, EventType.FIRST_SALE, id, a.x[id], a.y[id], good, role);
   }
   return pay;
+}
+
+/**
+ * Écus the counter can spend on gold and gems: the treasury beyond a reserve per member.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} colony
+ * @returns {number}
+ */
+export function treasureSpare(ctx, colony) {
+  const reserve = ctx.balance.fortress.treasureReserve * colony.members;
+  return colony.treasury > reserve ? colony.treasury - reserve : 0;
 }
 
 /**

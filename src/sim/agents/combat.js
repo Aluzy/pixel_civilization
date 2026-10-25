@@ -24,7 +24,9 @@ export function skillFactor(ctx, id) {
  * @returns {number}
  */
 export function agentAttack(ctx, id) {
-  return ctx.agents.attack[id] * attackMultiplier(ctx, id) * skillFactor(ctx, id);
+  // From a tower one strikes better.
+  const tower = ctx.agents.onTower[id] === 1 ? ctx.balance.fortress.towerAttack : 1;
+  return ctx.agents.attack[id] * attackMultiplier(ctx, id) * skillFactor(ctx, id) * tower;
 }
 
 /**

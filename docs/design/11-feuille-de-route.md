@@ -240,6 +240,33 @@ Réalisé :
 
 **Sortie** : sur la majorité des graines à 150 jours, une colonie bâtit une enceinte fermée autour de son trésor, que les prédateurs ne franchissent pas.
 
+Réalisé :
+- **Sortie**, sur 10 graines et 150 jours :
+  - la première colonie bâtit sa salle du trésor, puis ferme son enceinte autour d'elle, sur les 10 graines, entre les jours 24 et 71 ;
+  - les 10 enceintes ont leur tour ;
+  - aucune intrusion de prédateur dans une enceinte fermée ;
+  - test automatique sur les graines 2 et 3 : enceinte fermée autour du trésor, anneau entièrement infranchissable, prédateurs venus jusqu'au mur et restés dehors pendant 10 jours.
+- **Tenu** :
+  - au jour 150, 198 à 450 individus, contre 48 à 500 au J11 sur les mêmes graines ;
+  - au moins deux colonies sur 6 graines sur 10 (8 au J11) : la sortie du J11 tient ;
+  - les sorties des J5 à J11 passent ;
+  - `npm run bench` : voir la décision 0025.
+- **Ajouts** :
+  - or et pierres précieuses, salle du trésor, danger ressenti au camp ;
+  - palissade, portes, tour ;
+  - projet d'enceinte, chantier pan par pan ;
+  - navigation par points de route autour des enceintes ;
+  - veille du haut de la tour ;
+  - bloc Colonie (trésor, enceinte), chronique de l'enceinte ;
+  - corrections du glanage (décision 0025) ;
+  - détail dans [16](16-guerre-et-forteresses.md) et la décision 0025.
+- **Reporté** :
+  - agrandir l'enceinte quand la colonie la déborde ;
+  - murs de pierre et de brique, points de vie des murs ;
+  - portes réservées aux membres ;
+  - ordre spatial et zone de défense ;
+  - fonte de l'or en écus.
+
 ### J13 — Conflits (`v1.0.0`)
 
 - Incidents et rancunes, raids décidés par simulation mentale (butin, chances, pertes), alerte et défense, bonus des murs, butin, paix, absorption.

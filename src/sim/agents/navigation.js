@@ -18,9 +18,22 @@ export class Navigator {
    * @param {object} options
    * @param {Float64Array} options.biomeSpeed - Speed factor per biome index; 0 = impassable.
    * @param {number} options.waterBiome - Biome index of water.
+   * @param {Uint8Array} [options.blocks] - 1 for each structure code that cannot be crossed.
    */
-  constructor({ biomeSpeed, waterBiome }) {
+  constructor({ biomeSpeed, waterBiome, blocks = new Uint8Array(256) }) {
     this.biomeSpeed = biomeSpeed;
+    this.blocks = blocks;
+    /**
+     * Colonies whose enclosures are known to everyone who walks by them (set by the simulation):
+     * a target across a wall is reached through its gate.
+     * @type {{ encState: number, gatesBuilt: number, gateCount: number, encX0: number,
+     *   encY0: number, encX1: number, encY1: number, gateX: Int32Array, gateY: Int32Array,
+     *   inside: (x: number, y: number) => boolean, onRing: (x: number, y: number) => boolean }[]}
+     */
+    this.colonies = [];
+    /** Waypoint written by {@link Navigator#detour}. */
+    this.wayX = 0;
+    this.wayY = 0;
     this.waterBiome = waterBiome;
     this.biome = new Uint8Array(MAX_CELLS);
     this.resource = new Uint8Array(MAX_CELLS);
@@ -66,7 +79,7 @@ export class Navigator {
         this.resource[i] = (p >> PACK.RESOURCE_SHIFT) & PACK.MASK;
         this.quantity[i] = (p >> PACK.QUANTITY_SHIFT) & PACK.MASK;
         this.structure[i] = (p >>> PACK.STRUCTURE_SHIFT) & PACK.MASK;
-        const speed = this.biomeSpeed[biome];
+        const speed = this.blocks[this.structure[i]] === 1 ? 0 : this.biomeSpeed[biome];
         this.stepCost[i] = speed > 0 ? 1 / speed : Infinity;
       }
     }
@@ -282,7 +295,160 @@ export class Navigator {
    * @returns {boolean}
    */
   buildable(cell) {
-    return this.dist[cell] !== Infinity && this.resource[cell] === 0 && this.structure[cell] === 0;
+    if (this.dist[cell] === Infinity || this.resource[cell] !== 0 || this.structure[cell] !== 0) {
+      return false;
+    }
+    // The ring of an enclosure is kept for its wall.
+    const x = this.cellX(cell);
+    const y = this.cellY(cell);
+    for (const c of this.colonies) if (c.onRing(x, y)) return false;
+    return true;
+  }
+
+  /**
+   * Waypoint towards (tx, ty) around the enclosures (docs/design/16-guerre-et-forteresses.md,
+   * « Navigation avec obstacles »): the local search only sees the window, so a wall longer than
+   * the window would trap it. Crossing a wall goes through a gate (to the tile just beyond), the
+   * one that makes the shortest trip; from a side with no gate, along the wall to the corner
+   * first; and a target on the far side of an enclosure is reached by its nearest corner.
+   * Writes the waypoint in `wayX`, `wayY` (the target itself if no wall is in the way).
+   * @param {number} tx
+   * @param {number} ty
+   * @returns {void}
+   */
+  detour(tx, ty) {
+    const ax = this.cellX(this.center);
+    const ay = this.cellY(this.center);
+    this.wayX = tx;
+    this.wayY = ty;
+    for (const c of this.colonies) {
+      if (c.encState === 0 || c.gatesBuilt === 0 || c.onRing(tx, ty)) continue;
+      const inA = c.inside(ax, ay);
+      const inT = c.inside(tx, ty);
+      if (inA !== inT) {
+        // Out through any gate; in through a gate on a side it stands before (or any, from the
+        // ring itself).
+        const any = inA || c.onRing(ax, ay);
+        let best = -1;
+        let bestD = Infinity;
+        let near = -1;
+        let nearD = Infinity;
+        for (let i = 0; i < c.gateCount; i++) {
+          if ((c.gatesBuilt & (1 << i)) === 0) continue;
+          const gx = c.gateX[i];
+          const gy = c.gateY[i];
+          const d =
+            Math.max(Math.abs(gx - ax), Math.abs(gy - ay)) +
+            Math.max(Math.abs(gx - tx), Math.abs(gy - ty));
+          if (d < nearD) {
+            nearD = d;
+            near = i;
+          }
+          if (!any && !this.facesGate(c, ax, ay, this.normalX(c, i), this.normalY(c, i))) continue;
+          if (d < bestD) {
+            bestD = d;
+            best = i;
+          }
+        }
+        if (best >= 0) {
+          const side = inA ? 1 : -1;
+          this.wayX = c.gateX[best] + side * this.normalX(c, best);
+          this.wayY = c.gateY[best] + side * this.normalY(c, best);
+        } else {
+          this.toCorner(c, ax, ay, this.normalX(c, near), this.normalY(c, near));
+        }
+        return;
+      }
+      if (inA) continue;
+      // Both outside: the enclosure stands between them along one axis.
+      const acrossY = (ay < c.encY0 && ty > c.encY1) || (ay > c.encY1 && ty < c.encY0);
+      const acrossX = (ax < c.encX0 && tx > c.encX1) || (ax > c.encX1 && tx < c.encX0);
+      if (acrossY && ax >= c.encX0 && ax <= c.encX1) {
+        this.wayX = ax - c.encX0 <= c.encX1 - ax ? c.encX0 - 1 : c.encX1 + 1;
+        this.wayY = ay < c.encY0 ? c.encY0 - 1 : c.encY1 + 1;
+        return;
+      }
+      if (acrossX && ay >= c.encY0 && ay <= c.encY1) {
+        this.wayX = ax < c.encX0 ? c.encX0 - 1 : c.encX1 + 1;
+        this.wayY = ay - c.encY0 <= c.encY1 - ay ? c.encY0 - 1 : c.encY1 + 1;
+        return;
+      }
+    }
+  }
+
+  /**
+   * Outward step of gate i, x part: -1 on the west side, 1 on the east side, else 0.
+   * @param {{ encX0: number, encX1: number, gateX: Int32Array }} c
+   * @param {number} i
+   * @returns {number}
+   */
+  normalX(c, i) {
+    return c.gateX[i] === c.encX0 ? -1 : c.gateX[i] === c.encX1 ? 1 : 0;
+  }
+
+  /**
+   * Outward step of gate i, y part (0 for a gate on the west or east side).
+   * @param {{ encX0: number, encX1: number, encY0: number, gateX: Int32Array,
+   *   gateY: Int32Array }} c
+   * @param {number} i
+   * @returns {number}
+   */
+  normalY(c, i) {
+    if (this.normalX(c, i) !== 0) return 0;
+    return c.gateY[i] === c.encY0 ? -1 : 1;
+  }
+
+  /**
+   * True if (x, y), outside the ring, lies beyond the side of the gate.
+   * @param {{ encX0: number, encY0: number, encX1: number, encY1: number }} c
+   * @param {number} x
+   * @param {number} y
+   * @param {number} nx
+   * @param {number} ny
+   * @returns {boolean}
+   */
+  facesGate(c, x, y, nx, ny) {
+    if (nx < 0) return x < c.encX0;
+    if (nx > 0) return x > c.encX1;
+    if (ny < 0) return y < c.encY0;
+    return y > c.encY1;
+  }
+
+  /**
+   * Waypoint of an agent outside the ring, not facing the gate: the outer corner on its way to
+   * the gate's side (along the wall it stands by).
+   * @param {{ encX0: number, encY0: number, encX1: number, encY1: number }} c
+   * @param {number} x
+   * @param {number} y
+   * @param {number} nx
+   * @param {number} ny
+   * @returns {void}
+   */
+  toCorner(c, x, y, nx, ny) {
+    if (ny !== 0) {
+      // Gate on the north or south side.
+      const gy = ny < 0 ? c.encY0 - 1 : c.encY1 + 1;
+      const backY = ny < 0 ? c.encY1 + 1 : c.encY0 - 1;
+      const nearX = x - c.encX0 <= c.encX1 - x ? c.encX0 - 1 : c.encX1 + 1;
+      if (x < c.encX0 || x > c.encX1) {
+        this.wayX = x < c.encX0 ? c.encX0 - 1 : c.encX1 + 1;
+        this.wayY = gy;
+      } else {
+        this.wayX = nearX;
+        this.wayY = backY;
+      }
+      return;
+    }
+    const gx = nx < 0 ? c.encX0 - 1 : c.encX1 + 1;
+    const backX = nx < 0 ? c.encX1 + 1 : c.encX0 - 1;
+    const nearY = y - c.encY0 <= c.encY1 - y ? c.encY0 - 1 : c.encY1 + 1;
+    if (y < c.encY0 || y > c.encY1) {
+      this.wayX = gx;
+      this.wayY = y < c.encY0 ? c.encY0 - 1 : c.encY1 + 1;
+    } else {
+      this.wayX = backX;
+      this.wayY = nearY;
+    }
   }
 
   /**
@@ -293,6 +459,17 @@ export class Navigator {
    * @returns {number}
    */
   toward(tx, ty) {
+    this.detour(tx, ty);
+    return this.towardPoint(this.wayX, this.wayY);
+  }
+
+  /**
+   * {@link Navigator#toward} without the detour around enclosures.
+   * @param {number} tx
+   * @param {number} ty
+   * @returns {number}
+   */
+  towardPoint(tx, ty) {
     const cdx = this.cellX(this.center) - tx;
     const cdy = this.cellY(this.center) - ty;
     let bestD2 = cdx * cdx + cdy * cdy;

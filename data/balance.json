@@ -293,6 +293,7 @@
     "wateringRadius": 1,
     "sowTicks": 20,
     "gleanUnits": 12,
+    "gleaners": 3,
     "claimTicks": 2400
   },
   "cooking": {
@@ -357,5 +358,19 @@
     "scoutTicks": 24000,
     "scoutLeg": [40, 70],
     "arriveRadius": 3
+  },
+  "fortress": {
+    "treasureMembers": 30,
+    "dangerDecay": 0.8,
+    "dangerLevel": 2,
+    "treasureValue": 8000,
+    "treasureReserve": 100,
+    "radius": 12,
+    "margin": [1, 3],
+    "maxSide": 40,
+    "batch": 10,
+    "towerSight": 6,
+    "towerAttack": 1.5,
+    "towerGuards": 2
   }
 }

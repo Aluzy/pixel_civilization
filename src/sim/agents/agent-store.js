@@ -97,6 +97,10 @@ export class AgentStore {
     this.caravanLeg = new Uint8Array(max);
     this.caravanGood = new Uint8Array(max);
     this.caravanPrice = new Float64Array(max * goodCount);
+    /** Tile of the wall segment (gate, tower) it builds, and 1 while it stands on a tower. */
+    this.siteX = new Int32Array(max);
+    this.siteY = new Int32Array(max);
+    this.onTower = new Uint8Array(max);
     this.max = max;
     this.goodSlots = goodCount;
     this.recipeCount = recipeCount;
@@ -373,6 +377,9 @@ export class AgentStore {
     this.caravanLeg[id] = 0;
     this.caravanGood[id] = 0;
     this.caravanPrice.fill(0, id * this.goodSlots, (id + 1) * this.goodSlots);
+    this.siteX[id] = 0;
+    this.siteY[id] = 0;
+    this.onTower[id] = 0;
     this.librarySeen[id] = 0;
     this.mapSeen[id] = -1;
     this.focusSeen[id] = -1;
@@ -544,6 +551,7 @@ export class AgentStore {
         .uint32(this.caravanLeg[id])
         .uint32(this.caravanGood[id]);
       h.typedArray(this.caravanPrice.subarray(g0, g0 + this.goodSlots));
+      h.uint32(this.siteX[id]).uint32(this.siteY[id]).uint32(this.onTower[id]);
       h.typedArray(this.path[id].subarray(0, this.pathLength[id] * 2));
       h.uint32(this.pathIndex[id]);
       h.typedArray(this.rng[id].s);

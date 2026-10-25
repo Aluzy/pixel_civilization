@@ -129,7 +129,8 @@ export function buildCatalog(data, tables) {
   const material = new Uint8Array(goodCount);
   const requiredTool = new Int16Array(resourceCount + 1);
   tables.resources.forEach((r, i) => {
-    if (!(r.nutrition > 0)) material[i + 1] = 1;
+    // Gold and gems are kept, not thrown into trials.
+    if (!(r.nutrition > 0) && !r.treasure) material[i + 1] = 1;
     // A tool not in the recipes yet (a later tier) leaves the resource out of reach.
     if (r.tool) requiredTool[i + 1] = goodIds.get(r.tool) ?? -1;
   });
