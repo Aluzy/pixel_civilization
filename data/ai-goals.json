@@ -116,6 +116,18 @@
       "considerations": [{ "input": "huntDuty", "curve": { "type": "linear", "m": 0.6, "b": 0 } }]
     },
     {
+      "id": "farm",
+      "name": "Cultiver",
+      "level": "efficiency",
+      "considerations": [{ "input": "farmWork", "curve": { "type": "linear", "m": 0.65, "b": 0 } }]
+    },
+    {
+      "id": "cook",
+      "name": "Cuisiner",
+      "level": "efficiency",
+      "considerations": [{ "input": "cookDuty", "curve": { "type": "linear", "m": 0.62, "b": 0 } }]
+    },
+    {
       "id": "rest",
       "name": "Se reposer",
       "level": "survival",

@@ -115,11 +115,18 @@ describe('harmony', () => {
     expect(rows.at(-1).population).toBe(sim.agents.aliveCount);
   }, 60000);
 
-  it('counts a famine against stability', () => {
+  it('counts a famine against stability, if enough members starve', () => {
     const sim = new Simulation({ seed: 3, balance });
     sim.step(12 * DAY);
     const colony = sim.state.colonies[0];
-    colony.lastStarvation = sim.tick;
+    colony.members = 100;
+    colony.popHistory.fill(100);
+    // One death of hunger in a hundred is a misfortune; three are a famine.
+    colony.starvedDays.fill(0);
+    colony.starvedToday = 1;
+    computeHarmony(sim.state, sim.ctx, colony);
+    expect(colony.harmony[1]).toBeGreaterThan(0);
+    colony.starvedToday = 2;
     computeHarmony(sim.state, sim.ctx, colony);
     expect(colony.harmony[1]).toBe(0);
   }, 60000);

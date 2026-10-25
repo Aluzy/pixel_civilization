@@ -38,7 +38,8 @@ const CATEGORIES = 4;
  */
 export function noteHarvest(state, ctx, id, x, y, resource) {
   const c = ctx.agents.colony[id];
-  if (c < 0 || ctx.regrowTicks[resource] <= 0) return;
+  // A crop harvested on its plot is sown again: it does not wear the land out.
+  if (c < 0 || ctx.regrowTicks[resource] <= 0 || state.crops.at(x, y) >= 0) return;
   const colony = state.colonies[c];
   if (!inTerritory(ctx, colony, x, y)) return;
   colony.harvested[bucketIndex(state, ctx, colony, resource)]++;
@@ -101,10 +102,15 @@ export function computeHarmony(state, ctx, colony) {
   colony.popHistory[colony.popDays % colony.popHistory.length] = colony.members;
   colony.popDays++;
   const s = colony.harmony;
-  s[1 + Component.STABILITY] = stability(
-    colony,
-    state.tick - colony.lastStarvation < h.famineDays * day,
-  );
+  // A famine: deaths of hunger or thirst over the last days, more than a small share of the
+  // colony (one death in a large colony is a misfortune, not a famine).
+  const recent = colony.starvedDays;
+  recent.copyWithin(0, 1);
+  recent[recent.length - 1] = colony.starvedToday;
+  colony.starvedToday = 0;
+  let starved = 0;
+  for (let i = 0; i < recent.length; i++) starved += recent[i];
+  s[1 + Component.STABILITY] = stability(colony, starved > colony.members * h.famineShare);
   s[1 + Component.DURABILITY] = durability(ctx, colony);
   s[1 + Component.SPATIAL] = spatial(state, ctx, colony);
   s[1 + Component.KNOWLEDGE] = knowledge(state);

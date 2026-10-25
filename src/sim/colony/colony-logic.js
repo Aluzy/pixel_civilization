@@ -3,6 +3,7 @@ import { harvestMultiplier } from '../agents/equipment.js';
 import { noteDelivery } from '../agents/experience.js';
 import { EventType } from '../core/events.js';
 import { ProjectKind } from './colony-store.js';
+import { stockPortions } from '../farming/food.js';
 
 // Rules of collective work (docs/design/06-ia.md, couche 4): the blackboard is read and written
 // at the camp only; projects are split into tasks ("bring 10 wood"), reserved by members, and
@@ -40,15 +41,22 @@ export function atCamp(ctx, colony, id) {
  * @param {number} good
  * @param {number} members
  * @param {object} cfg - balance.colony.
+ * @param {import('../farming/food.js').FoodTables} food
+ * @param {number} portion - Nutrition of a portion.
  * @returns {number}
  */
-export function remaining(colony, project, good, members, cfg) {
+export function remaining(colony, project, good, members, cfg, food, portion) {
   if (project.kind === ProjectKind.PANTRY) {
-    // Enough for every member and for one more: food to spare is what allows a birth.
+    if (project.needs[good] === 0) return 0;
+    // Enough for every member and for one more, in portions of any food (a loaf of bread counts
+    // for several): food to spare is what allows a birth.
     const target = Math.round((members + 1) * cfg.foodPerMember * colony.pantryBoost);
-    return project.needs[good] > 0
-      ? Math.max(0, target - colony.stock[good] - project.reserved[good])
-      : 0;
+    const missing = target - stockPortions(food, colony.stock, portion);
+    if (missing <= 0) return 0;
+    return Math.max(
+      0,
+      Math.ceil((missing * portion) / food.nutrition[good]) - project.reserved[good],
+    );
   }
   // What was brought for this project and is still in the stock (projects do not share).
   const held = Math.min(project.delivered[good], colony.stock[good]);
@@ -109,10 +117,11 @@ export function shareBoard(state, ctx, colony, id) {
   const m = ctx.balance.memory;
   const danger = ctx.catalog.dangerSubject;
   a.boardTick[id] = state.tick;
-  let food = 0;
-  for (let r = 1; r < ctx.edible.length; r++) if (ctx.edible[r] === 1) food += colony.stock[r];
+  const food = stockPortions(ctx.foodTables, colony.stock, ctx.balance.cooking.portion);
   a.pantrySeen[id] = Math.min(65535, food);
   a.tasksSeen[id] = colony.open > 0 ? 1 : 0;
+  a.farmSeen[id] = colony.farmOpen > 0 ? 1 : 0;
+  a.pantryFalling[id] = colony.pantryFalling() ? 1 : 0;
   a.focusSeen[id] = colony.focus;
   for (let i = 0; i < memory.count; i++) {
     if (memory.subject[i] === danger) continue;
@@ -146,15 +155,17 @@ function knowsSubject(memory, subject) {
  * Open tasks of a colony: units still to bring, plus a shelter ready to build.
  * @param {import('./colony-store.js').Colony} colony
  * @param {object} cfg - balance.colony.
+ * @param {import('../farming/food.js').FoodTables} food
+ * @param {number} portion
  * @returns {number}
  */
-export function openTasks(colony, cfg) {
+export function openTasks(colony, cfg, food, portion) {
   let n = 0;
   for (const p of colony.projects) {
     if (p.kind === ProjectKind.NONE) continue;
     if (readyToBuild(colony, p)) n++;
     for (let g = 1; g < p.needs.length; g++) {
-      if (remaining(colony, p, g, colony.members, cfg) > 0) n++;
+      if (remaining(colony, p, g, colony.members, cfg, food, portion) > 0) n++;
     }
   }
   return n;
@@ -174,6 +185,8 @@ export function chooseTask(state, ctx, colony, id) {
   const a = ctx.agents;
   const cfg = ctx.balance.colony;
   const book = a.recipes[id];
+  const food = ctx.foodTables;
+  const portion = ctx.balance.cooking.portion;
   for (let s = 0; s < colony.projects.length; s++) {
     const p = colony.projects[s];
     // Anyone can plant; only those who know the recipe build.
@@ -195,7 +208,7 @@ export function chooseTask(state, ctx, colony, id) {
     const p = colony.projects[s];
     if (p.kind === ProjectKind.NONE) continue;
     for (let g = 1; g <= ctx.catalog.resourceCount; g++) {
-      if (remaining(colony, p, g, colony.members, cfg) <= 0) continue;
+      if (remaining(colony, p, g, colony.members, cfg, food, portion) <= 0) continue;
       const tool = ctx.catalog.requiredTool[g];
       if (tool < 0 || (tool > 0 && a.carried(id, tool) === 0)) continue;
       const i = memory.nearest(ctx.subjectMasks[g], colony.campX, colony.campY);
@@ -219,7 +232,7 @@ export function chooseTask(state, ctx, colony, id) {
   }
   if (bestSlot < 0) return false;
   const p = colony.projects[bestSlot];
-  const want = remaining(colony, p, bestGood, colony.members, cfg);
+  const want = remaining(colony, p, bestGood, colony.members, cfg, food, portion);
   const amount = Math.min(want, room, cfg.taskChunk);
   p.reserved[bestGood] += amount;
   reserve(state, a, id, bestSlot, bestGood, amount, false);

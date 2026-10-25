@@ -14,8 +14,9 @@ const good = (id) => {
   if (r >= 0) return r + 1;
   return catalog.items.find((i) => i.id === id).good;
 };
+const bit = (id) => catalog.ingredientBit[good(id)];
 const code = (id) => catalog.structures.find((s) => s.id === id).code;
-const mask = (...ids) => ids.reduce((m, id) => m | (1 << good(id)), 0);
+const mask = (...ids) => ids.reduce((m, id) => m | (1 << bit(id)), 0);
 
 describe('catalog', () => {
   it('puts resources and items in one id space', () => {
@@ -32,7 +33,7 @@ describe('catalog', () => {
     const spear = matchRecipe(catalog, workbench, mask('wood', 'fiber'));
     expect(catalog.recipes[spear].id).toBe('spear');
     expect(matchRecipe(catalog, BARE_HANDS, mask('wood'))).toBe(-1);
-    expect(matchRecipe(catalog, workbench, mask('wood', 'fiber', 'berries'))).toBe(-1);
+    expect(matchRecipe(catalog, workbench, mask('wood', 'fiber', 'clay'))).toBe(-1);
   });
 
   it('knows which recipe makes each good and structure', () => {

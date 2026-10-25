@@ -10,6 +10,7 @@ import { WORLD_TABLES } from '../../src/sim/simulation.js';
 const catalog = buildCatalog(recipeData, WORLD_TABLES);
 const good = (id) => WORLD_TABLES.resources.findIndex((x) => x.id === id) + 1;
 const WEIGHTS = balance.crafting.trial;
+const bit = (id) => catalog.ingredientBit[good(id)];
 const FREE = new Float64Array(catalog.structures.length + 1);
 const OLD = () => -1e9;
 
@@ -70,11 +71,12 @@ describe('experiments', () => {
     const book = new RecipeBook(catalog.recipes.length, 32);
     const hands = new Uint8Array(catalog.structures.length + 1);
     expect(experimentAll(['wood', 'fiber', 'stone'], hands, book).sort()).toEqual([
+      'campfire',
       'shelter',
       'workbench',
     ]);
-    // 7 sets of 3 materials, 2 were recipes.
-    expect(book.failureCount()).toBe(5);
+    // 7 sets of 3 materials, 3 were recipes.
+    expect(book.failureCount()).toBe(4);
     const withBench = hands.slice();
     withBench[1] = 1;
     const more = experimentAll(['wood', 'fiber', 'stone'], withBench, book);
@@ -93,7 +95,7 @@ describe('experiments', () => {
       'item:weapon',
     );
     expect(station).toBe(1);
-    expect(mask).toBe((1 << good('wood')) | (1 << good('fiber')));
+    expect(mask).toBe((1 << bit('wood')) | (1 << bit('fiber')));
   });
 
   it('looks for a structure where structures were made, with familiar materials', () => {
@@ -110,14 +112,14 @@ describe('experiments', () => {
     const fetch = fetchCosts({ wood: 0, fiber: 0, stone: 0, clay: 0 });
     const [station, mask] = choose(book, fetch, stations, 'structure');
     expect(station).toBe(BARE_HANDS);
-    expect(mask).toBe((1 << good('wood')) | (1 << good('fiber')) | (1 << good('stone')));
+    expect(mask).toBe((1 << bit('wood')) | (1 << bit('fiber')) | (1 << bit('stone')));
   });
 
   it('weighs the walk to fetch a missing material', () => {
     const book = new RecipeBook(catalog.recipes.length, 32);
     const hands = new Uint8Array(catalog.structures.length + 1);
     const [, mask] = choose(book, fetchCosts({ wood: 0, fiber: 0.2, stone: 5 }), hands);
-    expect(mask & (1 << good('stone'))).toBe(0);
+    expect(mask & (1 << bit('stone'))).toBe(0);
   });
 
   it('has nothing to try without materials', () => {

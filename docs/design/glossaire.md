@@ -58,6 +58,11 @@
 | Compétence de combat | Expérience de 0 à 1 apprise à chaque coup, multiplie attaque et défense jusqu'à ×1,5 (J8) | `combatSkill` |
 | Garde | Membre en poste qui veille la nuit et chasse les tanières connues (J8) | `guards` |
 | Carcasse | Ressource laissée par un prédateur tué ; pourrit, donne une peau (J8) | `carcass` |
+| Parcelle | Construction où pousse un plant semé ; arrosée chaque jour, elle donne du blé (J9) | `plot` |
+| Graine | Bien trouvé en récoltant du blé, qui se sème (J9) | `seed` |
+| Portion | Unité de nourriture de la réserve : 12 de nutrition, quel que soit l'aliment (J9) | `portion` |
+| Cuisinier | Membre en poste qui transforme la réserve en farine et en plats (J9) | `cooks` |
+| Indice | Ce qu'un individu a deviné d'un bien (une graine se sème), qui oriente ses essais (J9) | `hint` |
 | Expédition | Groupe qui quitte sa colonie pour en fonder une autre (vision v2) | `expedition` |
 | Raid | Troupe envoyée par une colonie piller une autre (vision v2) | `raid` |
 | Projet | But à long terme décomposé en sous-tâches (HTN) | `project` |

@@ -13,6 +13,9 @@ export const MAX_LIBRARIES = 8;
 /** Most guards a colony keeps at once. */
 export const MAX_GUARDS = 12;
 
+/** Most cooks a colony keeps at once. */
+export const MAX_COOKS = 8;
+
 /** Most contributors remembered per project. */
 export const MAX_CONTRIBUTORS = 8;
 
@@ -148,6 +151,9 @@ export class Colony {
     this.popHistory = new Int32Array(harmonyCfg.stabilityDays);
     this.popDays = 0;
     this.lastStarvation = -0x40000000;
+    /** Deaths of hunger or thirst today, and on each of the last days (newest last). */
+    this.starvedToday = 0;
+    this.starvedDays = new Int32Array(harmonyCfg.famineDays ?? 3);
     this.resourceSlots = goods;
     this.harvested = new Int32Array(harmonyCfg.durabilityDays * goods);
     this.regrown = new Int32Array(harmonyCfg.durabilityDays * goods);
@@ -157,9 +163,38 @@ export class Colony {
     this.lastField = -0x40000000;
     /** Pantry target multiplier: higher when stability or well-being is the weakest point. */
     this.pantryBoost = 1;
+    // Farming and cooking (docs/design/13-agriculture-cuisine.md): free farm jobs at the last
+    // count, plots and crop harvests, cooks (-1 for a free post) and since when.
+    this.farmOpen = 0;
+    this.plots = 0;
+    this.cropHarvests = 0;
+    this.withered = 0;
+    this.cooks = new Int32Array(MAX_COOKS).fill(-1);
+    this.cookTick = new Int32Array(MAX_COOKS);
+    // Meals: nutrition eaten, the part of it that came from crops, dishes eaten; in all and today.
+    this.eaten = 0;
+    this.eatenCrop = 0;
+    this.dishes = 0;
+    this.eatenToday = 0;
+    this.cropToday = 0;
+    this.dishesToday = 0;
+    this.eatenYesterday = 0;
+    this.cropYesterday = 0;
+    this.dishesYesterday = 0;
+    /** Food in the stock (portions) at the start of each of the last days, newest last. */
+    this.pantryDays = new Int32Array(4);
     /** @type {Project[]} */
     this.projects = [];
     for (let i = 0; i < cfg.projectSlots; i++) this.projects.push(new Project(goods));
+  }
+
+  /**
+   * @returns {boolean} True if the stock holds less food than some days ago (it is being eaten
+   *   faster than it is brought in).
+   */
+  pantryFalling() {
+    const d = this.pantryDays;
+    return d[d.length - 1] < d[0];
   }
 
   /**
@@ -329,9 +364,19 @@ export class Colony {
     for (const p of this.projects) p.hashInto(h);
     h.typedArray(this.harmony).uint32(this.focus & 0xff);
     h.typedArray(this.popHistory).uint32(this.popDays).uint32(this.lastStarvation);
+    h.uint32(this.starvedToday).typedArray(this.starvedDays);
     h.typedArray(this.harvested).typedArray(this.regrown).uint32(this.planted);
     h.uint32(Math.round(this.pantryBoost * 1000))
       .uint32(this.fields)
       .uint32(this.lastField);
+    h.uint32(this.farmOpen).uint32(this.plots).uint32(this.cropHarvests).uint32(this.withered);
+    h.typedArray(this.cooks).typedArray(this.cookTick);
+    h.uint32(Math.round(this.eaten))
+      .uint32(Math.round(this.eatenCrop * 100))
+      .uint32(this.dishes);
+    h.uint32(Math.round(this.eatenToday)).uint32(Math.round(this.cropToday * 100));
+    h.uint32(this.dishesToday).typedArray(this.pantryDays);
+    h.uint32(Math.round(this.eatenYesterday)).uint32(Math.round(this.cropYesterday * 100));
+    h.uint32(this.dishesYesterday);
   }
 }

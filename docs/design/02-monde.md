@@ -90,6 +90,8 @@ Les menaces donnent un sens à l'abri, aux armes, à l'attribut défense et à l
 
 Au J8, les rôdeurs solitaires restent, mais une colonie d'au moins 6 membres attire des **tanières** (pixel rouge très sombre `#3e0a0a`, 80 PV, en forêt ou en plaine, à 28–40 cases du camp) et leurs **meutes** de 2 à 4 prédateurs, qui rôdent la nuit vers le camp, encerclent, rentrent guérir à la tanière et peuvent frapper dans un abri isolé. Un prédateur tué laisse une **carcasse** (`#5a2a1e`, 4 unités, nutrition 30) qui pourrit en 2 jours et donne une peau. Les attaques passent à 8. Détail dans [16](16-guerre-et-forteresses.md).
 
+Au J9, le **blé sauvage** (`#e3c55a`, renouvelable, 3 à 8 unités) pousse en plaine. On ne le broute pas : rapporté, le grain se mange cru (6) ou se moud en farine. Le récolter donne parfois une graine. Les **parcelles** (`#5c3d22`) sont des constructions ; un blé mûr s'affiche à leur place. Détail dans [13](13-agriculture-cuisine.md).
+
 Vision v2 (décision 0020) : meutes, tanières, abris forçables, gibier ([16-guerre-et-forteresses](16-guerre-et-forteresses.md)) ; nouvelles ressources : blé sauvage ([13-agriculture-cuisine](13-agriculture-cuisine.md)), or et pierres précieuses ([14-economie](14-economie.md)).
 
 ## Régions gelées

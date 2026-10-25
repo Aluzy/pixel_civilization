@@ -1,6 +1,6 @@
 # 13 — Agriculture et cuisine
 
-> Chantier préparé après le J7 (décision 0020). Rien n'est encore implémenté. Les valeurs sont des **valeurs de départ 🟡**, à caler avec la simulation headless.
+> Chantier préparé après le J7 (décision 0020), implémenté en partie au J9 (décision 0022) : voir « Ce que fait le J9 » à la fin, qui prime sur les valeurs de départ 🟡 des sections précédentes.
 
 Les pixels doivent **découvrir** l'agriculture, pas la recevoir. Puis la cuisine leur donne une raison d'échanger : un plat nourrit plus que ses ingrédients, et le cuisinier n'est pas forcément l'agriculteur ([14-economie](14-economie.md)).
 
@@ -76,3 +76,74 @@ Le dépôt [Aluzy/family_farm](https://github.com/Aluzy/family_farm) (`docs/conc
 ## Critère de sortie proposé (J9)
 
 Sur la majorité des graines, une colonie découvre l'agriculture par l'essai avant le jour 60, et au jour 100 plus de la moitié de la nourriture qu'elle mange vient de ses cultures ; au moins un plat cuisiné est mangé chaque jour. La population d'une colonie ordinaire peut alors dépasser 300 individus (le critère des 500 du J7 devient atteignable dans une vraie partie).
+
+## Ce que fait le J9
+
+Implémenté au J9 (décision 0022). Là où il s'écarte des sections précédentes, c'est ce qui suit qui vaut.
+
+**Une seule culture, le blé** (`data/crops.json`, `data/resources.json`) :
+
+- Le blé sauvage pousse en plaine. On ne le broute pas sur place : une fois rapporté, le grain cru se mange mais nourrit peu (6).
+- Chaque grain récolté donne une **graine** avec 30 % de chance.
+- Légumes, baies cultivées, lin, tournesol, pressoir et huile sont reportés.
+
+**Découverte** :
+
+- La recette **« semer »** est « une graine seule, à mains nues ». Elle pose une parcelle, la graine déjà en terre.
+- L'indice du point 2 est simplifié, faute d'objets posés au sol. Quand un individu trouve une graine dans du blé sauvage, il a 25 % de chances de comprendre que les graines font des plantes.
+- Cet indice donne un fort bonus d'essai (+3) à « la graine seule, à mains nues ». L'individu le vérifie quand il est curieux, à la place d'explorer.
+- L'inventeur, qui essaie librement, sait aussi qu'une graine se trouve en récoltant du blé (de même, une peau en dépeçant une carcasse).
+- Sur 10 graines, l'agriculture est découverte entre les jours 9 et 51 dans 7 colonies, au jour 69 dans une, jamais dans deux.
+
+**Parcelles** (`src/sim/farming/`, système `farm` après le système monde) :
+
+- Un plant gagne un stade chaque jour où il a été arrosé la veille.
+- Il mûrit en 3 stades et pose alors 40 grains sur la parcelle, récoltés comme une ressource. La parcelle redevient nue à la dernière unité.
+- Un plant sans eau 3 jours de suite meurt.
+- Un blé mûr laissé 2 jours tombe et se ressème de lui-même (au lieu de « monter en graine »).
+- Il n'y a pas encore de jarre. Une parcelle doit avoir de l'eau à 4 cases au plus, et l'eau portée arrose aussi les parcelles voisines (1 case autour) : un champ groupé s'arrose rang par rang.
+- Les ravageurs et les clôtures sont reportés.
+
+**Travail aux champs** (objectif **Cultiver**, 0,65) :
+
+- Les parcelles sont au tableau noir. Un membre qui sait semer prend un travail à la fois au camp, ou aux champs s'il a lu le tableau le jour même.
+- Ordre de priorité :
+  - récolter un blé mûr ;
+  - arroser ;
+  - semer une parcelle nue avec une graine de la réserve ;
+  - tracer une nouvelle parcelle, tant que la colonie en a moins de 1,5 par membre, à partir de 8 membres. L'emplacement est choisi près de l'eau et des autres parcelles, à 20 cases du camp au plus.
+- Sans graine, le membre glane du blé sauvage pour ses graines.
+- Grain et graines vont à la réserve. Ne pas tout manger se fait seul : les graines ne se mangent pas.
+
+**Cuisine** :
+
+- Recettes (nutrition d'un plat = arrondi de 1,3 × la valeur de ses ingrédients) :
+
+  | Recette | Où | Ingrédients | Nutrition |
+  | --- | --- | --- | --- |
+  | Farine | à la main | 3 grains | (valeur 18) |
+  | Pain | feu de camp | 2 farines | 47 |
+  | Tarte aux baies | feu de camp | 1 farine + 2 baies | 55 |
+  | Viande grillée | feu de camp | 1 carcasse | 39 |
+
+- Pas de meule ni de four pour l'instant. Le feu de camp coûte 3 bois et 3 pierres, à mains nues.
+- **Cuisiniers** : un poste pour 10 membres, à partir de 12 membres, tenu par un membre qui n'est ni scribe, ni inventeur, ni garde. Objectif **Cuisiner**, 0,62.
+- Le cuisinier prend à la réserve les ingrédients de 5 tournées. Il ramasse dehors ce qui ne vient pas de la réserve, puis cuisine et range le résultat. Il choisit la recette qui ajoute le plus de valeur nourrissante.
+- **Recherche en cuisine** :
+  - Une nourriture ou une production en réserve dont il ne connaît aucun usage (le grain avant la farine, la farine avant le pain, les baies avant la tarte) l'occupe. Il essaie d'abord cet ingrédient seul, puis avec un autre, et ainsi de suite.
+  - Il commence par une station dont il ne connaît encore aucun usage (bonus d'essai +0,8).
+  - Il cherche aussi de nouvelles stations 4 fois sur 10.
+  - Les aliments ne sont jamais jetés dans les autres essais.
+- **Plaisir** : un plat apaise la curiosité de 4 × son plaisir (pain et viande 3, tarte 5). Le moral et le bien-être de l'harmonie sont reportés.
+- La **péremption** par lots est reportée au marché du J10.
+
+**Ce qui change autour** :
+
+- La réserve se compte en **portions** de n'importe quelle nourriture (12 de nutrition) : un pain vaut 4 portions.
+- Une réplication coûte 6 portions de n'importe quelle nourriture (la moins nourrissante d'abord) et 3 fibres.
+- Un abri a 4 lits. Une colonie ouvre plusieurs projets d'abri à la fois (1 + 1 par 30 membres).
+- À partir de 40 membres, il n'y a pas de naissance tant que la colonie a moins d'une parcelle pour deux membres. Une réserve qui baisse depuis trois jours retient aussi les naissances, sauf s'il reste 12 portions par membre.
+- La famine qui annule la stabilité de l'harmonie demande plus de 2 % des membres morts de faim ou de soif en 3 jours ([07](07-harmonie.md)).
+
+**Mesures** (10 graines, 100 jours) : voir la feuille de route ([11](11-feuille-de-route.md), J9).
+

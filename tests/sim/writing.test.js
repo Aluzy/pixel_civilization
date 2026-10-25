@@ -264,11 +264,10 @@ describe('ageing', () => {
 });
 
 // J6 exit: a recipe survives the death of the one who discovered it thanks to a book, and a game
-// shows at least one piece of knowledge lost then found again. Since J8 no single seed shows both
-// within 90 days, so two games tell them: on seed 5 a recipe is read in the library on day 59 after
-// its discoverer died; on seed 33 a recipe is lost on day 57 (nobody alive knows it, no book
-// within reach) and rediscovered by trial on day 76. (The seeds change when behaviour does: seed 8
-// told both until J7, seed 32 until J8.)
+// shows at least one piece of knowledge lost then found again. Two games tell them: on seed 5 a
+// recipe is read in the library after its discoverer died; on seed 30 a recipe is lost on day 25
+// (nobody alive knows it, no book within reach) and found again the next day. (The seeds change
+// when behaviour does: seed 8 told both until J7, seed 32 until J8, seeds 5 and 33 until J9.)
 describe('written knowledge (J6 exit)', () => {
   /**
    * Runs a game day by day until `done` holds or 90 days have passed.
@@ -296,9 +295,9 @@ describe('written knowledge (J6 exit)', () => {
     expect(k.savedByBook[r]).toBeGreaterThan(k.discovererDied[r]);
   }, 300000);
 
-  it('loses then finds knowledge again (seed 33)', async () => {
+  it('loses then finds knowledge again (seed 30)', async () => {
     const found = (k) => k.recovered.some((t, r) => t >= 0 && k.lost[r] >= 0 && t > k.lost[r]);
-    const k = await play(33, found);
+    const k = await play(30, found);
     expect(found(k)).toBe(true);
   }, 300000);
 });

@@ -6,7 +6,7 @@ L'harmonie est un score composite de 0 à 100, recalculé à chaque aube pour ch
 
 | Composante | Mesure (chacune normalisée entre 0 et 1) | Poids |
 | --- | --- | --- |
-| Stabilité | 1 − (écart-type relatif de la population sur 10 jours) ; × 0 en cas de famine (un individu mort de faim dans les 3 derniers jours) | 25 % |
+| Stabilité | 1 − (écart-type relatif de la population sur 10 jours) ; × 0 en cas de famine (plus de 2 % des membres morts de faim ou de soif dans les 3 derniers jours ; un seul mort avant le J9) | 25 % |
 | Durabilité | Part des ressources renouvelables du territoire dont la régénération ≥ la consommation sur 5 jours | 25 % |
 | Ordre spatial | Moyenne de : spécialisation des zones, inverse de la distance moyenne habitat–ressources clés, compacité des constructions | 20 % |
 | Savoir | Savoir écrit / savoir découvert au total (le savoir perdu pénalise) | 15 % |
@@ -28,8 +28,8 @@ Implémenté dans `src/sim/colony/harmony.js` (mesure), `src/sim/colony/field.js
 
 - **Quand** : chaque matin (à 06:00, quand un jour se termine), pour chaque colonie qui a un camp. Une ligne d'historique (harmonie de la première colonie, ses cinq composantes, population, moyenne et écart-type de chaque gène) est gardée pour le tableau de bord, 1 000 jours au plus.
 - **Territoire** : un carré de 24 cases de rayon autour du camp (pas encore l'enveloppe des cellules d'influence).
-- **Stabilité** : 1 − écart-type relatif de la population des 10 derniers matins ; 0 si un membre est mort de faim ou de soif dans les 3 derniers jours.
-- **Durabilité** : sur 5 jours glissants, parmi les ressources renouvelables récoltées par les membres dans le territoire, la part dont la repousse (quantités revenues) a égalé la récolte ; 1 si rien n'a été récolté. Le bois (10 jours de repousse) la tire souvent vers le bas.
+- **Stabilité** : 1 − écart-type relatif de la population des 10 derniers matins ; 0 si plus de 2 % des membres sont morts de faim ou de soif dans les 3 derniers jours (depuis le J9 ; avant, un seul mort suffisait, ce qui laissait une colonie de 300 en famine perpétuelle, décision 0022).
+- **Durabilité** : sur 5 jours glissants, parmi les ressources renouvelables récoltées par les membres dans le territoire, la part dont la repousse (quantités revenues) a égalé la récolte ; 1 si rien n'a été récolté. Le bois (10 jours de repousse) la tire souvent vers le bas. Depuis le J9, le blé moissonné sur une parcelle n'y compte pas : il est ressemé (décision 0022).
 - **Ordre spatial** : moyenne de trois mesures. *Compacité* : constructions / cases couvertes par leur enveloppe convexe (chaîne monotone, aire comptée par le théorème de Pick). *Proximité* : 1 / (1 + distance moyenne des abris à l'eau et à la nourriture les plus proches du tableau noir / 10). *Spécialisation* : zones de 4 × 4 cases, catégorie par type de construction (habitat, artisanat, savoir) ; 1 − diversité de Gini–Simpson normalisée sur les fenêtres de 3 × 3 zones autour des zones construites. Écart : Gini–Simpson remplace l'entropie, qui demanderait un logarithme (décision 0005).
 - **Savoir** : recettes écrites dans un document accessible / recettes jamais découvertes (une recette perdue n'est pas écrite).
 - **Bien-être** : 1 − moyenne des quatre jauges (faim, soif, fatigue, curiosité) des membres / 100.

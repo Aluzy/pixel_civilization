@@ -34,12 +34,18 @@ const shelterCode = CATALOG.structures.find((s) => s.kind === 'shelter').code;
  */
 function settled(seed = 5) {
   const sim = new Simulation({ seed, balance });
+  // Two beds per shelter here, so that two members fill it.
+  sim.ctx.balance = { ...balance, colony: { ...balance.colony, bedsPerShelter: 2 } };
   const a = sim.agents;
   const colony = sim.state.colonies[0];
   colony.addShelter(a.x[0], a.y[0]);
   colony.stock[good('berries')] = 20;
   a.pantrySeen[0] = 20;
   for (const [id, n] of Object.entries(balance.replication.cost)) a.addCarried(0, good(id), n);
+  // Food for the newborn: berries, as many portions as it costs.
+  const berries = WORLD_TABLES.resources.find((r) => r.id === 'berries').nutrition;
+  const units = Math.ceil((balance.replication.costFood * balance.cooking.portion) / berries);
+  a.addCarried(0, good('berries'), units);
   sim.state.tick = 3 * DAY;
   return sim;
 }
@@ -178,7 +184,7 @@ describe('transmission', () => {
     const sim = settled();
     const a = sim.agents;
     replicate(sim.state, sim.ctx, 0);
-    sim.ctx.balance = { ...balance, social: { ...balance.social, imitationChance: 1 } };
+    sim.ctx.balance = { ...sim.ctx.balance, social: { ...balance.social, imitationChance: 1 } };
     const r = recipe('workbench');
     a.recipes[0].learn(r, sim.tick, 10000);
     a.addCarried(0, good('wood'), 4);

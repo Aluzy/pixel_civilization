@@ -2,6 +2,7 @@ import { claimFreeStock, openTasks, releaseTask } from '../colony/colony-logic.j
 import { ProjectKind } from '../colony/colony-store.js';
 import { fieldResource, openField } from '../colony/field.js';
 import { Component } from '../colony/harmony.js';
+import { countFarmJobs } from '../farming/farm-jobs.js';
 
 /**
  * Task generators of each colony (docs/design/06-ia.md, couche 4), every `taskInterval` ticks:
@@ -25,9 +26,16 @@ export function colonySystem(state, ctx) {
   }
   for (const colony of state.colonies) {
     if (!colony.hasCamp || colony.members === 0) continue;
+    // Shelters: one at a time for a small colony, more at once as it grows (a large colony has
+    // many hands to gather the materials).
+    let building = 0;
+    for (const p of colony.projects) if (p.kind === ProjectKind.SHELTER) building++;
+    const atOnce = 1 + Math.floor(colony.members / cfg.membersPerShelterProject);
+    const missingBeds = colony.members + 1 - colony.beds(cfg.bedsPerShelter);
     if (
-      colony.beds(cfg.bedsPerShelter) <= colony.members &&
-      colony.findProject(ProjectKind.SHELTER) < 0
+      missingBeds > 0 &&
+      building < atOnce &&
+      building * cfg.bedsPerShelter < missingBeds + cfg.bedsPerShelter
     ) {
       const slot = colony.freeSlot();
       if (slot >= 0) openBuildProject(state, ctx, colony, slot, ProjectKind.SHELTER, 'shelter');
@@ -71,7 +79,8 @@ export function colonySystem(state, ctx) {
         for (let r = 1; r < ctx.edible.length; r++) if (ctx.edible[r] === 1) p.needs[r] = 1;
       }
     }
-    colony.open = openTasks(colony, cfg);
+    colony.open = openTasks(colony, cfg, ctx.foodTables, ctx.balance.cooking.portion);
+    countFarmJobs(state, ctx, colony);
   }
 }
 
@@ -94,7 +103,9 @@ function openBuildProject(state, ctx, colony, slot, kind, structureKind) {
   p.clear();
   p.kind = kind;
   p.recipe = r;
-  p.number = kind === ProjectKind.SHELTER ? colony.sheltersBuilt + 1 : colony.libraryCount + 1;
+  let open = 0;
+  for (const q of colony.projects) if (q !== p && q.kind === kind) open++;
+  p.number = (kind === ProjectKind.SHELTER ? colony.sheltersBuilt : colony.libraryCount) + open + 1;
   p.startTick = state.tick;
   for (const input of ctx.catalog.recipes[r].inputs) p.needs[input.good] = input.count;
   claimFreeStock(colony, p);

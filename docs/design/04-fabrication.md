@@ -94,6 +94,14 @@ Mesure : sur les graines 1 à 10, l'établi, la lance, un outil (presque toujour
 - **Constat** : sur 8 graines et 120 à 160 jours, le four n'a pas encore été découvert. Le charbon demande une pioche, sa position doit être connue (souvent oubliée, et le tableau noir n'est cru que 6 jours), et les combinaisons à essayer sont nombreuses (8 matériaux, 4 lieux). L'arbre est prêt ; sa découverte reste rare.
 - **Pas encore** : un outil meilleur ne remplace pas l'outil exigé (une pioche de cuivre ne suffit pas pour le charbon sans la pioche de pierre), couleur des produits dérivée des ingrédients, feu de camp et cuisson.
 
+## État au jalon J9
+
+- **Recettes** ([13](13-agriculture-cuisine.md)) : semer (une graine, mains nues : une parcelle), feu de camp (3 bois + 3 pierres, mains nues), farine (3 grains, mains nues), pain (2 farines), viande grillée (1 carcasse), tarte aux baies (1 farine + 2 baies), au feu de camp. Le nombre de biens dépasse 30 : les masques désignent les **ingrédients** (bit par ingrédient) et non plus les biens.
+- **Indice** : une graine trouvée dans du blé sauvage peut faire deviner qu'elle se sème (25 %) ; « ce bien seul, à mains nues » reçoit alors +3, et l'individu le vérifie quand il est curieux.
+- **Sous-produits** : l'essai libre de l'inventeur sait qu'une graine vient du blé et une peau d'une carcasse (coût d'aller les chercher = celui de leur source ; il récolte la source, et laisse de côté le grain déjà porté).
+- **Chercher l'usage d'un bien** (cuisiniers) : seules les combinaisons qui le contiennent sont essayées ; −1 par autre ingrédient (seul d'abord), sans bonus de nouveauté ; les aliments n'entrent que dans ces essais-là.
+- **Station inconnue** : une station dont aucune recette connue ne se sert vaut +0,8 (ce qu'elle fait reste à trouver). Une station connue mais pas bâtie n'est plus bâtie « pour voir » quand l'individu cherche une construction (les constructions se font à mains nues).
+
 ## Imitation
 
 Un individu qui voit un autre individu réaliser une recette (dans son rayon de perception, pendant toute la durée de fabrication) a 50 % de chances de l'apprendre, à force 0,6.
