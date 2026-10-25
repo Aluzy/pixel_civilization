@@ -84,6 +84,8 @@
     "failureSlots": 32,
     "sampleUnits": 6,
     "sampleDistance": 16,
+    "inspiration": 0.5,
+    "ideaDays": 3,
     "fetchBase": 0.2,
     "fetchWalk": 0.3,
     "fetchCraft": 0.3,
@@ -103,7 +105,7 @@
       "noveltyBonus": 1.5,
       "hintBonus": 3,
       "unknownStationBonus": 0.8,
-      "focusExtra": 1
+      "focusExtra": 3
     }
   },
   "threats": {
@@ -173,7 +175,10 @@
     "equipmentInColony": 0.5,
     "inventorMembers": 8,
     "inventorTicks": 14400,
-    "inventorExplore": 0.3
+    "inventorExplore": 0.3,
+    "notebookSize": 2048,
+    "inventorSample": 3,
+    "inventorFocus": 0.5
   },
   "social": {
     "talkInterval": 40,
@@ -297,5 +302,36 @@
     "stationResearch": 0.4,
     "batch": 5,
     "cookTicks": 7200
+  },
+  "economy": {
+    "startCoins": 30,
+    "coinsPerMember": 200,
+    "coinsPerNutrition": 0.5,
+    "pleasureCoins": 2,
+    "coinsPerTick": 0.2,
+    "spread": 1.2,
+    "stockDays": 3,
+    "scarcityMin": 0.2,
+    "scarcityMax": 8,
+    "priceStep": 0.3,
+    "useStep": 0.3,
+    "priceMin": 0.5,
+    "wage": 20,
+    "jobMembers": 12,
+    "workTicks": 480,
+    "tripFactor": 2,
+    "kitchenOverhead": 20,
+    "jobDays": 3,
+    "inertia": 0.2,
+    "jobBonus": 0.3,
+    "offJob": 0.7,
+    "taskBonus": 1,
+    "saleUrge": 0.6,
+    "incomeStep": 0.3,
+    "genePull": 0.4,
+    "apprenticeDays": 5,
+    "birthShare": 0.3,
+    "pleasureValue": 0.1,
+    "tradeSlots": 6
   }
 }

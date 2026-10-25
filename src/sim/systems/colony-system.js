@@ -79,6 +79,12 @@ export function colonySystem(state, ctx) {
         for (let r = 1; r < ctx.edible.length; r++) if (ctx.edible[r] === 1) p.needs[r] = 1;
       }
     }
+    // What the counter bought lies in the stock: the projects take it before asking for more.
+    for (const p of colony.projects) {
+      if (p.kind !== ProjectKind.NONE && p.kind !== ProjectKind.PANTRY && p.builder < 0) {
+        claimFreeStock(colony, p);
+      }
+    }
     colony.open = openTasks(colony, cfg, ctx.foodTables, ctx.balance.cooking.portion);
     countFarmJobs(state, ctx, colony);
   }

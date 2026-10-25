@@ -27,6 +27,8 @@ export class AgentStore {
    * @param {{ capacity: number, cellSize: number }} options.exploration
    * @param {Float64Array} [options.geneStart] - Founder value of each gene of the genome.
    * @param {number} [options.dangerSlots=8] - Zones whose danger an agent keeps in mind.
+   * @param {number} [options.jobCount=0] - Jobs of data/jobs.json.
+   * @param {number} [options.tradeSlots=1] - Recent trades kept per agent (inspector).
    */
   constructor({
     max,
@@ -38,6 +40,8 @@ export class AgentStore {
     sheets = 4,
     geneStart = new Float64Array(0),
     dangerSlots = 8,
+    jobCount = 0,
+    tradeSlots = 1,
   }) {
     this.sheets = sheets;
     this.geneStart = geneStart;
@@ -61,6 +65,29 @@ export class AgentStore {
     this.combatSkill = new Float64Array(max);
     this.attackTarget = new Int32Array(max);
     this.attackCooldown = new Int32Array(max);
+    // Economy (docs/design/14-economie.md): écus, earned today, chosen job (-1 none) and since
+    // when, observed net income and days worked per job, prices seen at the counter, recent
+    // trades.
+    this.jobCount = jobCount;
+    this.coins = new Int32Array(max);
+    this.earnedToday = new Int32Array(max);
+    /** Écus spent today on the inputs of its trade (the ingredients of a baker). */
+    this.spentToday = new Int32Array(max);
+    this.job = new Int8Array(max).fill(-1);
+    this.jobSince = new Int32Array(max);
+    this.jobIncome = new Float64Array(max * Math.max(1, jobCount));
+    this.jobDays = new Uint16Array(max * Math.max(1, jobCount));
+    this.priceSeen = new Float64Array(max * goodCount);
+    this.tradeSlots = tradeSlots;
+    this.tradeTick = new Int32Array(max * tradeSlots);
+    this.tradeGood = new Int32Array(max * tradeSlots);
+    this.tradeUnits = new Int32Array(max * tradeSlots);
+    this.tradeCoins = new Int32Array(max * tradeSlots);
+    this.tradeNext = new Uint8Array(max);
+    /** A sale it prepares: the good it gathers to sell at the counter (0 none), how many, since. */
+    this.saleGood = new Uint8Array(max);
+    this.saleAmount = new Uint16Array(max);
+    this.saleTick = new Int32Array(max);
     this.max = max;
     this.goodSlots = goodCount;
     this.recipeCount = recipeCount;
@@ -163,6 +190,10 @@ export class AgentStore {
     this.cookRecipe = new Int16Array(max).fill(-1);
     /** A good it guessed can be used alone, bare-handed (a seed in the ground), or 0. */
     this.hint = new Int16Array(max);
+    /** A use it guessed for something it made (a researcher's idea): station and trial mask. */
+    this.ideaStation = new Int8Array(max).fill(-1);
+    this.ideaMask = new Int32Array(max);
+    this.ideaTick = new Int32Array(max);
     /** Units gathered per good, crafts and builds: habits from which roles emerge. */
     this.gathered = new Uint16Array(max * goodCount);
     this.builds = new Uint16Array(max);
@@ -295,6 +326,9 @@ export class AgentStore {
     this.pantryFalling[id] = 0;
     this.cookRecipe[id] = -1;
     this.hint[id] = 0;
+    this.ideaStation[id] = -1;
+    this.ideaMask[id] = 0;
+    this.ideaTick[id] = 0;
     this.gathered.fill(0, id * this.goodSlots, (id + 1) * this.goodSlots);
     this.builds[id] = 0;
     this.delivers[id] = 0;
@@ -309,6 +343,21 @@ export class AgentStore {
     this.combatSkill[id] = 0;
     this.attackTarget[id] = -1;
     this.attackCooldown[id] = 0;
+    this.coins[id] = 0;
+    this.earnedToday[id] = 0;
+    this.spentToday[id] = 0;
+    this.job[id] = -1;
+    this.jobSince[id] = tick;
+    const jc = Math.max(1, this.jobCount);
+    this.jobIncome.fill(0, id * jc, (id + 1) * jc);
+    this.jobDays.fill(0, id * jc, (id + 1) * jc);
+    this.priceSeen.fill(0, id * this.goodSlots, (id + 1) * this.goodSlots);
+    const ts = this.tradeSlots;
+    this.tradeTick.fill(-1, id * ts, (id + 1) * ts);
+    this.tradeNext[id] = 0;
+    this.saleGood[id] = 0;
+    this.saleAmount[id] = 0;
+    this.saleTick[id] = 0;
     this.librarySeen[id] = 0;
     this.mapSeen[id] = -1;
     this.focusSeen[id] = -1;
@@ -444,6 +493,9 @@ export class AgentStore {
       h.uint32(this.farmPlot[id]).uint32(this.farmJob[id]).uint32(this.farmSeen[id]);
       h.uint32(this.cookRecipe[id] & 0xffff)
         .uint32(this.hint[id])
+        .uint32(this.ideaStation[id] & 0xff)
+        .uint32(this.ideaMask[id])
+        .uint32(this.ideaTick[id])
         .uint32(this.pantryFalling[id]);
       h.typedArray(this.gathered.subarray(g0, g0 + this.goodSlots));
       h.uint32(this.builds[id]).uint32(this.delivers[id]);
@@ -460,6 +512,19 @@ export class AgentStore {
         this.dangerPasses.subarray(d0, d1),
       );
       h.typedArray(this.costPerUnit.subarray(g0, g0 + this.goodSlots));
+      const jc = Math.max(1, this.jobCount);
+      h.uint32(this.coins[id])
+        .uint32(this.earnedToday[id])
+        .uint32(this.job[id] & 0xff);
+      h.uint32(this.jobSince[id]).typedArray(this.jobDays.subarray(id * jc, (id + 1) * jc));
+      h.typedArray(this.jobIncome.subarray(id * jc, (id + 1) * jc));
+      h.typedArray(this.priceSeen.subarray(g0, g0 + this.goodSlots));
+      const t0 = id * this.tradeSlots;
+      const t1 = t0 + this.tradeSlots;
+      h.typedArray(this.tradeTick.subarray(t0, t1)).typedArray(this.tradeGood.subarray(t0, t1));
+      h.typedArray(this.tradeUnits.subarray(t0, t1)).typedArray(this.tradeCoins.subarray(t0, t1));
+      h.uint32(this.tradeNext[id]).uint32(this.saleGood[id]).uint32(this.saleAmount[id]);
+      h.uint32(this.saleTick[id]);
       h.typedArray(this.path[id].subarray(0, this.pathLength[id] * 2));
       h.uint32(this.pathIndex[id]);
       h.typedArray(this.rng[id].s);

@@ -4,13 +4,15 @@ import { WATER_SUBJECT } from './memory.js';
 import { inShelter } from './equipment.js';
 import { explore, goToRemembered, moveTo, search, startHere } from './movement.js';
 import { perceive } from './perception.js';
-import { discover, pursue } from './work.js';
+import { discover, fillBeliefs, pursue } from './work.js';
 import { atCamp, campOf, shareBoard } from '../colony/colony-logic.js';
 import { colonyWork, goToCamp, prepareReplication } from './colony-work.js';
 import { readBehaviour, writeBehaviour } from './scribe-work.js';
 import { guardBehaviour, hideBehaviour, huntBehaviour } from './guard-work.js';
 import { farmBehaviour } from './farm-work.js';
 import { cookBehaviour } from './cook-work.js';
+import { take } from '../economy/market.js';
+import { canHarvest } from './actions.js';
 
 // Turns a chosen goal into a concrete action, using only what the agent perceives and remembers.
 // Survival goals are hand-written; crafting goals follow the GOAP planner (work.js).
@@ -29,7 +31,10 @@ function invent(state, ctx, id, plan) {
   const catalog = ctx.catalog;
   // At the camp, it looks on the blackboard for materials it knows no place of.
   const colony = campOf(state, ctx, id);
-  if (colony && atCamp(ctx, colony, id)) shareBoard(state, ctx, colony, id);
+  if (colony && atCamp(ctx, colony, id)) {
+    shareBoard(state, ctx, colony, id);
+    takeSamples(state, ctx, colony, id);
+  }
   for (let g = 1; g <= catalog.resourceCount; g++) {
     const tool = catalog.requiredTool[g];
     if (tool <= 0 || a.carried(id, tool) > 0) continue;
@@ -39,9 +44,129 @@ function invent(state, ctx, id, plan) {
     plan.note = PlanNote.TRIAL;
     return;
   }
-  // Part of the time it goes looking for materials it has never seen; the rest, it experiments.
-  if (a.rng[id].next() < ctx.balance.colony.inventorExplore) explore(state, ctx, id, plan);
-  else discover(state, ctx, id, null, plan);
+  // Part of the time it goes looking for materials it has never seen; the rest, it experiments:
+  // each material alone at a station it never saw used (a new oven); else, half of the time, what
+  // can be done with a material no recipe it knows uses (a brick: alone, then with one other…),
+  // and freely otherwise.
+  const cfg = ctx.balance.colony;
+  if (a.rng[id].next() < cfg.inventorExplore) {
+    explore(state, ctx, id, plan);
+    return;
+  }
+  const station = unusedStation(ctx, id);
+  const focus = station === 0 && a.rng[id].next() < cfg.inventorFocus ? unusedMaterial(ctx, id) : 0;
+  discover(state, ctx, id, null, plan, focus, station);
+}
+
+/**
+ * The material the agent can most easily have (carried, made with a recipe it knows, else the
+ * nearest place it remembers) that no recipe it knows uses, or 0.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @returns {number} Good id.
+ */
+function unusedMaterial(ctx, id) {
+  const a = ctx.agents;
+  const catalog = ctx.catalog;
+  const book = a.recipes[id];
+  const memory = a.memory[id];
+  let used = 0;
+  for (let r = 0; r < catalog.recipes.length; r++)
+    if (book.knows(r)) used |= catalog.recipes[r].mask;
+  let best = 0;
+  let bestCost = Infinity;
+  for (let g = 1; g < catalog.goodCount; g++) {
+    const bit = catalog.ingredientBit[g];
+    if (catalog.material[g] !== 1 || bit < 0 || (used & (1 << bit)) !== 0) continue;
+    let cost = Infinity;
+    if (a.carried(id, g) > 0) cost = 0;
+    else if (g > catalog.resourceCount) {
+      const r = catalog.recipeForGood[g];
+      if (r >= 0 && book.knows(r)) cost = 1;
+    } else if (canHarvest(ctx, id, g)) {
+      const i = memory.nearest(ctx.subjectMasks[g], a.x[id], a.y[id]);
+      if (i >= 0)
+        cost = 2 + Math.max(Math.abs(memory.x[i] - a.x[id]), Math.abs(memory.y[i] - a.y[id])) / 16;
+    }
+    if (cost < bestCost) {
+      bestCost = cost;
+      best = g;
+    }
+  }
+  return best;
+}
+
+/**
+ * At the camp, the inventor takes from the stock what a station it knows how to make but has not
+ * seen built needs (the colony's materials, for the colony's station), and a few units of each
+ * material it lacks: what it tries next is then at hand.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} colony
+ * @param {number} id
+ * @returns {void}
+ */
+function takeSamples(state, ctx, colony, id) {
+  const a = ctx.agents;
+  const catalog = ctx.catalog;
+  const room = () => Math.floor(ctx.capacity(id) - a.carriedTotal(id));
+  const takeUpTo = (g, units) => {
+    const n = Math.min(units - a.carried(id, g), colony.stock[g], room());
+    if (n <= 0) return;
+    take(colony, g, n);
+    a.addCarried(id, g, n, state.tick);
+  };
+  // What a recipe needs, from the stock; what the stock lacks and it can make, its ingredients.
+  const gatherFor = (r, times, depth) => {
+    for (const input of catalog.recipes[r].inputs) {
+      const want = input.count * times;
+      takeUpTo(input.good, want);
+      const short = want - a.carried(id, input.good);
+      const sub = catalog.recipeForGood[input.good];
+      if (short > 0 && depth > 0 && sub >= 0 && a.recipes[id].knows(sub)) {
+        gatherFor(sub, short, depth - 1);
+      }
+    }
+  };
+  const stations = fillBeliefs(ctx, id).stations;
+  for (let c = 1; c < stations.length; c++) {
+    const r = catalog.recipeForStructure[c];
+    if (stations[c] === 1 || r < 0 || catalog.structures[c - 1].kind !== 'station') continue;
+    if (a.recipes[id].knows(r)) gatherFor(r, 1, 2);
+  }
+  const want = ctx.balance.colony.inventorSample;
+  for (let g = 1; g < catalog.goodCount; g++) {
+    if (catalog.material[g] === 1 && a.carried(id, g) === 0) takeUpTo(g, want);
+  }
+}
+
+/**
+ * A station the agent remembers (or sees) and that it never saw used: it knows no recipe made
+ * there, and saw nobody make one there (a new oven), or 0.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @returns {number} Structure code.
+ */
+function unusedStation(ctx, id) {
+  const catalog = ctx.catalog;
+  const book = ctx.agents.recipes[id];
+  const memory = ctx.agents.memory[id];
+  const social = ctx.agents.social[id];
+  let seen = 0;
+  for (let k = 0; k < social.count; k++) seen |= social.skills[k];
+  const R = catalog.resourceCount;
+  for (let code = 1; code <= catalog.structures.length; code++) {
+    if (catalog.structures[code - 1].kind !== 'station') continue;
+    let used = false;
+    for (let r = 0; r < catalog.recipes.length && !used; r++) {
+      if (catalog.recipes[r].station !== code) continue;
+      used = book.knows(r) || (seen & (1 << r)) !== 0;
+    }
+    if (used) continue;
+    if (ctx.nav.nearestStructure(code) >= 0) return code;
+    for (let i = 0; i < memory.count; i++) if (memory.subject[i] === R + code) return code;
+  }
+  return 0;
 }
 
 /**
@@ -132,6 +257,9 @@ export function planGoal(state, ctx, id, goal, plan) {
       return;
     case 'cook':
       cookBehaviour(state, ctx, id, plan);
+      return;
+    case 'invent':
+      invent(state, ctx, id, plan);
       return;
     case 'explore': {
       // The colony's inventor spends its curiosity trying new combinations instead.

@@ -1,5 +1,6 @@
 import { actionSystem } from './action-system.js';
 import { colonySystem } from './colony-system.js';
+import { economySystem } from './economy-system.js';
 import { farmSystem } from './farm-system.js';
 import { decisionSystem } from './decision-system.js';
 import { knowledgeSystem } from './knowledge-system.js';
@@ -24,6 +25,7 @@ export const SYSTEMS = Object.freeze([
   timeSystem,
   worldSystem,
   farmSystem,
+  economySystem,
   needsSystem,
   memorySystem,
   decisionSystem,

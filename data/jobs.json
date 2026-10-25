@@ -1,0 +1,48 @@
+{
+  "jobs": [
+    {
+      "id": "farmer",
+      "name": "Agriculteur",
+      "goal": "farm",
+      "requires": ["plot"],
+      "sells": ["wheat"],
+      "gene": "foresight"
+    },
+    {
+      "id": "miller",
+      "name": "Meunier",
+      "goal": "cook",
+      "makes": ["flour"],
+      "gene": "sociability"
+    },
+    {
+      "id": "baker",
+      "name": "Boulanger",
+      "goal": "cook",
+      "makes": ["bread", "berry_pie", "grilled_meat"],
+      "gene": "sociability"
+    },
+    {
+      "id": "gatherer",
+      "name": "Cueilleur",
+      "goal": "colony",
+      "sells": ["berries", "fiber"],
+      "gene": "curiosity"
+    },
+    {
+      "id": "woodcutter",
+      "name": "Bûcheron",
+      "goal": "colony",
+      "sells": ["wood"]
+    },
+    {
+      "id": "miner",
+      "name": "Mineur",
+      "goal": "colony",
+      "sells": ["stone", "clay", "coal", "copper", "iron"]
+    },
+    { "id": "guard", "name": "Garde", "goal": "guard", "post": "guard" },
+    { "id": "inventor", "name": "Inventeur", "goal": "invent", "post": "inventor" },
+    { "id": "scribe", "name": "Scribe", "goal": "write", "post": "scribe" }
+  ]
+}

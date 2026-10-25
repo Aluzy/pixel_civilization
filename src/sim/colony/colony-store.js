@@ -1,3 +1,5 @@
+import { TrialNotebook } from '../crafting/notebook.js';
+
 /** Kinds of colony projects. */
 export const ProjectKind = Object.freeze({
   NONE: 0,
@@ -97,8 +99,9 @@ export class Colony {
    * @param {number} goods
    * @param {object} cfg - balance.colony.
    * @param {{ stabilityDays: number, durabilityDays: number }} [harmonyCfg] - balance.harmony.
+   * @param {number} [jobCount=0] - Jobs of data/jobs.json.
    */
-  constructor(id, goods, cfg, harmonyCfg = { stabilityDays: 10, durabilityDays: 5 }) {
+  constructor(id, goods, cfg, harmonyCfg = { stabilityDays: 10, durabilityDays: 5 }, jobCount = 0) {
     this.id = id;
     this.hasCamp = false;
     this.campX = 0;
@@ -139,6 +142,8 @@ export class Colony {
     /** Member who experiments freely when curious (one at a time), and since when. */
     this.inventor = -1;
     this.inventorTick = 0;
+    /** Failed trials of its inventors, handed from one to the next. */
+    this.notebook = new TrialNotebook(cfg.notebookSize ?? 256);
     /** Contributors of the last project completed (-1 = unused), for the inspector. */
     this.lastProject = new Int32Array(MAX_CONTRIBUTORS).fill(-1);
     /** Open tasks at the last count of the colony system. */
@@ -183,6 +188,26 @@ export class Colony {
     this.dishesYesterday = 0;
     /** Food in the stock (portions) at the start of each of the last days, newest last. */
     this.pantryDays = new Int32Array(4);
+    // The counter (docs/design/14-economie.md): reference price, average daily use and today's
+    // flows of each good; the treasury and the écus minted in all; food given to those who could
+    // not pay; first sale and purchase of each good, and who sold it last; units sold and
+    // bought per job (index 0: no job) and good; members per job, and jobs that had a holder.
+    this.price = new Float64Array(goods);
+    this.useAvg = new Float64Array(goods);
+    this.outToday = new Int32Array(goods);
+    this.inToday = new Int32Array(goods);
+    this.treasury = 0;
+    this.minted = 0;
+    this.rations = 0;
+    this.firstSold = new Uint8Array(goods);
+    this.firstBought = new Uint8Array(goods);
+    this.lastSeller = new Int32Array(goods).fill(-1);
+    /** Units its researchers asked the counter for (a demand, until the stock holds them). */
+    this.demand = new Int32Array(goods);
+    this.sold = new Int32Array((jobCount + 1) * goods);
+    this.bought = new Int32Array((jobCount + 1) * goods);
+    this.jobHolders = new Int32Array(Math.max(1, jobCount));
+    this.jobFirst = new Uint8Array(Math.max(1, jobCount));
     /** @type {Project[]} */
     this.projects = [];
     for (let i = 0; i < cfg.projectSlots; i++) this.projects.push(new Project(goods));
@@ -354,6 +379,7 @@ export class Colony {
       .typedArray(this.boardTick.subarray(0, n));
     h.typedArray(this.boardX.subarray(0, n)).typedArray(this.boardY.subarray(0, n));
     h.uint32(this.scribe).uint32(this.scribeTick).uint32(this.inventor).uint32(this.inventorTick);
+    this.notebook.hashInto(h);
     h.typedArray(this.guards).typedArray(this.guardTick);
     h.uint32(this.lastThreat).uint32(this.denQuietUntil);
     const L = this.libraryCount;
@@ -378,5 +404,11 @@ export class Colony {
     h.uint32(this.dishesToday).typedArray(this.pantryDays);
     h.uint32(Math.round(this.eatenYesterday)).uint32(Math.round(this.cropYesterday * 100));
     h.uint32(this.dishesYesterday);
+    h.typedArray(this.price).typedArray(this.useAvg).typedArray(this.outToday);
+    h.typedArray(this.inToday).uint32(this.treasury).uint32(this.minted).uint32(this.rations);
+    h.typedArray(this.firstSold).typedArray(this.firstBought).typedArray(this.lastSeller);
+    h.typedArray(this.demand);
+    h.typedArray(this.sold).typedArray(this.bought).typedArray(this.jobHolders);
+    h.typedArray(this.jobFirst);
   }
 }
