@@ -80,7 +80,7 @@ export const Needs = { hunger: new Float32Array(MAX), thirst: new Float32Array(M
 
 L'ordre est fixe et documenté ; le modifier exige une décision dans `docs/decisions/`.
 
-État au J4 (`src/sim/systems/index.js`) :
+État au J6 (`src/sim/systems/index.js`) :
 
 1. `timeSystem` — avance l'horloge, met à jour l'obscurité.
 2. `worldSystem` — repousse des ressources renouvelables (file triée par cycle).
@@ -92,6 +92,7 @@ L'ordre est fixe et documenté ; le modifier exige une décision dans `docs/deci
 8. `threatSystem` — apparition, chasse, combat et départ des prédateurs (après les actions, pour qu'une attaque interrompe l'action suivante ; décision 0009).
 9. `lifecycleSystem` — mort, libération de la tâche, oubli du défunt par les autres.
 10. `colonySystem` — générateurs de tâches des colonies, tous les 50 cycles (J5, décision 0011).
+11. `knowledgeSystem` — abandon et incendie des bibliothèques, savoir collectif (perdu, retrouvé), tous les 100 cycles (J6, décision 0013). En dernier, pour compter le savoir après les morts du cycle.
 
 `memorySystem` oublie aussi les recettes et les échecs. `decisionSystem` laisse se terminer le sommeil et les actions de travail (sauf attaque ou besoin vital).
 
@@ -99,7 +100,7 @@ Ordre cible, à mesure que les jalons ajoutent les systèmes : time, world, thre
 
 Chaque système reçoit `(state, ctx)` : `state` contient tout ce qui définit la partie (hashé), `ctx` les tables lues dans `data/`, des valeurs dérivées (taux par cycle, obscurité courante) et des tampons de travail réutilisés.
 
-Les individus vivent dans `src/sim/agents/` : `agent-store.js` (composants en tableaux typés), `navigation.js`, `perception.js`, `memory.js` (lieux, force, oubli), `beliefs.js` (saillance, rappel flou, consolidation, événements), `exploration-map.js`, `behaviors.js`, `actions.js`, `journal.js`. `src/sim/core/math.js` fournit `expNeg`, une exponentielle déterministe. L'IA de choix est dans `src/sim/ai/` (`curves.js`, `utility.js`, `planner.js` pour le GOAP, `projects.js` pour les projets HTN). Au J4 : `src/sim/crafting/` (`catalog.js` : espace d'identifiants des biens — 1…R ressources, R+1… objets —, recettes indexées par station et ensemble d'ingrédients ; `recipe-book.js` ; `experiment.js`), `src/sim/agents/work.js` (comportements des objectifs de fabrication), `movement.js` (déplacements partagés), `equipment.js` (effets des objets et des constructions), `src/sim/threats/threat-store.js`. Sujets de mémoire : 0 eau, 1…R ressources, R+1…R+S constructions, R+S+1 danger. La couche `structure` des blocs est lue par `packedAt` dans les bits 24 à 31 (à lire avec `>>>`). Au J5 : `src/sim/colony/` (`colony-store.js` : colonies, projets, tableau noir ; `colony-logic.js` : tâches, réservations, dépôt ; `replication.js`), `src/sim/agents/colony-work.js` (comportements des objectifs Tâche collective et Se répliquer), `social-model.js` (fiches), `src/sim/ai/imagination.js` (simulation mentale du combat). L'état contient `colonies`, hashé comme le reste.
+Les individus vivent dans `src/sim/agents/` : `agent-store.js` (composants en tableaux typés), `navigation.js`, `perception.js`, `memory.js` (lieux, force, oubli), `beliefs.js` (saillance, rappel flou, consolidation, événements), `exploration-map.js`, `behaviors.js`, `actions.js`, `journal.js`. `src/sim/core/math.js` fournit `expNeg`, une exponentielle déterministe. L'IA de choix est dans `src/sim/ai/` (`curves.js`, `utility.js`, `planner.js` pour le GOAP, `projects.js` pour les projets HTN). Au J4 : `src/sim/crafting/` (`catalog.js` : espace d'identifiants des biens — 1…R ressources, R+1… objets —, recettes indexées par station et ensemble d'ingrédients ; `recipe-book.js` ; `experiment.js`), `src/sim/agents/work.js` (comportements des objectifs de fabrication), `movement.js` (déplacements partagés), `equipment.js` (effets des objets et des constructions), `src/sim/threats/threat-store.js`. Sujets de mémoire : 0 eau, 1…R ressources, R+1…R+S constructions, R+S+1 danger. La couche `structure` des blocs est lue par `packedAt` dans les bits 24 à 31 (à lire avec `>>>`). Au J5 : `src/sim/colony/` (`colony-store.js` : colonies, projets, tableau noir ; `colony-logic.js` : tâches, réservations, dépôt ; `replication.js`), `src/sim/agents/colony-work.js` (comportements des objectifs Tâche collective et Se répliquer), `social-model.js` (fiches), `src/sim/ai/imagination.js` (simulation mentale du combat). L'état contient `colonies`, hashé comme le reste. Au J6 : `src/sim/knowledge/` (`document-store.js` : livres et cartes, leur contenu et où ils sont ; `writing.js` : écrire, ranger, lire, savoir collectif ; `knowledge-log.js` : journal observé du savoir), `src/sim/agents/scribe-work.js` (comportements des objectifs Écrire et Lire), `src/sim/systems/knowledge-system.js`. L'état contient `documents` et `knowledge`, hashés.
 
 ## Aléatoire et déterminisme
 

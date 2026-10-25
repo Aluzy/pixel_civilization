@@ -106,8 +106,8 @@ Une case de ressource vidée disparaît ; si la ressource est renouvelable, elle
 ## Vieillissement et mort
 
 - Mort quand les PV atteignent 0.
-- Question ouverte : vieillissement et mort naturelle (voir [12-risques](12-risques.md)). Valeur proposée : espérance de vie de 60 jours, avec perte progressive de vitesse et de mémoire après 45 jours.
-- À la mort, l'inventaire tombe au sol et la mémoire est perdue — sauf ce qui a été écrit.
+- **Vieillesse** (J6) : chaque individu reçoit à la naissance une durée de vie tirée entre 54 et 66 jours (`agent.lifespanDays`, flux aléatoire du cycle de vie) ; il meurt de vieillesse en l'atteignant (« Mort de l'individu #n, de vieillesse »). Sans vieillesse, le savoir ne se perdait jamais vraiment : il fallait que les générations passent pour que les livres servent. Pas encore : perte progressive de vitesse et de mémoire avec l'âge.
+- À la mort, la mémoire est perdue — sauf ce qui a été écrit. Écart : l'inventaire disparaît avec l'individu, livres et cartes portés compris, au lieu de tomber au sol.
 
 ## Journal de décisions
 
