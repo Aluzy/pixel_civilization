@@ -14,6 +14,10 @@
 | Recettes fausses qui se propagent | Une colonie entière croit savoir une recette qu'aucun ne sait juste : le savoir est perdu sans que personne ne le remarque | Voulu (J6) : l'erreur se découvre à l'usage, la recette fausse est oubliée et devient un échec ; un livre juste dans la bibliothèque l'emporte sur les copies fausses ; un bâtisseur détrompé rend sa tâche |
 | Arbre technologique hors d'atteinte | Four et métaux jamais découverts (J7 : aucun en 120 à 160 jours sur 8 graines) | Inventeur de colonie, préférence pour les matériaux nouveaux ; pistes : se fier plus longtemps au tableau noir pour les minerais, outils de rang supérieur valant pour les rangs inférieurs |
 | Population plafonnée par la réserve d'avance | 500 individus jamais atteints en 100 jours dans une partie ordinaire (J7 : 60 à 125) | Les champs ont doublé la population ; pistes : réserve d'avance proportionnelle aux naissances plutôt qu'aux membres, lits partagés |
+| Coût de calcul de plusieurs colonies (vision v2) | Plus de camps actifs, de marchés, de combats de groupe | Gel des blocs lointains, appariement du marché tous les 100 cycles, raids rares décidés par simulation mentale ; `npm run bench` étendu à plusieurs colonies |
+| Économie qui s'effondre ou s'emballe | Écus amassés par quelques-uns, métiers abandonnés, famine au milieu de l'abondance | La colonie mange d'abord (réserve commune), comptoir à coefficient borné (Ferme Familiale), prospérité et inégalités mesurées dans l'harmonie |
+| Guerre permanente | Colonies qui s'exterminent, partie sans intérêt | Raids décidés seulement si le gain attendu dépasse les pertes, rancune qui s'efface avec le temps, paix par le commerce, bonus des murs pour le défenseur |
+| Murs et navigation | Des murs infranchissables cassent les chemins (individus enfermés ou bloqués) | Portes conditionnelles, test d'accessibilité des abris et des ressources à chaque segment de mur |
 | Bibliothèque unique | Un incendie efface tout l'écrit d'une colonie | Voulu ; l'écrit reste dans les mémoires des lecteurs vivants, et la colonie rebâtit une bibliothèque. Pas encore de copies ni de bibliothèques multiples |
 | Famine dans une colonie trop nombreuse | Morts en chaîne | Naissance conditionnée à une réserve de nourriture d'avance et à un lit libre (décision 0011) ; baies plus nombreuses au J5 ; agriculture (question ouverte) |
 | IA trop gourmande pour la vitesse visée | Accélération plafonnée, observateur qui attend | Budget en unités de travail, dégradation douce de la simulation mentale avec la population, Workers penseurs, mesure continue dans la CI |
@@ -28,10 +32,12 @@
 ## Questions ouvertes
 
 - [x] Les individus vieillissent-ils et meurent-ils de vieillesse ? Oui : durée de vie tirée entre 54 et 66 jours (décision 0013) ; pas encore de déclin avec l'âge.
-- [ ] Plusieurs colonies indépendantes peuvent-elles naître (individu qui s'éloigne trop longtemps) et se rencontrer ?
+- [x] Plusieurs colonies indépendantes peuvent-elles naître et se rencontrer ? Oui, par expédition (décision 0020, [15-colonies-et-migration](15-colonies-et-migration.md)).
+- [ ] Faut-il une composante d'harmonie « sécurité » ou « prospérité » (vision v2) ?
+- [ ] Monnaie : écus d'or seulement, ou une monnaie plus précoce (troc assisté par des « valeurs » communes) ?
 - [ ] Sauvegarde de partie : `localStorage`, fichier téléchargeable, ou simple graine + cycle (rejeu déterministe) ?
 - [ ] Valeurs exactes : durée du jour, constantes d'oubli, coût de réplication.
-- [ ] Agriculture : les individus peuvent-ils planter des baies ou de la fibre pour améliorer la durabilité ?
+- [x] Agriculture : oui, découverte par l'essai (J9, [13-agriculture-cuisine](13-agriculture-cuisine.md)) ; les champs de replantation du J7 en sont le précurseur.
 - [ ] Faut-il une limite au monde (île) pour concentrer l'action ?
 - [ ] Quel est le bon compromis par défaut entre population maximale et profondeur de réflexion ?
 - [ ] Faut-il activer `SharedArrayBuffer` via un service worker sur GitHub Pages ?
