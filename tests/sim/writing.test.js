@@ -264,25 +264,41 @@ describe('ageing', () => {
 });
 
 // J6 exit: a recipe survives the death of the one who discovered it thanks to a book, and a game
-// shows at least one piece of knowledge lost then found again. Seed 32 tells both: the stone axe
-// is lost on day 72 (nobody alive knows it, no book within reach) and rediscovered by trial on
-// day 73; on day 80 several recipes are read in the library after their discoverers died.
-// (The seed changes when behaviour does: seed 8 told it until J7.)
+// shows at least one piece of knowledge lost then found again. Since J8 no single seed shows both
+// within 90 days, so two games tell them: on seed 5 a recipe is read in the library on day 59 after
+// its discoverer died; on seed 33 a recipe is lost on day 57 (nobody alive knows it, no book
+// within reach) and rediscovered by trial on day 76. (The seeds change when behaviour does: seed 8
+// told both until J7, seed 32 until J8.)
 describe('written knowledge (J6 exit)', () => {
-  it('saves a recipe through a book, and loses then finds knowledge again (seed 32)', async () => {
-    const sim = new Simulation({ seed: 32, balance });
+  /**
+   * Runs a game day by day until `done` holds or 90 days have passed.
+   * @param {number} seed
+   * @param {(k: import('../../src/sim/knowledge/knowledge-log.js').KnowledgeLog) => boolean} done
+   * @returns {Promise<import('../../src/sim/knowledge/knowledge-log.js').KnowledgeLog>}
+   */
+  async function play(seed, done) {
+    const sim = new Simulation({ seed, balance });
     const k = sim.state.knowledge;
-    const saved = () => k.savedByBook.some((t) => t >= 0);
-    const found = () => k.recovered.some((t, r) => t >= 0 && k.lost[r] >= 0 && t > k.lost[r]);
-    for (let day = 0; day < 90 && !(saved() && found()); day++) {
+    for (let day = 0; day < 90 && !done(k); day++) {
       sim.step(DAY);
       // Let Vitest's worker messages through during this long test.
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
-    expect(saved()).toBe(true);
+    return k;
+  }
+
+  it('saves a recipe through a book after its discoverer died (seed 5)', async () => {
+    const saved = (k) => k.savedByBook.some((t) => t >= 0);
+    const k = await play(5, saved);
+    expect(saved(k)).toBe(true);
     const r = k.savedByBook.findIndex((t) => t >= 0);
     expect(k.discovererDied[r]).toBeGreaterThanOrEqual(0);
     expect(k.savedByBook[r]).toBeGreaterThan(k.discovererDied[r]);
-    expect(found()).toBe(true);
+  }, 300000);
+
+  it('loses then finds knowledge again (seed 33)', async () => {
+    const found = (k) => k.recovered.some((t, r) => t >= 0 && k.lost[r] >= 0 && t > k.lost[r]);
+    const k = await play(33, found);
+    expect(found(k)).toBe(true);
   }, 300000);
 });
