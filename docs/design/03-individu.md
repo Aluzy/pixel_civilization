@@ -93,6 +93,10 @@ Implémenté (`src/sim/colony/replication.js`, objectif « Se répliquer » au n
 - Les lits et la réserve régulent la population : une naissance demande un abri de plus, et la réserve ne se remplit que si le territoire nourrit plus de bouches qu'il n'en a. Mesure : 18 à 40 individus au jour 30 sur les graines 1 à 10, au plus 1 mort par graine ; la population plafonne ensuite (graines 1 à 3 : 42, 48 et 70 individus aux jours 50 à 60).
 - Mort : la tâche est libérée, la colonie compte le décès, les autres oublient le défunt (son identifiant peut être réutilisé). L'inventaire ne tombe pas encore au sol.
 
+### État au jalon J9
+
+Avec l'agriculture ([13](13-agriculture-cuisine.md)) : le coût d'une réplication devient **6 portions de n'importe quelle nourriture** (une portion = 12 de nutrition ; la moins nourrissante est donnée d'abord, prise à la réserve si l'individu y croit assez de nourriture) et 3 fibres ; la réserve d'avance se compte en portions ; un abri compte **4 lits** ; à partir de 40 membres, pas de naissance avec moins d'une parcelle pour deux membres, et une réserve qui baisse depuis trois jours (telle que vue au camp) retient les naissances, sauf s'il reste 12 portions par membre. Un plat apaise la curiosité (plaisir).
+
 ## Actions de survie (J2)
 
 | Action | Effet |

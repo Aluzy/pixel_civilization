@@ -132,7 +132,30 @@ Réalisé :
 - Blé sauvage et graines, découverte de « semer » par l'essai aidée par l'observation de graines qui germent, parcelles, arrosage (jarre), stades de croissance, récolte, montée en graine, réserve de semences.
 - Feu de camp, meule, pressoir ; farine, huile ; plats dont la nutrition vaut 1,3 × leurs ingrédients ; plaisir des repas ; péremption par lots.
 
-**Sortie** : sur la majorité des graines, une colonie découvre l'agriculture avant le jour 60 ; au jour 100, plus de la moitié de sa nourriture vient de ses cultures et au moins un plat est mangé chaque jour ; une colonie ordinaire dépasse 300 individus.
+**Sortie** : sur la majorité des graines, une colonie découvre l'agriculture avant le jour 60 ; au jour 100, plus de la moitié de sa nourriture vient de ses cultures et au moins un plat est mangé chaque jour ; une colonie qui cultive avant le jour 30 dépasse 300 individus avant le jour 100 (précisé par la décision 0022 : « une colonie ordinaire » laissait de côté celles qui découvrent l'agriculture tard).
+
+Réalisé :
+- **Sortie**, sur 10 graines et 100 jours :
+  - l'agriculture est découverte avant le jour 60 dans 7 colonies (jours 9 à 51), au jour 69 dans une et jamais dans deux ;
+  - aux jours 91 à 100, plus de la moitié de la nourriture mangée vient des cultures dans 7 colonies (73 à 93 %), et un plat est mangé chaque jour dans les mêmes 7 ;
+  - les 5 colonies qui cultivent avant le jour 30 culminent entre 302 et 408 individus (271 à 397 au jour 100) ;
+  - les autres restent sous 260 ;
+  - l'harmonie progresse toujours sur les graines 1 à 3 ;
+  - test automatique sur les graines 1, 5 et 10.
+- **Ajouts** :
+  - blé sauvage, graines, indice « les graines font des plantes » ;
+  - recette « semer », parcelles et croissance arrosée ;
+  - travaux des champs au tableau noir (récolter, arroser, semer, tracer, glaner) ;
+  - farine, feu de camp, pain, tarte aux baies et viande grillée ;
+  - cuisiniers et recherche de l'usage d'un bien ;
+  - plaisir des plats ;
+  - réserve en portions ;
+  - abris de 4 lits et projets d'abri simultanés ;
+  - croissance bornée par les champs et la réserve ;
+  - famine relative à la taille de la colonie ;
+  - masques de recettes par ingrédient (plus de 30 biens) ;
+  - détail dans [13](13-agriculture-cuisine.md) et la décision 0022.
+- **Reporté** : jarre, meule, pressoir et huile, autres cultures, péremption, moral, ravageurs et clôtures, métier d'agriculteur (J10).
 
 ### J10 — Économie et métiers (`v0.11.0`)
 
