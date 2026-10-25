@@ -10,6 +10,12 @@ import { BARE_HANDS } from './catalog.js';
  *   sought (shared ingredients / all ingredients).
  * @property {number} familiarBonus - Times the summed likeness to all known recipes.
  * @property {number} kindStationBonus - Station where things of the kind sought were made.
+ * @property {number} kindElsewhere - Malus on a station where no structure was ever made, when
+ *   looking for a structure and knowing where structures are made.
+ * @property {number} craftedBonus - Per crafted material in the set, when looking for something to
+ *   write on (writing is made of crafted materials).
+ * @property {number} materialStationBonus - Raw materials at a station where a crafted material was
+ *   made, when looking for something to write on (another material may be made there).
  * @property {number} jitter - Random part, so that equal candidates are tried in varied order.
  */
 
@@ -40,7 +46,7 @@ function popcount(m) {
  * @param {TrialWeights} weights
  * @param {import('../core/rng.js').Rng} rng
  * @param {Int32Array} types - Scratch, length ≥ goods count.
- * @param {string | null} wanted - Output kind sought ("item", "structure"), or null.
+ * @param {string | null} wanted - Family sought ("structure", "item:weapon"…), or null.
  * @param {Int32Array} out - Receives station, mask, and the number of candidates.
  * @returns {boolean} False when there is nothing left to try.
  */
@@ -120,7 +126,7 @@ function isCanonical(i, j, k) {
  * @param {number} mask
  * @param {number} tick
  * @param {TrialWeights} weights
- * @param {string | null} wanted - Output kind sought ("item", "structure"), or null.
+ * @param {string | null} wanted - Family sought ("structure", "item:weapon"…), or null.
  * @returns {number}
  */
 export function scoreTrial(catalog, book, acquired, station, mask, tick, weights, wanted) {
@@ -129,27 +135,40 @@ export function scoreTrial(catalog, book, acquired, station, mask, tick, weights
   let familiar = 0;
   let kindKnown = false;
   let kindHere = false;
+  let materialsHere = false;
   for (let r = 0; r < catalog.recipes.length; r++) {
     if (!book.knows(r)) continue;
     const recipe = catalog.recipes[r];
     if (recipe.station === station && recipe.mask === mask) return -Infinity;
     const likeness = popcount(recipe.mask & mask) / popcount(recipe.mask | mask);
     familiar += likeness;
-    const sameKind = wanted === null || recipe.outputKind === wanted;
+    if (recipe.family === 'item:material' && recipe.station === station) materialsHere = true;
+    const sameKind = wanted === null || recipe.family === wanted;
     if (!sameKind) continue;
     kindKnown = true;
     if (recipe.station === station) kindHere = true;
     if (likeness > similar) similar = likeness;
   }
   let score = similar * weights.similarBonus + familiar * weights.familiarBonus;
+  const writing = wanted === 'item:book' || wanted === 'item:map';
   let count = 0;
+  let crafted = 0;
   for (let m = mask; m !== 0; m &= m - 1) {
     const g = 31 - Math.clz32(m & -m);
     count++;
     if (tick - acquired(g) < weights.recentTicks) score += weights.recentBonus;
+    if (g > catalog.resourceCount) crafted++;
+  }
+  // Writing needs writing materials: a book or a map is guessed to be made of crafted ones, and
+  // more of them are made where one already was.
+  if (writing) {
+    score += crafted * weights.craftedBonus;
+    if (crafted === 0 && materialsHere) score += weights.materialStationBonus;
   }
   score -= count * weights.costPerType;
   if (kindHere) score += weights.kindStationBonus;
+  // Things of this kind were made elsewhere: this station is a poor bet.
+  else if (kindKnown && wanted === 'structure') score -= weights.kindElsewhere;
   else if (!kindKnown && station !== BARE_HANDS) score += weights.stationBonus;
   return score;
 }

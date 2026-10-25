@@ -32,7 +32,14 @@
 | Colonie | Ensemble d'individus partageant un tableau noir | `colony` |
 | Chronique | Fil d'événements marquants affiché à l'observateur | `chronicle` |
 | Harmonie | Score composite de 0 à 100 | `harmony` |
-| Âge sombre | Période où un savoir écrit a été perdu | `darkAge` |
+| Âge sombre | Période où un savoir a été perdu : ni connu juste par un vivant, ni écrit dans un document accessible | `lostMask` |
+| Document | Livre ou carte, objet porté ou rangé avec son propre contenu | `document` |
+| Bibliothèque | Construction qui garde jusqu'à 50 documents de la colonie | `library` |
+| Scribe | Membre chargé d'écrire pour la colonie (un à la fois) | `scribe` |
+| Chercheur | Membre chargé de trouver par l'essai la recette d'un projet que personne ne connaît | `researcher` |
+| Famille (de recette) | « structure » ou « item: » + type d'objet ; guide la ressemblance dans le choix des essais | `family` |
+| Savoir sauvé par un livre | Recette lue après la mort de celui qui l'a découverte | `savedByBook` |
+| Durée de vie | Âge auquel un individu meurt de vieillesse | `lifespan` |
 | Projet | But à long terme décomposé en sous-tâches (HTN) | `project` |
 | Simulation mentale | Évaluation de futurs possibles sur un modèle issu des croyances | `imagination` |
 | Fiche sociale | Ce qu'un individu croit savoir d'un autre | `socialModel` |

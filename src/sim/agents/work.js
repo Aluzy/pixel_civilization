@@ -43,9 +43,10 @@ export function fillBeliefs(ctx, id) {
  * @param {number} id
  * @param {import('../ai/planner.js').PlanTarget} target
  * @param {import('./movement.js').Plan} plan
+ * @param {boolean} [mayDiscover=true] - False when called by the discovery itself (no loop).
  * @returns {void}
  */
-export function pursue(state, ctx, id, target, plan) {
+export function pursue(state, ctx, id, target, plan, mayDiscover = true) {
   const result = fillBeliefs(ctx, id).plan(target);
   ctx.agents.lastPlan[id] = result;
   if (result.status === PlanStatus.OK) {
@@ -56,9 +57,25 @@ export function pursue(state, ctx, id, target, plan) {
     startHere(ctx, id, Action.IDLE);
     return;
   }
+  if (!mayDiscover) {
+    explore(state, ctx, id, plan);
+    return;
+  }
   // Looking for a structure or an item guides the trials.
-  const wanted = target.structures.includes(1) ? 'structure' : 'item';
+  const wanted = target.structures.includes(1) ? 'structure' : familyOf(ctx, target);
   discover(state, ctx, id, wanted, plan);
+}
+
+/**
+ * Family of the items a target accepts ("item:weapon"…), for the trial heuristic.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../ai/planner.js').PlanTarget} target
+ * @returns {string | null}
+ */
+function familyOf(ctx, target) {
+  for (const item of ctx.catalog.items)
+    if (target.goods[item.good] === 1) return `item:${item.kind}`;
+  return null;
 }
 
 /**
@@ -222,7 +239,7 @@ export function chooseSite(ctx) {
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
  * @param {number} id
- * @param {string | null} wanted - Output kind sought ("item", "structure"), or null.
+ * @param {string | null} wanted - Family sought ("structure", "item:weapon"…), or null.
  * @param {import('./movement.js').Plan} plan
  * @returns {void}
  */
@@ -243,7 +260,10 @@ export function discover(state, ctx, id, wanted, plan) {
   }
   const stations = ctx.trialStations;
   stations.fill(0);
-  for (let c = 1; c < stations.length; c++) stations[c] = planner.stations[c];
+  // Only real stations transform things (not shelters nor libraries).
+  for (let c = 1; c < stations.length; c++) {
+    stations[c] = catalog.structures[c - 1].kind === 'station' ? planner.stations[c] : 0;
+  }
   const fetch = fetchCosts(ctx, id);
   const cost = stationCosts(state, ctx, id, stations);
   const weights = ctx.balance.crafting.trial;
@@ -282,7 +302,10 @@ export function discover(state, ctx, id, wanted, plan) {
     if (fetch[g] > 0 && (missing === 0 || fetch[g] < fetch[missing])) missing = g;
   }
   if (missing > 0) {
-    gather(state, ctx, id, missing, ctx.balance.crafting.sampleUnits, plan);
+    // A crafted material (paper, ink) is made with its known recipe; a resource is gathered.
+    if (missing > catalog.resourceCount) {
+      pursue(state, ctx, id, ctx.goodTargets[missing], plan, false);
+    } else gather(state, ctx, id, missing, ctx.balance.crafting.sampleUnits, plan);
     plan.note = PlanNote.TRIAL;
     return;
   }
@@ -322,6 +345,15 @@ function fetchCosts(ctx, id) {
       if (i >= 0) distance = Math.max(Math.abs(memory.x[i] - x), Math.abs(memory.y[i] - y));
     }
     if (distance >= 0) fetch[g] = c.fetchBase + (c.fetchWalk * distance) / c.sampleDistance;
+  }
+  // Crafted materials: carried, or made with a recipe it knows.
+  const book = agents.recipes[id];
+  for (let g = catalog.resourceCount + 1; g < catalog.goodCount; g++) {
+    if (catalog.material[g] !== 1) continue;
+    if (agents.carried(id, g) > 0) fetch[g] = 0;
+    else if (catalog.recipeForGood[g] >= 0 && book.knows(catalog.recipeForGood[g])) {
+      fetch[g] = c.fetchBase + c.fetchCraft;
+    }
   }
   return fetch;
 }

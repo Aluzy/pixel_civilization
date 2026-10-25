@@ -18,6 +18,8 @@ export const INPUT = Object.freeze({
   vulnerability: 10,
   colonyTask: 11,
   canReplicate: 12,
+  unwritten: 13,
+  unread: 14,
 });
 
 const INPUT_COUNT = Object.keys(INPUT).length;

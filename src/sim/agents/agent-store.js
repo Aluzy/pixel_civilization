@@ -131,6 +131,13 @@ export class AgentStore {
     this.gathered = new Uint16Array(max * goodCount);
     this.builds = new Uint16Array(max);
     this.delivers = new Uint16Array(max);
+    /** Age at which each agent dies of old age, in ticks. */
+    this.lifespan = new Int32Array(max);
+    /** What it saw written in its colony's library (bit set of recipes), and whether it went. */
+    this.librarySeen = i32();
+    /** Tick the newest map seen in the library was made, -1 if none. */
+    this.mapSeen = i32();
+    this.libraryVisited = u8();
     /** @type {SocialModel[]} What each agent believes about the others. */
     this.social = [];
     /**
@@ -168,9 +175,21 @@ export class AgentStore {
    * @param {number} [spec.colony=-1]
    * @param {number} [spec.parent=-1]
    * @param {number} [spec.generation=0]
+   * @param {number} [spec.lifespan] - Age at which it dies of old age, in ticks.
    * @returns {number}
    */
-  create({ x, y, tick, attributes, needs, rng, colony = -1, parent = -1, generation = 0 }) {
+  create({
+    x,
+    y,
+    tick,
+    attributes,
+    needs,
+    rng,
+    colony = -1,
+    parent = -1,
+    generation = 0,
+    lifespan = 0x7fffffff,
+  }) {
     let id = 0;
     while (id < this.max && this.alive[id] === 1) id++;
     if (id >= this.max) throw new Error('Too many agents');
@@ -236,6 +255,10 @@ export class AgentStore {
     this.builds[id] = 0;
     this.delivers[id] = 0;
     this.social[id] = new SocialModel(this.sheets);
+    this.lifespan[id] = lifespan;
+    this.librarySeen[id] = 0;
+    this.mapSeen[id] = -1;
+    this.libraryVisited[id] = 0;
     if (!this.path[id]) this.path[id] = new Int32Array(PATH_MAX * 2);
     this.pathLength[id] = 0;
     this.pathIndex[id] = 0;
@@ -365,6 +388,8 @@ export class AgentStore {
       h.typedArray(this.gathered.subarray(g0, g0 + this.goodSlots));
       h.uint32(this.builds[id]).uint32(this.delivers[id]);
       this.social[id].hashInto(h);
+      h.uint32(this.lifespan[id]).uint32(this.librarySeen[id]).uint32(this.libraryVisited[id]);
+      h.uint32(this.mapSeen[id]);
       h.typedArray(this.path[id].subarray(0, this.pathLength[id] * 2));
       h.uint32(this.pathIndex[id]);
       h.typedArray(this.rng[id].s);

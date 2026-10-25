@@ -69,6 +69,7 @@ describe('crafting', () => {
     const a = sim.agents;
     a.addCarried(id, good('wood'), 4);
     a.addCarried(id, good('fiber'), 2);
+    a.recipes[id].learn(recipe('workbench'), sim.tick, 1000);
     a.craftRecipe[id] = recipe('workbench');
     start(sim, id, Action.CRAFT);
     runAction(sim, id);
@@ -87,6 +88,7 @@ describe('crafting', () => {
     const a = sim.agents;
     a.addCarried(id, good('wood'), 2);
     a.addCarried(id, good('fiber'), 1);
+    a.recipes[id].learn(recipe('spear'), sim.tick, 1000);
     a.craftRecipe[id] = recipe('spear');
     start(sim, id, Action.CRAFT);
     runAction(sim, id);

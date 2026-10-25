@@ -180,6 +180,36 @@
       ]
     },
     {
+      "id": "write",
+      "name": "Écrire",
+      "level": "knowledge",
+      "considerations": [
+        {
+          "input": "unwritten",
+          "curve": {
+            "type": "linear",
+            "m": 0.55,
+            "b": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "read",
+      "name": "Lire",
+      "level": "knowledge",
+      "considerations": [
+        {
+          "input": "unread",
+          "curve": {
+            "type": "linear",
+            "m": 0.55,
+            "b": 0
+          }
+        }
+      ]
+    },
+    {
       "id": "rest",
       "name": "Se reposer",
       "level": "survival",

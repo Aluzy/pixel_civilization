@@ -1,7 +1,15 @@
 {
   "structures": [
     { "id": "workbench", "name": "Établi", "color": "#d9c7a0", "kind": "station" },
-    { "id": "shelter", "name": "Abri", "color": "#9c6b45", "kind": "shelter", "sleepRecovery": 2 }
+    { "id": "shelter", "name": "Abri", "color": "#9c6b45", "kind": "shelter", "sleepRecovery": 2 },
+    { "id": "scriptorium", "name": "Scriptorium", "color": "#ece4cf", "kind": "station" },
+    {
+      "id": "library",
+      "name": "Bibliothèque",
+      "color": "#8a5a3a",
+      "kind": "library",
+      "feminine": true
+    }
   ],
   "items": [
     { "id": "spear", "name": "Lance", "kind": "weapon", "attack": 2 },
@@ -11,7 +19,11 @@
       "name": "Pioche de pierre",
       "kind": "tool",
       "harvest": { "stone": 3 }
-    }
+    },
+    { "id": "paper", "name": "Papier", "kind": "material" },
+    { "id": "ink", "name": "Encre", "kind": "material" },
+    { "id": "book", "name": "Livre", "kind": "book" },
+    { "id": "map", "name": "Carte", "kind": "map" }
   ],
   "recipes": [
     {
@@ -48,6 +60,48 @@
       "inputs": { "stone": 3, "wood": 1, "fiber": 1 },
       "durationTicks": 40,
       "output": { "item": "stone_pickaxe" }
+    },
+    {
+      "id": "scriptorium",
+      "station": null,
+      "inputs": { "wood": 6, "stone": 2, "clay": 2 },
+      "durationTicks": 80,
+      "output": { "structure": "scriptorium" }
+    },
+    {
+      "id": "library",
+      "station": null,
+      "inputs": { "stone": 6, "clay": 4, "fiber": 4 },
+      "durationTicks": 200,
+      "output": { "structure": "library" }
+    },
+    {
+      "id": "paper",
+      "station": "scriptorium",
+      "inputs": { "fiber": 3 },
+      "durationTicks": 30,
+      "output": { "item": "paper" }
+    },
+    {
+      "id": "ink",
+      "station": "scriptorium",
+      "inputs": { "clay": 2 },
+      "durationTicks": 30,
+      "output": { "item": "ink" }
+    },
+    {
+      "id": "book",
+      "station": "scriptorium",
+      "inputs": { "paper": 3, "ink": 1 },
+      "durationTicks": 40,
+      "output": { "item": "book" }
+    },
+    {
+      "id": "map",
+      "station": "scriptorium",
+      "inputs": { "paper": 1, "ink": 1, "fiber": 1 },
+      "durationTicks": 30,
+      "output": { "item": "map" }
     }
   ]
 }

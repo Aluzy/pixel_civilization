@@ -7,6 +7,7 @@ import { perceive } from './perception.js';
 import { pursue } from './work.js';
 import { campOf } from '../colony/colony-logic.js';
 import { colonyWork, goToCamp, prepareReplication } from './colony-work.js';
+import { readBehaviour, writeBehaviour } from './scribe-work.js';
 
 // Turns a chosen goal into a concrete action, using only what the agent perceives and remembers.
 // Survival goals are hand-written; crafting goals follow the GOAP planner (work.js).
@@ -79,6 +80,12 @@ export function planGoal(state, ctx, id, goal, plan) {
       return;
     case 'replicate':
       prepareReplication(state, ctx, id, plan, eatBehaviour);
+      return;
+    case 'write':
+      writeBehaviour(state, ctx, id, plan);
+      return;
+    case 'read':
+      readBehaviour(state, ctx, id, plan);
       return;
     case 'explore':
       explore(state, ctx, id, plan);

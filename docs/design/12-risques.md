@@ -11,6 +11,8 @@
 | Explosion combinatoire de la découverte | Pixel qui expérimente sans fin | Heuristique de curiosité, coût réel des essais, mémoire des échecs. Mesure J4 : avec 4 matériaux récoltables à mains nues (les minerais exigent une pioche), 2 stations et une heuristique guidée par les recettes déjà connues, tout est découvert en 2 à 5 jours sur 28 graines sur 30 |
 | Matériau clé jamais aperçu | Projet bloqué (graines 16 et 17 : pas de pierre en vue) | L'exploration de la frontière finit par en trouver ; les cartes d'influence de ressources (J5) et la transmission orale aideront |
 | Recettes oubliées | Retour en arrière, « âge sombre » | Voulu ; la consolidation à l'usage protège les recettes utiles, les livres (J6) les préserveront. Mesure J5 : vers le jour 100, beaucoup d'individus oublient lance et abri ; la colonie réapprend par l'essai quand des matériaux attendent un bâtisseur |
+| Recettes fausses qui se propagent | Une colonie entière croit savoir une recette qu'aucun ne sait juste : le savoir est perdu sans que personne ne le remarque | Voulu (J6) : l'erreur se découvre à l'usage, la recette fausse est oubliée et devient un échec ; un livre juste dans la bibliothèque l'emporte sur les copies fausses ; un bâtisseur détrompé rend sa tâche |
+| Bibliothèque unique | Un incendie efface tout l'écrit d'une colonie | Voulu ; l'écrit reste dans les mémoires des lecteurs vivants, et la colonie rebâtit une bibliothèque. Pas encore de copies ni de bibliothèques multiples |
 | Famine dans une colonie trop nombreuse | Morts en chaîne | Naissance conditionnée à une réserve de nourriture d'avance et à un lit libre (décision 0011) ; baies plus nombreuses au J5 ; agriculture (question ouverte) |
 | IA trop gourmande pour la vitesse visée | Accélération plafonnée, observateur qui attend | Budget en unités de travail, dégradation douce de la simulation mentale avec la population, Workers penseurs, mesure continue dans la CI |
 | Parallélisme non déterministe | Parties impossibles à reproduire | Application des décisions dans l'ordre des identifiants, flux aléatoire par individu, test K = 1 contre K = 4 |
@@ -23,7 +25,7 @@
 
 ## Questions ouvertes
 
-- [ ] Les individus vieillissent-ils et meurent-ils de vieillesse ? (proposition : oui, 60 jours)
+- [x] Les individus vieillissent-ils et meurent-ils de vieillesse ? Oui : durée de vie tirée entre 54 et 66 jours (décision 0013) ; pas encore de déclin avec l'âge.
 - [ ] Plusieurs colonies indépendantes peuvent-elles naître (individu qui s'éloigne trop longtemps) et se rencontrer ?
 - [ ] Sauvegarde de partie : `localStorage`, fichier téléchargeable, ou simple graine + cycle (rejeu déterministe) ?
 - [ ] Valeurs exactes : durée du jour, constantes d'oubli, coût de réplication.

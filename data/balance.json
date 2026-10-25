@@ -23,7 +23,8 @@
       "memory": 20
     },
     "startNeeds": 30,
-    "carryPerForce": 3
+    "carryPerForce": 3,
+    "lifespanDays": [54, 66]
   },
   "needs": {
     "hungerPerDay": 50,
@@ -84,6 +85,7 @@
     "sampleDistance": 16,
     "fetchBase": 0.2,
     "fetchWalk": 0.3,
+    "fetchCraft": 0.3,
     "stationWalk": 0.3,
     "trial": {
       "recentTicks": 600,
@@ -91,9 +93,12 @@
       "costPerType": 0.1,
       "stationBonus": 0.5,
       "kindStationBonus": 0.6,
+      "kindElsewhere": 1.5,
+      "craftedBonus": 1,
       "similarBonus": 1,
       "familiarBonus": 0.3,
-      "jitter": 0.05
+      "jitter": 0.05,
+      "materialStationBonus": 0.8
     }
   },
   "threats": {
@@ -139,12 +144,16 @@
     "habitBonus": 1,
     "maxPopulation": 120,
     "exploreLeash": 40,
-    "homeRange": 80
+    "homeRange": 80,
+    "researchTicks": 7200,
+    "equipmentInColony": 0.5
   },
   "social": {
     "talkInterval": 40,
-    "talkRadius": 1,
+    "talkRadius": 2,
     "placeOffset": 3,
+    "askNeed": 50,
+    "askRadius": 6,
     "heardStrength": 0.5,
     "wrongRecipeChance": 0.1,
     "imitationChance": 0.5,
@@ -154,5 +163,24 @@
     "sharedAffinity": 0.3,
     "talkAffinity": 0.1
   },
-  "imagination": { "rollouts": 12, "predatorSpread": 0.3, "riskHealth": 0.3 }
+  "imagination": { "rollouts": 12, "predatorSpread": 0.3, "riskHealth": 0.3 },
+  "writing": {
+    "bookRecipes": 10,
+    "mapEntries": 100,
+    "writeRecipeTicks": 50,
+    "writeEntryTicks": 5,
+    "readRecipeTicks": 20,
+    "readEntryTicks": 2,
+    "mapStrength": 0.8,
+    "mapRefreshDays": 10,
+    "libraryCapacity": 50,
+    "libraryMembers": 6,
+    "maxDocuments": 256,
+    "youngDays": 5,
+    "fireChancePerDay": 0.01,
+    "abandonDays": 3,
+    "abandonRadius": 12,
+    "knowledgeInterval": 100,
+    "scribeTicks": 7200
+  }
 }

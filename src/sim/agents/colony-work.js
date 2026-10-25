@@ -50,13 +50,14 @@ export function colonyWork(state, ctx, id, plan) {
   }
   if (a.taskProject[id] < 0) {
     if (atCamp(ctx, colony, id)) {
+      // Materials wait for a building nobody here knows how to make: one member at a time
+      // tries to find out, the others keep working.
+      if (research(state, ctx, colony, id)) {
+        discover(state, ctx, id, 'structure', plan);
+        plan.note = PlanNote.COLONY;
+        return;
+      }
       if (!chooseTask(state, ctx, colony, id)) {
-        // Materials are waiting and nobody knows how to build: try to find out.
-        if (colony.projects.some((p) => readyToBuild(colony, p))) {
-          discover(state, ctx, id, 'structure', plan);
-          plan.note = PlanNote.COLONY;
-          return;
-        }
         startHere(ctx, id, Action.IDLE);
         return;
       }
@@ -68,6 +69,12 @@ export function colonyWork(state, ctx, id, plan) {
   const project = colony.projects[a.taskProject[id]];
   if (a.taskBuild[id] === 1) {
     const r = project.recipe;
+    // It found out it had the recipe wrong (or forgot it): someone else will build.
+    if (!a.recipes[id].knows(r)) {
+      releaseTask(state, ctx, id);
+      startHere(ctx, id, Action.IDLE);
+      return;
+    }
     const holds = ctx.catalog.recipes[r].inputs.every((i) => a.carried(id, i.good) >= i.count);
     if (!holds) {
       if (!goToCamp(ctx, colony, id, Action.DEPOSIT, plan)) explore(state, ctx, id, plan);
@@ -94,6 +101,33 @@ export function colonyWork(state, ctx, id, plan) {
   }
   gather(state, ctx, id, good, a.taskAmount[id], plan);
   plan.note = PlanNote.COLONY;
+}
+
+/**
+ * Whether this agent is (or becomes) the one researching how to build a project whose materials
+ * are ready and that it does not know how to build.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} colony
+ * @param {number} id
+ * @returns {boolean}
+ */
+function research(state, ctx, colony, id) {
+  const a = ctx.agents;
+  const book = a.recipes[id];
+  const limit = ctx.balance.colony.researchTicks;
+  for (const p of colony.projects) {
+    if (!readyToBuild(colony, p) || book.knows(p.recipe)) continue;
+    if (p.researcher === id) return true;
+    const free = p.researcher < 0 || a.alive[p.researcher] !== 1;
+    // A researcher keeps the task for a while: it remembers what it already tried.
+    if (free || state.tick - p.researcherTick > limit) {
+      p.researcher = id;
+      p.researcherTick = state.tick;
+      return true;
+    }
+  }
+  return false;
 }
 
 /**

@@ -87,6 +87,8 @@ Réalisé : 9 graines sur 10 (test automatique), avec 22 à 40 individus au jour
 
 **Sortie** : une recette survit à la mort de celui qui l'a découverte grâce à un livre, et une partie montre au moins un savoir perdu puis redécouvert.
 
+Réalisé : la graine 8 montre les deux (test automatique) : l'établi est lu dans la bibliothèque au jour 59 après la mort de son découvreur, puis perdu au jour 83 (plus personne ne le sait, aucun livre à portée) et redécouvert par l'essai au jour 119. Sur 30 graines et 150 jours : une bibliothèque est bâtie dans 22 colonies (vers les jours 13 à 30), une recette est sauvée par un livre dans 17 (8 sur les graines 1 à 10), un savoir est perdu dans 26 et retrouvé dans 9 ; 15 parties voient au moins un incendie. Ajouts : documents à contenu propre (livres, cartes), un scribe par colonie, lecture prioritaire des nouveaux nés, cartes dessinées tous les 10 jours, abandon et incendie des bibliothèques, journal du savoir collectif, vieillesse (54 à 66 jours), un chercheur par projet sans recette connue, demander son chemin, essais guidés par la famille de recette (décisions 0013 et 0014). Les critères des jalons précédents tiennent : J4 sur 9 graines sur 10, J5 sur 8 graines sur 10. Reporté : bibliothèque en gabarit de plusieurs pixels, cartes consultées hors de la bibliothèque, copies de livres, déclin avec l'âge.
+
 ## J7 — Harmonie et finitions (`v1.0.0`)
 
 - Score d'harmonie et ses composantes, tâches qui ciblent la composante la plus faible, aménagement du territoire.

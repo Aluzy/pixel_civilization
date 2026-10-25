@@ -1,6 +1,7 @@
 /**
- * Lines of the colony panel (from Simulation#describeColony): population, beds, stock, and the
- * projects in progress with what they still need and who worked on them.
+ * Lines of the colony panel (from Simulation#describeColony): population, beds, stock, the
+ * projects in progress with what they still need and who worked on them, the libraries and the
+ * colony's knowledge (known, written, lost).
  * @param {object | null} colony
  * @returns {string[]}
  */
@@ -24,7 +25,22 @@ export function formatColony(colony) {
     lines.push(`${p.name} : ${goods}${who}${builder}`);
   }
   if (colony.lastProject.length > 1) {
-    lines.push(`Dernier abri : œuvre de ${colony.lastProject.map((id) => `#${id}`).join(', ')}`);
+    lines.push(`Dernier projet : œuvre de ${colony.lastProject.map((id) => `#${id}`).join(', ')}`);
+  }
+  for (const lib of colony.libraries ?? []) {
+    const state = lib.abandoned ? ' (abandonnée)' : '';
+    lines.push(
+      `Bibliothèque (${lib.x}, ${lib.y})${state} : ${lib.documents} document(s), ` +
+        `${lib.recipes.length} recette(s)`,
+    );
+  }
+  if (colony.scribe >= 0) lines.push(`Scribe : #${colony.scribe}`);
+  const k = colony.knowledge;
+  if (k && k.known.length + k.written.length + k.lost.length > 0) {
+    lines.push(`Savoir : ${k.known.length} recette(s) connue(s), ${k.written.length} écrite(s)`);
+    if (k.lost.length > 0) lines.push(`Savoir perdu : ${k.lost.join(', ')}`);
+    if (k.saved.length > 0) lines.push(`Sauvé par un livre : ${k.saved.join(', ')}`);
+    if (k.recovered.length > 0) lines.push(`Retrouvé : ${k.recovered.join(', ')}`);
   }
   return lines;
 }

@@ -3,6 +3,7 @@ import balance from '../../data/balance.json' with { type: 'json' };
 import { CATALOG, PROJECTS, Simulation, WORLD_TABLES } from '../../src/sim/simulation.js';
 import { bar, formatAgent } from '../../src/ui/agent-info.js';
 import { formatEvent } from '../../src/ui/chronicle.js';
+import { formatColony } from '../../src/ui/colony-info.js';
 import { buildNames, subjectLabel } from '../../src/ui/names.js';
 import { formatTile } from '../../src/ui/tile-info.js';
 
@@ -101,5 +102,58 @@ describe('crafting in the panel and the chronicle', () => {
   it('shows a structure on an inspected tile', () => {
     const tile = { x: 1, y: 2, biome: 1, resource: 0, quantity: 0, structure: 2, altitude: 128 };
     expect(formatTile(tile, WORLD_TABLES, CATALOG.structures)).toContain('Abri');
+  });
+});
+
+describe('written knowledge in the panels and the chronicle', () => {
+  const recipe = (id) => CATALOG.recipes.findIndex((r) => r.id === id);
+  const at = { seq: 1, tick: 0, agent: 3, x: 2, y: 5 };
+
+  it('tells writing, reading, fires, abandonment, lost and found knowledge, old age', () => {
+    const spear = { ...at, subject: recipe('spear') };
+    const say = (e) => formatEvent(e, balance.time, NAMES).slice('J1 06:00 · '.length);
+    expect(say({ ...spear, type: 'written' })).toBe(
+      'L’individu #3 écrit dans un livre comment faire : Lance.',
+    );
+    expect(say({ ...spear, type: 'read' })).toBe(
+      'L’individu #3 apprend dans un livre comment faire : Lance.',
+    );
+    expect(say({ ...spear, type: 'knowledgeLost', agent: -1 })).toBe(
+      'Savoir perdu : plus personne ne sait faire Lance.',
+    );
+    expect(say({ ...spear, type: 'knowledgeRecovered', agent: -1 })).toBe(
+      'Savoir retrouvé : on sait de nouveau faire Lance.',
+    );
+    expect(say({ ...at, type: 'fire', agent: -1, subject: 4 })).toBe(
+      'La bibliothèque (2, 5) brûle, et 4 document(s) avec elle.',
+    );
+    expect(say({ ...at, type: 'abandoned', agent: -1, subject: 0 })).toMatch(/abandonnée/);
+    expect(say({ ...at, type: 'death', subject: 1 })).toBe('Mort de l’individu #3, de vieillesse.');
+    const library = CATALOG.resourceCount + CATALOG.structures.find((s) => s.id === 'library').code;
+    expect(say({ ...at, type: 'forgotPlace', subject: library })).toBe(
+      'L’individu #3 a oublié sa bibliothèque (2, 5).',
+    );
+  });
+
+  it('shows the libraries and the knowledge of the colony, and the books carried', () => {
+    const sim = new Simulation({ seed: 3, balance });
+    const a = sim.agents;
+    const colony = sim.state.colonies[0];
+    const [lx, ly] = [a.x[0] + 1, a.y[0]];
+    colony.addLibrary(lx, ly, 0);
+    colony.scribe = 0;
+    sim.state.knowledge.noteDiscovery(recipe('spear'), 0, 0);
+    a.recipes[0].learn(recipe('spear'), 0, 1000);
+    const doc = sim.state.documents.create(1, 0, 0);
+    sim.state.documents.recipes[doc] = 1 << recipe('spear');
+    sim.step(100);
+    const lines = formatColony(sim.describeColony(0));
+    expect(lines).toContain(`Bibliothèque (${lx}, ${ly}) : 0 document(s), 0 recette(s)`);
+    expect(lines).toContain('Scribe : #0');
+    expect(lines).toContain('Savoir : 1 recette(s) connue(s), 1 écrite(s)');
+    const text = formatAgent(sim.describeAgent(0), NAMES, balance.time).join('\n');
+    expect(text).toContain('Livre : Lance');
+    expect(text).toContain('rôle : scribe');
+    expect(text).toMatch(/· 0\/\d+ j ·/);
   });
 });

@@ -18,6 +18,8 @@ const NOTE_TEXT = {
   [PlanNote.COLONY]: 'colonie',
   [PlanNote.REPLICATION]: 'réplication',
   [PlanNote.PANTRY]: 'réserve',
+  [PlanNote.WRITING]: 'écrit',
+  [PlanNote.READING]: 'lit',
 };
 
 /**
@@ -75,8 +77,10 @@ export function formatAgent(agent, names, time) {
   const hp = String(Math.round(agent.hp)).padStart(3);
   const memoryTitle = `Mémoire ${agent.memory.length}/${agent.memoryCapacity}`;
   const doing = agent.asleep ? 'dort' : agent.action;
+  const life = agent.lifespan ? `/${Math.floor(agent.lifespan / time.ticksPerDay)}` : '';
   const lines = [
-    `Individu #${agent.id} · (${agent.x}, ${agent.y}) · ${days} j · génération ${agent.generation}`,
+    `Individu #${agent.id} · (${agent.x}, ${agent.y}) · ${days}${life} j · génération ` +
+      `${agent.generation}`,
     `${'PV'.padEnd(9)} ${bar(agent.hp, agent.maxHp, 12)} ${hp}`,
     need('Faim', agent.needs.hunger),
     need('Soif', agent.needs.thirst),
@@ -92,10 +96,18 @@ export function formatAgent(agent, names, time) {
   }
   const known = agent.recipes.map((r) => `${r.name} ${bar(r.strength, 1, 4)}`).join(' · ');
   lines.push(`Recettes (échecs retenus ${agent.failures}) : ${known || 'aucune'}`);
+  for (const doc of agent.documents ?? []) {
+    lines.push(
+      doc.kind === 'book'
+        ? `Livre : ${doc.recipes.join(', ') || 'vierge'}`
+        : `Carte : ${doc.places} lieu(x)`,
+    );
+  }
   const risk = Math.round(agent.fightRisk * 100);
   lines.push(`Arme ×${agent.weapon} · prédateurs tués ${agent.kills} · risque imaginé ${risk} %`);
   const lineage = agent.parent >= 0 ? `réplique de #${agent.parent}` : 'fondateur';
-  lines.push(`${lineage} · ${agent.children} réplique(s) · rôle : ${agent.role}`);
+  const role = agent.scribe ? 'scribe' : agent.role;
+  lines.push(`${lineage} · ${agent.children} réplique(s) · rôle : ${role}`);
   if (agent.task) lines.push(`Tâche : ${agent.task}`);
   if (agent.social.length > 0) {
     const peers = agent.social.slice(0, 3).map((p) => {

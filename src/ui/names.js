@@ -2,6 +2,7 @@
  * @typedef {object} Names
  * @property {{ name: string }[]} resources - Index = resource id − 1.
  * @property {string[]} [structures] - Index = structure code − 1.
+ * @property {boolean[]} [feminine] - Per structure code − 1: its name is feminine.
  * @property {string[]} [recipes] - Name of what each recipe makes.
  * @property {string[]} [projects]
  */
@@ -17,6 +18,7 @@ export function buildNames(tables, catalog, projects) {
   return {
     resources: tables.resources,
     structures: catalog.structures.map((s) => s.name),
+    feminine: catalog.structures.map((s) => s.feminine),
     recipes: catalog.recipes.map((r) => r.name),
     projects: projects.projects.map((p) => p.name),
   };

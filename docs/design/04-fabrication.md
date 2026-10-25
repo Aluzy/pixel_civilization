@@ -13,7 +13,7 @@ Une station est un pixel posé dans le monde. Un individu doit être adjacent à
 | Feu de camp | Jaune-orangé | 3 bois + 3 pierres | Cuisson, chaleur, sécurité nocturne |
 | Four | Rouge brique | 5 argiles + 5 pierres + 2 charbons | Briques, poterie |
 | Fonderie | Orange incandescent | 8 briques + 4 charbons | Lingots de cuivre et de fer |
-| Scriptorium | Blanc cassé | 6 bois + 4 fibres, à côté d'un établi | Papier, encre, cartes, livres |
+| Scriptorium | Blanc cassé | 6 bois + 2 pierres + 2 argiles (J6) | Papier, encre, cartes, livres |
 
 ## Règles de recettes
 
@@ -46,7 +46,7 @@ Une station est un pixel posé dans le monde. Un individu doit être adjacent à
 4. 10 bois + 5 fibres → **abri** (mur et toit ; défense +5 pendant le sommeil, fatigue récupérée 2 fois plus vite).
 5. Argile + pierre + charbon → **four** ; au four : argile → **brique** → murs durables, **fonderie**.
 6. Fonderie : cuivre + charbon → **lingot de cuivre** → outils et armes de cuivre (accès fer).
-7. Fibre + eau → **papier** ; charbon + eau → **encre** ; au scriptorium : papier + encre → **carte** ou **livre**.
+7. Au scriptorium : fibre → **papier** ; argile → **encre** ; papier + encre → **livre**, papier + encre + fibre → **carte** (J6).
 8. Bâtiments composés (bibliothèque, entrepôt, champ cultivé) : plusieurs pixels posés selon un gabarit.
 
 ## Découverte par l'essai
@@ -76,6 +76,16 @@ Implémenté (`data/recipes.json`, `src/sim/crafting/`, `src/sim/agents/work.js`
 - **Pas encore** : couleur des produits dérivée des ingrédients, imitation (J5), feu de camp, four, fonderie, scriptorium.
 
 Mesure : sur les graines 1 à 10, l'établi, la lance, un outil (presque toujours la pioche, découverte en même temps que l'abri par ressemblance) et l'abri sont réalisés en 2,4 à 4,7 jours ; 28 graines sur 30 (graines 11 à 40) avant le jour 5. Les deux échecs (16 et 17) sont des mondes où la pierre, à 9 cases du départ, n'entre jamais dans le champ de vision avant que l'individu ne parte vers une région qui n'en a pas.
+
+## État au jalon J6
+
+- **Nouvelles constructions** : scriptorium (station blanc cassé : 6 bois + 2 pierres + 2 argiles, mains nues) et bibliothèque (pixel brun, construction de type `library` : 6 pierres + 4 argiles + 4 fibres, mains nues). Écart : le scriptorium ne demande pas d'être à côté d'un établi, et ses ingrédients diffèrent du tableau ci-dessus. Avec 6 bois + 4 fibres (+ argile), l'individu seul le découvrait par hasard en cherchant son abri, puis perdait des jours à essayer ses outils sur deux stations ; le critère du J4 tombait à 2 graines sur 10.
+- **Matériaux fabriqués** (objets de type `material`, utilisables dans les essais) : papier (3 fibres au scriptorium) et encre (2 argiles au scriptorium). Écart : ni eau ni charbon, l'eau n'étant pas un bien portable et le charbon exigeant une pioche que beaucoup de colonies n'ont pas.
+- **Livre** (3 papiers + 1 encre, scriptorium) et **carte** (1 papier + 1 encre + 1 fibre, scriptorium).
+- **Familles** : chaque recette a une famille, « structure » ou « item: » suivi du type d'objet (`item:weapon`, `item:tool`, `item:book`…). La ressemblance utilisée par le choix de l'essai compare aux recettes de la famille recherchée (avant, à tout objet) : chercher une arme ne s'inspire plus du papier.
+- **Choix de l'essai, ajouts** : quand l'individu cherche une construction et sait où se font les constructions (aux mains nues), un essai ailleurs a un malus de 1,5 ; quand il cherche un livre ou une carte, chaque matériau fabriqué de l'ensemble vaut +1 (« l'écrit se fait avec des matériaux fabriqués ») et un ensemble de seules ressources vaut +0,8 sur une station où un matériau a déjà été fabriqué (« on y fera peut-être d'autres matériaux »). Seules les vraies stations accueillent des essais (pas l'abri ni la bibliothèque).
+- **Ingrédients fabriqués** : le coût d'aller chercher un matériau fabriqué dont l'individu connaît la recette est 0,2 + 0,3 ; il le fabrique au lieu de le récolter.
+- **On ne fabrique que ce qu'on croit savoir** : un bâtisseur qui découvre qu'il avait mal compris la recette (moitié des ingrédients perdue, échec retenu) rend sa tâche ; il ne peut plus bâtir avec une recette qu'il ne connaît plus. Avant ce correctif, il rebâtissait aussitôt avec la recette juste, sans l'avoir apprise.
 
 ## Imitation
 
