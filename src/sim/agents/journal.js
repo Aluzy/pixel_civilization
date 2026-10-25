@@ -30,6 +30,9 @@ export const PlanNote = Object.freeze({
   PANTRY: 12, // Taking food from the colony's stock.
   WRITING: 13, // Writing a book or a map, or storing it.
   READING: 14, // Reading in the library.
+  HIDING: 15, // Taking cover in a shelter or at the camp.
+  GUARDING: 16, // Night watch over the camp.
+  HUNTING: 17, // Hunting a den or a predator.
 });
 
 /**

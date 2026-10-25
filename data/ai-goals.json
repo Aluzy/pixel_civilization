@@ -5,11 +5,7 @@
   "urgency": {
     "survival": {
       "inputs": ["hunger", "thirst", "fatigue"],
-      "curve": {
-        "type": "smoothstep",
-        "lo": 0.3,
-        "hi": 0.9
-      }
+      "curve": { "type": "smoothstep", "lo": 0.3, "hi": 0.9 }
     }
   },
   "goals": [
@@ -18,14 +14,7 @@
       "name": "Boire",
       "level": "survival",
       "considerations": [
-        {
-          "input": "thirst",
-          "curve": {
-            "type": "smoothstep",
-            "lo": 0.25,
-            "hi": 0.75
-          }
-        }
+        { "input": "thirst", "curve": { "type": "smoothstep", "lo": 0.25, "hi": 0.75 } }
       ]
     },
     {
@@ -33,14 +22,7 @@
       "name": "Manger",
       "level": "survival",
       "considerations": [
-        {
-          "input": "hunger",
-          "curve": {
-            "type": "smoothstep",
-            "lo": 0.3,
-            "hi": 0.85
-          }
-        }
+        { "input": "hunger", "curve": { "type": "smoothstep", "lo": 0.3, "hi": 0.85 } }
       ]
     },
     {
@@ -48,22 +30,8 @@
       "name": "Dormir",
       "level": "survival",
       "considerations": [
-        {
-          "input": "fatigue",
-          "curve": {
-            "type": "smoothstep",
-            "lo": 0.4,
-            "hi": 0.95
-          }
-        },
-        {
-          "input": "darkness",
-          "curve": {
-            "type": "linear",
-            "m": 0.65,
-            "b": 0.35
-          }
-        }
+        { "input": "fatigue", "curve": { "type": "smoothstep", "lo": 0.4, "hi": 0.95 } },
+        { "input": "darkness", "curve": { "type": "linear", "m": 0.65, "b": 0.35 } }
       ]
     },
     {
@@ -71,22 +39,8 @@
       "name": "Fuir",
       "level": "survival",
       "considerations": [
-        {
-          "input": "danger",
-          "curve": {
-            "type": "smoothstep",
-            "lo": 0.15,
-            "hi": 0.6
-          }
-        },
-        {
-          "input": "vulnerability",
-          "curve": {
-            "type": "linear",
-            "m": 1,
-            "b": 0
-          }
-        }
+        { "input": "danger", "curve": { "type": "smoothstep", "lo": 0.15, "hi": 0.6 } },
+        { "input": "vulnerability", "curve": { "type": "linear", "m": 1, "b": 0 } }
       ]
     },
     {
@@ -94,134 +48,78 @@
       "name": "Bâtir un abri",
       "level": "safety",
       "considerations": [
-        {
-          "input": "needShelter",
-          "curve": {
-            "type": "linear",
-            "m": 0.45,
-            "b": 0
-          }
-        }
+        { "input": "needShelter", "curve": { "type": "linear", "m": 0.45, "b": 0 } }
       ]
     },
     {
       "id": "equip",
       "name": "S'équiper",
       "level": "equipment",
-      "considerations": [
-        {
-          "input": "needWeapon",
-          "curve": {
-            "type": "linear",
-            "m": 0.4,
-            "b": 0
-          }
-        }
-      ]
+      "considerations": [{ "input": "needWeapon", "curve": { "type": "linear", "m": 0.4, "b": 0 } }]
     },
     {
       "id": "tool",
       "name": "Fabriquer un outil",
       "level": "efficiency",
-      "considerations": [
-        {
-          "input": "needTool",
-          "curve": {
-            "type": "linear",
-            "m": 0.35,
-            "b": 0
-          }
-        }
-      ]
+      "considerations": [{ "input": "needTool", "curve": { "type": "linear", "m": 0.35, "b": 0 } }]
     },
     {
       "id": "explore",
       "name": "Explorer",
       "level": "knowledge",
-      "considerations": [
-        {
-          "input": "curiosity",
-          "curve": {
-            "type": "linear",
-            "m": 0.6,
-            "b": 0
-          }
-        }
-      ]
+      "considerations": [{ "input": "curiosity", "curve": { "type": "linear", "m": 0.6, "b": 0 } }]
     },
     {
       "id": "colony",
       "name": "Tâche collective",
       "level": "harmony",
-      "considerations": [
-        {
-          "input": "colonyTask",
-          "curve": {
-            "type": "linear",
-            "m": 0.5,
-            "b": 0
-          }
-        }
-      ]
+      "considerations": [{ "input": "colonyTask", "curve": { "type": "linear", "m": 0.5, "b": 0 } }]
     },
     {
       "id": "replicate",
       "name": "Se répliquer",
       "level": "harmony",
       "considerations": [
-        {
-          "input": "canReplicate",
-          "curve": {
-            "type": "linear",
-            "m": 0.6,
-            "b": 0
-          }
-        }
+        { "input": "canReplicate", "curve": { "type": "linear", "m": 0.6, "b": 0 } }
       ]
     },
     {
       "id": "write",
       "name": "Écrire",
       "level": "knowledge",
-      "considerations": [
-        {
-          "input": "unwritten",
-          "curve": {
-            "type": "linear",
-            "m": 0.55,
-            "b": 0
-          }
-        }
-      ]
+      "considerations": [{ "input": "unwritten", "curve": { "type": "linear", "m": 0.55, "b": 0 } }]
     },
     {
       "id": "read",
       "name": "Lire",
       "level": "knowledge",
+      "considerations": [{ "input": "unread", "curve": { "type": "linear", "m": 0.55, "b": 0 } }]
+    },
+    {
+      "id": "hide",
+      "name": "Se mettre à l'abri",
+      "level": "safety",
       "considerations": [
-        {
-          "input": "unread",
-          "curve": {
-            "type": "linear",
-            "m": 0.55,
-            "b": 0
-          }
-        }
+        { "input": "fear", "curve": { "type": "smoothstep", "lo": 0.35, "hi": 0.85 } }
       ]
+    },
+    {
+      "id": "guard",
+      "name": "Garder le camp",
+      "level": "safety",
+      "considerations": [{ "input": "guardDuty", "curve": { "type": "linear", "m": 0.7, "b": 0 } }]
+    },
+    {
+      "id": "hunt",
+      "name": "Chasser",
+      "level": "safety",
+      "considerations": [{ "input": "huntDuty", "curve": { "type": "linear", "m": 0.6, "b": 0 } }]
     },
     {
       "id": "rest",
       "name": "Se reposer",
       "level": "survival",
-      "considerations": [
-        {
-          "input": "one",
-          "curve": {
-            "type": "constant",
-            "value": 0.08
-          }
-        }
-      ]
+      "considerations": [{ "input": "one", "curve": { "type": "constant", "value": 0.08 } }]
     }
   ]
 }

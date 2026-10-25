@@ -55,6 +55,12 @@ export class AgentStore {
     this.zoneX = new Int32Array(max);
     this.zoneY = new Int32Array(max);
     this.costPerUnit = new Float64Array(max * goodCount);
+    // Safety (docs/design/16-guerre-et-forteresses.md): fear 0 to 100, combat skill 0 to 1, and
+    // the predator (≥ 0) or den (−2 − index) it is fighting.
+    this.fear = new Float64Array(max);
+    this.combatSkill = new Float64Array(max);
+    this.attackTarget = new Int32Array(max);
+    this.attackCooldown = new Int32Array(max);
     this.max = max;
     this.goodSlots = goodCount;
     this.recipeCount = recipeCount;
@@ -282,6 +288,10 @@ export class AgentStore {
     this.zoneX[id] = 0x7fffffff;
     this.zoneY[id] = 0x7fffffff;
     this.costPerUnit.fill(0, id * this.goodSlots, (id + 1) * this.goodSlots);
+    this.fear[id] = 0;
+    this.combatSkill[id] = 0;
+    this.attackTarget[id] = -1;
+    this.attackCooldown[id] = 0;
     this.librarySeen[id] = 0;
     this.mapSeen[id] = -1;
     this.focusSeen[id] = -1;
@@ -381,6 +391,8 @@ export class AgentStore {
       this.curiosity,
       this.actionProgress,
       this.fightRisk,
+      this.fear,
+      this.combatSkill,
     ];
     const one = new Float64Array(1);
     for (let id = 0; id < this.highWater; id++) {
@@ -417,6 +429,7 @@ export class AgentStore {
       this.social[id].hashInto(h);
       h.uint32(this.lifespan[id]).uint32(this.librarySeen[id]).uint32(this.libraryVisited[id]);
       h.uint32(this.mapSeen[id]).uint32(this.focusSeen[id] & 0xff);
+      h.uint32(this.attackTarget[id]).uint32(this.attackCooldown[id]);
       h.typedArray(this.genes.subarray(id * this.geneCount, (id + 1) * this.geneCount));
       const d0 = id * this.dangerSlots;
       const d1 = d0 + this.dangerCount[id];

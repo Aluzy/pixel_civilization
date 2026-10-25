@@ -1,13 +1,16 @@
 import { Flag } from '../agents/actions.js';
 import { Action, isFocused } from '../agents/action-types.js';
 import { planGoal } from '../agents/behaviors.js';
-import { attackMultiplier, carriesKind, inShelter } from '../agents/equipment.js';
+import { carriesKind, inShelter } from '../agents/equipment.js';
 import { perceptionRadius } from '../agents/perception.js';
 import { fillBeliefs } from '../agents/work.js';
 import { PlanStatus, Step } from '../ai/planner.js';
 import { imagineFight } from '../ai/imagination.js';
 import { INPUT, scoreGoals } from '../ai/utility.js';
-import { goalWeights } from '../genome/genome.js';
+import { geneLevel, goalWeights } from '../genome/genome.js';
+import { agentAttack, agentDefense } from '../agents/combat.js';
+import { knownDen } from '../agents/guard-work.js';
+import { MAX_GUARDS } from '../colony/colony-store.js';
 import { notePass } from '../agents/experience.js';
 import { Component } from '../colony/harmony.js';
 import { atCamp, campOf, shareBoard } from '../colony/colony-logic.js';
@@ -106,14 +109,19 @@ function senseInputs(state, ctx, id) {
   const p = state.threats.nearest(a.x[id], a.y[id], radius);
   const safe = p < 0 || inShelter(state, ctx, a.x[id], a.y[id]);
   input[INPUT.danger] = safe ? 0 : 1 - state.threats.lastDistance / (radius + 1);
-  // Fight or flee: imagined fights against the predator in sight (only when one is there).
+  // A predator in sight frightens, the more the closer.
+  a.fear[id] = Math.min(100, a.fear[id] + input[INPUT.danger] * ctx.balance.safety.fearSight);
+  // Fight or flee: imagined fights against the predators in sight, with the armed members around.
   if (input[INPUT.danger] > 0) {
     const self = ctx.imagined;
     self.hp = a.hp[id];
     self.maxHp = a.maxHp[id];
-    self.attack = a.attack[id] * attackMultiplier(ctx, id);
-    self.defense = a.defense[id];
-    const risk = imagineFight(self, ctx.balance.threats, ctx.balance.imagination, a.rng[id]);
+    self.attack = agentAttack(ctx, id);
+    self.defense = agentDefense(ctx, id);
+    const enemies = state.threats.countNear(a.x[id], a.y[id], radius);
+    const allies = alliesAround(ctx, id);
+    const cfg = ctx.balance.imagination;
+    const risk = imagineFight(self, ctx.balance.threats, cfg, a.rng[id], allies, enemies);
     a.fightRisk[id] = risk;
     input[INPUT.vulnerability] = 0.15 + 0.85 * risk;
   } else {
@@ -143,6 +151,7 @@ function senseInputs(state, ctx, id) {
     home.scribe = -1;
   }
   input[INPUT.unwritten] = scribe ? 1 : 0;
+  senseSafety(state, ctx, id, home);
   // One inventor at a time, once the colony is large enough to spare one: the first member at the
   // camp claims it, for a while (it remembers its failed trials).
   if (
@@ -162,6 +171,114 @@ function senseInputs(state, ctx, id) {
   const unread =
     a.libraryVisited[id] === 0 || (a.librarySeen[id] & ~a.recipes[id].knownMask()) !== 0;
   input[INPUT.unread] = library && unread ? (young ? 1 : 0.7) : 0;
+}
+
+/**
+ * Armed, awake members within `allyRadius`: they would fight alongside.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @returns {number}
+ */
+function alliesAround(ctx, id) {
+  const a = ctx.agents;
+  const r = ctx.balance.safety.allyRadius;
+  let n = 0;
+  for (let other = 0; other < a.highWater; other++) {
+    if (other === id || a.alive[other] !== 1 || a.asleep[other] === 1) continue;
+    if (Math.abs(a.x[other] - a.x[id]) > r || Math.abs(a.y[other] - a.y[id]) > r) continue;
+    if (carriesKind(ctx, other, 'weapon')) n++;
+  }
+  return n;
+}
+
+/**
+ * Safety inputs (docs/design/16-guerre-et-forteresses.md): fear; the guard posts of the colony —
+ * as many as its size calls for while it feels threatened (an attack near the camp lately, or a
+ * den it knows of), taken by armed members at the camp not averse to risk; a guard keeps watch at
+ * night and hunts a den it knows of by day, with enough guards to go together.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {import('../colony/colony-store.js').Colony | null} home
+ * @returns {void}
+ */
+function senseSafety(state, ctx, id, home) {
+  const a = ctx.agents;
+  const input = ctx.inputs;
+  const s = ctx.balance.safety;
+  input[INPUT.fear] = a.fear[id] / 100;
+  input[INPUT.guardDuty] = 0;
+  input[INPUT.huntDuty] = 0;
+  if (home === null) return;
+  const day = state.balance.time.ticksPerDay;
+  const den = knownDen(state, ctx, id, ctx.exploreTarget);
+  const threatened = state.tick - home.lastThreat < s.threatDays * day || den;
+  const wanted = threatened ? Math.min(MAX_GUARDS, Math.ceil(home.members / s.membersPerGuard)) : 0;
+  let slot = -1;
+  let guards = 0;
+  for (let k = 0; k < MAX_GUARDS; k++) {
+    const g = home.guards[k];
+    if (g >= 0 && a.alive[g] !== 1) home.guards[k] = -1;
+    if (home.guards[k] >= 0) guards++;
+    if (home.guards[k] === id) slot = k;
+  }
+  if (slot >= 0 && (guards > wanted || state.tick - home.guardTick[slot] > s.guardTicks)) {
+    home.guards[slot] = -1;
+    slot = -1;
+    guards--;
+  }
+  if (slot < 0 && guards < wanted && atCamp(ctx, home, id) && fitToGuard(state, ctx, id, home)) {
+    slot = home.guards.indexOf(-1);
+    home.guards[slot] = id;
+    home.guardTick[slot] = state.tick;
+    guards++;
+    state.events.push(state.tick, EventType.GUARD, id, a.x[id], a.y[id]);
+  }
+  if (slot < 0) return;
+  if (ctx.darkness > s.watchDarkness || needsGear(ctx, id)) input[INPUT.guardDuty] = 1;
+  else if (den && guards >= s.huntGroup && a.hp[id] >= a.maxHp[id] * s.huntHealth) {
+    input[INPUT.huntDuty] = 1;
+  }
+}
+
+/**
+ * A guard without a weapon, or with a hide or an armour recipe but no armour, equips itself by day.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @returns {boolean}
+ */
+export function needsGear(ctx, id) {
+  if (!carriesKind(ctx, id, 'weapon')) return true;
+  if (carriesKind(ctx, id, 'armor')) return false;
+  if (ctx.agents.carried(id, ctx.hideGood) > 0) return true;
+  const book = ctx.agents.recipes[id];
+  return ctx.catalog.items.some(
+    (item) => item.kind === 'armor' && book.knows(ctx.catalog.recipeForGood[item.good]),
+  );
+}
+
+/**
+ * A member fit to guard: armed or able to make a weapon, not the scribe nor the inventor, and not
+ * too averse to risk.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {import('../colony/colony-store.js').Colony} home
+ * @returns {boolean}
+ */
+function fitToGuard(state, ctx, id, home) {
+  if (home.scribe === id || home.inventor === id) return false;
+  // Armed, or able to make a weapon.
+  const book = ctx.agents.recipes[id];
+  const armed =
+    carriesKind(ctx, id, 'weapon') ||
+    ctx.catalog.items.some(
+      (item) => item.kind === 'weapon' && book.knows(ctx.catalog.recipeForGood[item.good]),
+    );
+  if (!armed) return false;
+  const k = ctx.genes.index.risk;
+  const risk = k === undefined ? 0.5 : geneLevel(ctx.genes, ctx.agents.genes, id, k);
+  return risk <= ctx.balance.safety.guardRiskMax;
 }
 
 /**

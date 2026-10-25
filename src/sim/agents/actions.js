@@ -16,6 +16,9 @@ import {
 } from '../colony/colony-logic.js';
 import { plant } from '../colony/field.js';
 import { noteHarvest } from '../colony/harmony.js';
+import { destroyDen } from '../systems/threat-system.js';
+import { Mood } from '../threats/threat-store.js';
+import { agentAttack, killPredator, train } from './combat.js';
 import { replicate } from '../colony/replication.js';
 import { DocKind } from '../knowledge/document-store.js';
 import {
@@ -172,6 +175,8 @@ export function stepAction(state, ctx, id) {
         return;
       }
       noteHarvest(state, ctx, id, x, y, taken);
+      if (state.world.lastTakeDepleted && taken === ctx.carcass)
+        agents.addCarried(id, ctx.hideGood, 1);
       if (state.world.lastTakeDepleted) {
         ctx.scheduleRegrowth(state, x, y, taken);
         forgetEmptied(ctx, id, taken, x, y);
@@ -293,6 +298,9 @@ export function stepAction(state, ctx, id) {
       finish(ctx, id);
       return;
     }
+    case Action.ATTACK:
+      strike(state, ctx, id);
+      return;
     case Action.PLANT:
       plant(state, ctx, id);
       finish(ctx, id);
@@ -340,6 +348,8 @@ function harvest(state, ctx, id) {
   }
   noteHarvest(state, ctx, id, x, y, taken);
   agents.addCarried(id, taken, 1, state.tick);
+  // The last of a carcass leaves its hide.
+  if (state.world.lastTakeDepleted && taken === ctx.carcass) agents.addCarried(id, ctx.hideGood, 1);
   const habit = id * agents.goodSlots + taken;
   if (agents.gathered[habit] < 65535) agents.gathered[habit]++;
   if (state.world.lastTakeDepleted) {
@@ -375,6 +385,58 @@ export function canHarvest(ctx, id, resource) {
  */
 function canUse(state, ctx, id, station) {
   return station === BARE_HANDS || besideStructure(state, ctx, id, station);
+}
+
+/**
+ * The agent strikes what it fights, every `attackInterval` ticks while it is adjacent: a predator
+ * (which may flee or die and leave a carcass) or a den (destroyed at 0). The fight teaches it.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @returns {void}
+ */
+function strike(state, ctx, id) {
+  const agents = ctx.agents;
+  if (agents.attackCooldown[id] > 0) {
+    agents.attackCooldown[id]--;
+    return;
+  }
+  const t = state.threats;
+  const cfg = ctx.balance.threats;
+  const target = agents.attackTarget[id];
+  const x = agents.x[id];
+  const y = agents.y[id];
+  const blow = Math.max(1, agentAttack(ctx, id) - cfg.defense);
+  if (target >= 0 && t.alive[target] === 1) {
+    if (Math.abs(t.x[target] - x) > 1 || Math.abs(t.y[target] - y) > 1) {
+      finish(ctx, id);
+      return;
+    }
+    t.hp[target] -= blow;
+    train(ctx, id, ctx.balance.combat.skillPerBlowGiven);
+    if (t.hp[target] <= 0) {
+      killPredator(state, ctx, target, id);
+      finish(ctx, id);
+    } else if (t.hp[target] < t.maxHp[target] * cfg.fleeBelow) {
+      t.mood[target] = Mood.FLEE;
+    }
+  } else if (target <= -2 && t.denAlive[-2 - target] === 1) {
+    const d = -2 - target;
+    if (Math.abs(t.denX[d] - x) > 1 || Math.abs(t.denY[d] - y) > 1) {
+      finish(ctx, id);
+      return;
+    }
+    t.denHp[d] -= blow;
+    train(ctx, id, ctx.balance.combat.skillPerBlowGiven);
+    if (t.denHp[d] <= 0) {
+      destroyDen(state, ctx, d, id);
+      finish(ctx, id);
+    }
+  } else {
+    finish(ctx, id);
+    return;
+  }
+  agents.attackCooldown[id] = ctx.balance.combat.attackInterval;
 }
 
 /**

@@ -145,6 +145,11 @@ describe('world generation', () => {
     }
     for (let r = 1; r <= WORLD_TABLES.resources.length; r++) {
       const name = WORLD_TABLES.resources[r - 1].id;
+      // Some resources are never generated (a carcass is left by a kill).
+      if (!allowed.has(r)) {
+        expect(SAMPLE.resourceCount[r], `resource ${name}`).toBe(0);
+        continue;
+      }
       expect(SAMPLE.resourceCount[r], `resource ${name}`).toBeGreaterThan(0);
       for (const b of SAMPLE.resourceBiomes.get(r)) {
         expect(allowed.get(r).has(b), `${name} in ${WORLD_TABLES.biomes[b].id}`).toBe(true);

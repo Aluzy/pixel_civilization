@@ -1,6 +1,28 @@
 import { Flag, isEffort } from '../agents/actions.js';
-import { structureAt } from '../agents/equipment.js';
+import { inShelter, structureAt } from '../agents/equipment.js';
+import { atCamp, campOf } from '../colony/colony-logic.js';
 import { EventType } from '../core/events.js';
+
+/**
+ * Fear (the need for safety) fades with time, faster in a shelter or among others at the camp,
+ * and creeps up at night outside the camp. Attacks, deaths and predators in sight raise it
+ * elsewhere (threat, lifecycle and decision systems).
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @returns {void}
+ */
+function fearDrift(state, ctx, id) {
+  const a = ctx.agents;
+  const s = ctx.balance.safety;
+  const day = state.balance.time.ticksPerDay;
+  let calm = s.fearDecayPerDay;
+  const colony = campOf(state, ctx, id);
+  const home = colony !== null && atCamp(ctx, colony, id);
+  if (home || inShelter(state, ctx, a.x[id], a.y[id])) calm = s.fearCalmPerDay;
+  else if (ctx.darkness > 0.5) calm = -s.fearNightPerDay;
+  a.fear[id] = Math.max(0, Math.min(100, a.fear[id] - calm / day));
+}
 
 /**
  * Needs drift every tick: hunger, thirst and fatigue rise (faster during effort), fatigue falls
@@ -34,13 +56,19 @@ export function needsSystem(state, ctx) {
       a.curiosity[id] = Math.min(n.critical, a.curiosity[id] + r.curiosity);
     }
 
+    fearDrift(state, ctx, id);
+
     let critical = 0;
     if (a.hunger[id] >= n.critical) critical++;
     if (a.thirst[id] >= n.critical) critical++;
     if (critical > 0) {
       a.hp[id] = Math.max(0, a.hp[id] - r.damage * critical);
     } else if (a.hunger[id] < n.regenBelowNeed && a.thirst[id] < n.regenBelowNeed) {
-      a.hp[id] = Math.min(a.maxHp[id], a.hp[id] + r.regen);
+      // A fresh wound heals slowly.
+      const s = ctx.balance.safety;
+      const wounded =
+        state.tick - a.attackedTick[id] < s.woundDays * state.balance.time.ticksPerDay;
+      a.hp[id] = Math.min(a.maxHp[id], a.hp[id] + r.regen * (wounded ? s.woundRegen : 1));
     }
 
     // Replication conditions: fed for a while, unhurt for days.

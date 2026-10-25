@@ -17,6 +17,7 @@ export const Action = Object.freeze({
   READ: 14,
   STORE: 15,
   PLANT: 16,
+  ATTACK: 17,
 });
 
 /** Display names for the inspector, indexed by {@link Action}. */
@@ -38,6 +39,7 @@ export const ACTION_NAMES = Object.freeze([
   'lit',
   'range à la bibliothèque',
   'plante',
+  'combat',
 ]);
 
 /**

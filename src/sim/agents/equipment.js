@@ -19,6 +19,20 @@ export function attackMultiplier(ctx, id) {
 }
 
 /**
+ * Defense added by the armour carried: each different piece counts once (a shield and an armour).
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @returns {number}
+ */
+export function defenseBonus(ctx, id) {
+  let total = 0;
+  for (const item of ctx.catalog.items) {
+    if (item.defense > 0 && ctx.agents.carried(id, item.good) > 0) total += item.defense;
+  }
+  return total;
+}
+
+/**
  * Harvest speed multiplier of the best tool carried for a resource (1 without a tool).
  * @param {import('../simulation.js').SimContext} ctx
  * @param {number} id
