@@ -1,6 +1,7 @@
 import aiGoals from '../../data/ai-goals.json' with { type: 'json' };
 import cropData from '../../data/crops.json' with { type: 'json' };
 import genomeData from '../../data/genome.json' with { type: 'json' };
+import jobData from '../../data/jobs.json' with { type: 'json' };
 import projectData from '../../data/ai-projects.json' with { type: 'json' };
 import recipeData from '../../data/recipes.json' with { type: 'json' };
 import resourceData from '../../data/resources.json' with { type: 'json' };
@@ -22,6 +23,10 @@ import { Colony } from './colony/colony-store.js';
 import { History } from './colony/history.js';
 import { lifespanOf } from './colony/replication.js';
 import { buildCatalog } from './crafting/catalog.js';
+import { buildJobs } from './economy/jobs.js';
+import { askOf, basePrices, bidOf } from './economy/prices.js';
+import { canDo as canDoJob, expectedIncome } from './economy/jobs.js';
+import { roleOf as jobRole } from './economy/market.js';
 import { CropStore } from './farming/crop-store.js';
 import { buildFood, stockPortions } from './farming/food.js';
 import { buildGeneTable } from './genome/genome.js';
@@ -45,6 +50,15 @@ export const CATALOG = buildCatalog(recipeData, WORLD_TABLES);
 
 /** Long-term projects from data/ai-projects.json (read-only). */
 export const PROJECTS = buildProjects(projectData, GOAL_TABLE);
+
+/** Jobs from data/jobs.json (read-only). */
+export const JOBS = buildJobs(
+  jobData,
+  CATALOG,
+  WORLD_TABLES,
+  Object.fromEntries(GOAL_TABLE.goals.map((g, i) => [g.id, i])),
+  GENE_TABLE,
+);
 
 /** Independent random streams, one per subsystem, so that systems cannot disturb each other. */
 export const RNG_STREAMS = Object.freeze([
@@ -145,6 +159,9 @@ export const RNG_STREAMS = Object.freeze([
  * @property {Int16Array} cookRecipes - Kitchen recipes: dishes and their prepared ingredients.
  * @property {Uint8Array} produce - 1 per good the farm and the kitchen put in the stock.
  * @property {Int16Array} sourceOf - Per good: resource that yields it as a by-product, 0 if none.
+ * @property {import('./economy/jobs.js').JobTable} jobs
+ * @property {Float64Array} basePrices - Per good: price when a counter opens, in écus.
+ * @property {Int32Array} wantedGoods - Scratch: units the projects of a colony still need.
  */
 
 /**
@@ -456,6 +473,9 @@ function buildContext(balance, tables, agents, seedKey) {
     sourceOf,
     plotRecipe: plotCode > 0 ? catalog.recipeForStructure[plotCode] : -1,
     foodTables: buildFood(catalog, tables, cropResource, balance.cooking.dishFactor),
+    jobs: JOBS,
+    basePrices: new Float64Array(0),
+    wantedGoods: new Int32Array(catalog.goodCount),
     scheduleRegrowth(state, x, y, resource) {
       const delay = regrowTicks[resource];
       // A crop does not grow back by itself on its plot: it is sown again.
@@ -469,6 +489,7 @@ function buildContext(balance, tables, agents, seedKey) {
       queue.splice(i, 0, entry);
     },
   };
+  ctx.basePrices = basePrices(catalog, tables, ctx.foodTables, sourceOf, balance.economy);
   // Reader for the trial heuristic, bound to the agent being served (no closure per call).
   ctx.acquired = (g) => agents.acquiredTick[ctx.trialAgent * agents.goodSlots + g];
   return ctx;
@@ -635,6 +656,8 @@ export class Simulation {
       exploration: balance.exploration,
       geneStart: Float64Array.from(GENE_TABLE.genes, (g) => g.start),
       dangerSlots: balance.learning.dangerSlots,
+      jobCount: JOBS.jobs.length,
+      tradeSlots: balance.economy.tradeSlots,
     });
     const seedKey = seedToKey(seed);
     /** @type {SimState} */
@@ -647,7 +670,9 @@ export class Simulation {
       spawn,
       agents,
       threats: new ThreatStore(balance.threats.maxPredators),
-      colonies: [new Colony(0, CATALOG.goodCount, balance.colony, balance.harmony)],
+      colonies: [
+        new Colony(0, CATALOG.goodCount, balance.colony, balance.harmony, JOBS.jobs.length),
+      ],
       history: new History(balance.harmony.historyDays, GENE_TABLE.genes.length),
       documents: new DocumentStore(balance.writing.maxDocuments, balance.writing.mapEntries),
       knowledge: new KnowledgeLog(CATALOG.recipes.length),
@@ -658,6 +683,7 @@ export class Simulation {
     /** @type {SimContext} */
     this.ctx = buildContext(balance, tables, agents, seedKey);
     this.tables = tables;
+    this.state.colonies[0].price.set(this.ctx.basePrices);
 
     const first = agents.create({
       x: spawn.x,
@@ -670,6 +696,7 @@ export class Simulation {
       lifespan: lifespanOf(balance, rng.lifecycle),
     });
     this.state.colonies[0].members = 1;
+    agents.coins[first] = balance.economy.startCoins;
     this.state.events.push(0, EventType.BIRTH, first, spawn.x, spawn.y);
     // Extra founders (benchmarks only, tools/bench.js): around the spawn, on passable tiles.
     const spread = balance.agent.founderSpread;
@@ -696,6 +723,7 @@ export class Simulation {
         lifespan: lifespanOf(balance, rng.lifecycle),
       });
       this.state.colonies[0].members++;
+      agents.coins[id] = balance.economy.startCoins;
       this.state.events.push(0, EventType.BIRTH, id, x, y);
     }
   }
@@ -816,6 +844,45 @@ export class Simulation {
       inventor: colony.inventor,
       scribe: colony.scribe,
       knowledge: this.describeKnowledge(),
+      market: this.describeMarket(colony),
+    };
+  }
+
+  /**
+   * The counter of a colony (docs/design/14-economie.md): treasury, prices of the goods traded or
+   * in stock, members per job.
+   * @param {Colony} colony
+   * @returns {{ treasury: number, minted: number, rations: number,
+   *   prices: { name: string, price: number, bid: number, ask: number, stock: number }[],
+   *   jobs: { name: string, count: number }[] }}
+   */
+  describeMarket(colony) {
+    const catalog = this.ctx.catalog;
+    const spread = this.state.balance.economy.spread;
+    const prices = [];
+    for (let g = 1; g < colony.stock.length; g++) {
+      if (colony.stock[g] === 0 && colony.firstSold[g] === 0 && colony.firstBought[g] === 0) {
+        continue;
+      }
+      const price = colony.price[g];
+      prices.push({
+        name: catalog.goodName(g),
+        price: Math.round(price * 10) / 10,
+        bid: bidOf(price),
+        ask: askOf(price, spread),
+        stock: colony.stock[g],
+      });
+    }
+    const jobs = [];
+    JOBS.jobs.forEach((j, i) => {
+      if (colony.jobHolders[i] > 0) jobs.push({ name: j.name, count: colony.jobHolders[i] });
+    });
+    return {
+      treasury: colony.treasury,
+      minted: colony.minted,
+      rations: colony.rations,
+      prices,
+      jobs,
     };
   }
 
@@ -1000,6 +1067,7 @@ export class Simulation {
       parent: a.parent[id],
       children: a.children[id],
       role: roleOf(this.ctx, a, id),
+      economy: this.describeEconomy(id),
       task: describeTask(this.ctx, this.state, a, id),
       social: describeSocial(a, id),
       weapon: attackMultiplier(this.ctx, id),
@@ -1027,6 +1095,53 @@ export class Simulation {
           .map((g, k) => ({ goal: goals[g].name, score: e.topScore[k] })),
         action: ACTION_NAMES[e.action],
       })),
+    };
+  }
+
+  /**
+   * An agent's place in the economy (docs/design/14-economie.md): écus, job and since when, the
+   * income it expects from each job it can do (observed if it did it), its recent trades.
+   * @param {number} id
+   * @returns {object}
+   */
+  describeEconomy(id) {
+    const a = this.state.agents;
+    const catalog = this.ctx.catalog;
+    const c = a.colony[id];
+    const colony = c >= 0 && this.state.colonies[c].hasCamp ? this.state.colonies[c] : null;
+    const role = jobRole(this.ctx, colony, id);
+    const incomes = [];
+    JOBS.jobs.forEach((job, j) => {
+      const days = a.jobDays[id * a.jobCount + j];
+      if (job.post && days === 0) return;
+      if (!job.post && !canDoJob(this.ctx, job, id)) return;
+      incomes.push({
+        name: job.name,
+        expected: Math.round(
+          job.post ? a.jobIncome[id * a.jobCount + j] : expectedIncome(this.ctx, j, id),
+        ),
+        observed: days > 0,
+        current: j === role,
+      });
+    });
+    const trades = [];
+    const slots = a.tradeSlots;
+    for (let k = 1; k <= slots; k++) {
+      const i = id * slots + ((a.tradeNext[id] - k + slots) % slots);
+      if (a.tradeTick[i] < 0) continue;
+      trades.push({
+        tick: a.tradeTick[i],
+        good: catalog.goodName(a.tradeGood[i]),
+        units: a.tradeUnits[i],
+        coins: a.tradeCoins[i],
+      });
+    }
+    return {
+      coins: a.coins[id],
+      job: role >= 0 ? JOBS.jobs[role].name : null,
+      since: a.job[id] >= 0 && role === a.job[id] ? a.jobSince[id] : -1,
+      incomes,
+      trades,
     };
   }
 

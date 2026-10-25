@@ -1,5 +1,6 @@
 import { releaseTask } from '../colony/colony-logic.js';
 import { EventType } from '../core/events.js';
+import { bequeath } from '../economy/market.js';
 
 /**
  * A member killed by a predator frightens those who were near enough to see or hear it, and
@@ -22,7 +23,8 @@ function frighten(state, ctx, id) {
 
 /**
  * Removes agents whose health reached zero or who reached their lifespan (old age): their task is
- * freed, their colony counts the loss, what they carried is lost, and the others forget them.
+ * freed, their colony counts the loss, what they carried is lost (their écus go to their
+ * children), and the others forget them.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
  * @returns {void}
@@ -51,6 +53,7 @@ export function lifecycleSystem(state, ctx) {
     const docs = state.documents;
     for (let d = 0; d < docs.max; d++) if (docs.holder[d] === id) docs.destroy(d);
     releaseTask(state, ctx, id);
+    bequeath(state, ctx, id);
     if (a.colony[id] >= 0) {
       const colony = state.colonies[a.colony[id]];
       colony.deaths++;

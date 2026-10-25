@@ -131,8 +131,16 @@ export function formatAgent(agent, names, time) {
       `risque imaginé ${risk} %`,
   );
   const lineage = agent.parent >= 0 ? `réplique de #${agent.parent}` : 'fondateur';
-  const role = agent.guard ? 'garde' : agent.scribe ? 'scribe' : agent.role;
+  const eco = agent.economy;
+  const role = eco?.job
+    ? eco.job.toLowerCase()
+    : agent.guard
+      ? 'garde'
+      : agent.scribe
+        ? 'scribe'
+        : agent.role;
   lines.push(`${lineage} · ${agent.children} réplique(s) · rôle : ${role}`);
+  if (eco) lines.push(...formatEconomy(eco, time));
   if (agent.task) lines.push(`Tâche : ${agent.task}`);
   if (agent.social.length > 0) {
     const peers = agent.social.slice(0, 3).map((p) => {
@@ -155,6 +163,38 @@ export function formatAgent(agent, names, time) {
     const alternatives = e.top.map((t) => `${t.goal} ${score(t.score)}`).join(' › ');
     const note = NOTE_TEXT[e.note] ? ` (${NOTE_TEXT[e.note]})` : '';
     lines.push(`  ${shortClock(e.tick, time)} ${e.action}${note} — ${alternatives}`);
+  }
+  return lines;
+}
+
+/**
+ * Lines about an agent's place in the economy: écus and job, the income it expects from each job
+ * (observed where it worked), its latest trades.
+ * @param {{ coins: number, job: string | null, since: number,
+ *   incomes: { name: string, expected: number, observed: boolean, current: boolean }[],
+ *   trades: { tick: number, good: string, units: number, coins: number }[] }} eco
+ * @param {import('../sim/core/clock.js').TimeConfig} time
+ * @returns {string[]}
+ */
+export function formatEconomy(eco, time) {
+  const since = eco.since >= 0 ? ` depuis ${shortClock(eco.since, time)}` : '';
+  const lines = [`Écus : ${eco.coins} · métier : ${eco.job ? eco.job.toLowerCase() + since : '—'}`];
+  if (eco.incomes.length > 0) {
+    const shown = eco.incomes.map(
+      (i) =>
+        `${i.current ? '▶ ' : ''}${i.name.toLowerCase()} ${i.expected}${i.observed ? ' (vécu)' : ''}`,
+    );
+    lines.push(`Revenu attendu par jour : ${shown.join(' · ')}`);
+  }
+  if (eco.trades.length > 0) {
+    const shown = eco.trades
+      .slice(0, 3)
+      .map((t) =>
+        t.units > 0
+          ? `vend ${t.units} ${t.good} +${t.coins}`
+          : `achète ${-t.units} ${t.good} −${t.coins}`,
+      );
+    lines.push(`Échanges : ${shown.join(' · ')}`);
   }
   return lines;
 }

@@ -5,7 +5,9 @@ import { FOOD_COST, fedEnough, missingCost, unhurt } from '../colony/replication
 import { Action } from './action-types.js';
 import { PlanNote } from './journal.js';
 import { explore, moveTo, startHere } from './movement.js';
-import { discover, gather, useRecipe } from './work.js';
+import { discover, gather, pursue, useRecipe } from './work.js';
+import { canHarvest } from './actions.js';
+import { saleGood } from '../economy/jobs.js';
 
 // Behaviours of the colony goals: collective tasks and replication.
 
@@ -50,7 +52,7 @@ export function colonyWork(state, ctx, id, plan) {
     startHere(ctx, id, Action.IDLE);
     return;
   }
-  if (a.taskProject[id] < 0) {
+  if (a.taskProject[id] < 0 && a.saleGood[id] === 0) {
     if (atCamp(ctx, colony, id)) {
       // Materials wait for a building nobody here knows how to make: one member at a time
       // tries to find out, the others keep working.
@@ -59,7 +61,8 @@ export function colonyWork(state, ctx, id, plan) {
         plan.note = PlanNote.COLONY;
         return;
       }
-      if (!chooseTask(state, ctx, colony, id)) {
+      // No task: what its job gathers is sold at the counter.
+      if (!chooseTask(state, ctx, colony, id) && !prepareSale(state, ctx, colony, id)) {
         startHere(ctx, id, Action.IDLE);
         return;
       }
@@ -67,6 +70,10 @@ export function colonyWork(state, ctx, id, plan) {
       if (!goToCamp(ctx, colony, id, Action.IDLE, plan)) explore(state, ctx, id, plan);
       return;
     }
+  }
+  if (a.taskProject[id] < 0) {
+    saleWork(state, ctx, colony, id, plan);
+    return;
   }
   const project = colony.projects[a.taskProject[id]];
   if (a.taskBuild[id] === 1 && project.kind === ProjectKind.FIELD) {
@@ -106,6 +113,52 @@ export function colonyWork(state, ctx, id, plan) {
     return;
   }
   gather(state, ctx, id, good, a.taskAmount[id], plan);
+  plan.note = PlanNote.COLONY;
+}
+
+/**
+ * A sale to prepare: the good of its job the counter pays best for its work, a load of it.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} colony
+ * @param {number} id
+ * @returns {boolean} False if its job has nothing worth selling.
+ */
+function prepareSale(state, ctx, colony, id) {
+  const a = ctx.agents;
+  const g = saleGood(ctx, colony, id);
+  if (g === 0) return false;
+  a.saleGood[id] = g;
+  a.saleAmount[id] = Math.max(1, Math.floor(ctx.capacity(id) - a.carriedTotal(id)));
+  a.saleTick[id] = state.tick;
+  return true;
+}
+
+/**
+ * Gathers the good of its sale, then brings it to the counter.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} colony
+ * @param {number} id
+ * @param {import('./movement.js').Plan} plan
+ * @returns {void}
+ */
+function saleWork(state, ctx, colony, id, plan) {
+  const a = ctx.agents;
+  const good = a.saleGood[id];
+  if (a.carried(id, good) >= a.saleAmount[id] || a.carriedTotal(id) >= ctx.capacity(id)) {
+    if (a.carried(id, good) === 0) {
+      a.saleGood[id] = 0;
+      startHere(ctx, id, Action.IDLE);
+      return;
+    }
+    if (!goToCamp(ctx, colony, id, Action.DEPOSIT, plan)) explore(state, ctx, id, plan);
+    return;
+  }
+  // A pickaxe first, for coal or copper.
+  if (!canHarvest(ctx, id, good))
+    pursue(state, ctx, id, ctx.goodTargets[ctx.catalog.requiredTool[good]], plan);
+  else gather(state, ctx, id, good, a.saleAmount[id], plan);
   plan.note = PlanNote.COLONY;
 }
 

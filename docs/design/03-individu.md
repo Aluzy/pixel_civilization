@@ -97,6 +97,10 @@ Implémenté (`src/sim/colony/replication.js`, objectif « Se répliquer » au n
 
 Avec l'agriculture ([13](13-agriculture-cuisine.md)) : le coût d'une réplication devient **6 portions de n'importe quelle nourriture** (une portion = 12 de nutrition ; la moins nourrissante est donnée d'abord, prise à la réserve si l'individu y croit assez de nourriture) et 3 fibres ; la réserve d'avance se compte en portions ; un abri compte **4 lits** ; à partir de 40 membres, pas de naissance avec moins d'une parcelle pour deux membres, et une réserve qui baisse depuis trois jours (telle que vue au camp) retient les naissances, sauf s'il reste 12 portions par membre. Un plat apaise la curiosité (plaisir).
 
+### État au jalon J10
+
+Une réplique reçoit 30 % des écus de son parent et fait son métier ses 5 premiers jours ; à la mort, les écus vont aux enfants vivants, sinon au comptoir ([14](14-economie.md)).
+
 ## Actions de survie (J2)
 
 | Action | Effet |

@@ -17,6 +17,15 @@ export function placeName(subject, names) {
 }
 
 /**
+ * @param {string} name
+ * @returns {string} "de blé", "d’argile".
+ */
+function ofName(name) {
+  const lower = name.toLowerCase();
+  return /^[aeiouyhàâéèêëîïôöûü]/.test(lower) ? `d’${lower}` : `de ${lower}`;
+}
+
+/**
  * @param {number} subject
  * @returns {string} What the agent looks for: "de l’eau" or "de quoi manger".
  */
@@ -102,6 +111,7 @@ export const FILTERS = Object.freeze([
       EventType.FIRST_PLOT,
       EventType.HARVEST,
       EventType.FIRST_DISH,
+      EventType.FIRST_JOB,
     ],
   },
   {
@@ -117,6 +127,18 @@ export const FILTERS = Object.freeze([
       EventType.TOLD,
       EventType.IMITATED,
       EventType.MISTAKEN,
+      EventType.FIRST_JOB,
+    ],
+  },
+  {
+    name: 'économie',
+    types: [
+      EventType.FIRST_JOB,
+      EventType.FIRST_SALE,
+      EventType.FIRST_PURCHASE,
+      EventType.FIRST_DELIVERY,
+      EventType.HARVEST,
+      EventType.FIRST_DISH,
     ],
   },
   {
@@ -195,6 +217,17 @@ export function formatEvent(event, time, names) {
   if (event.type === EventType.FIRST_DISH) {
     const dish = names?.goods?.[event.subject]?.toLowerCase() ?? 'un plat';
     text = `Premier plat cuisiné de la colonie : ${who} mange ${dish}.`;
+  }
+  const good = names?.goods?.[event.subject] ?? '?';
+  const job = (j) => names?.jobs?.[j]?.toLowerCase();
+  if (event.type === EventType.FIRST_JOB) {
+    text = `${who} est le premier ${job(event.subject) ?? '?'} de la colonie.`;
+  } else if (event.type === EventType.FIRST_SALE) {
+    const as = event.other >= 0 && job(event.other) ? ` (${job(event.other)})` : '';
+    text = `Première vente ${ofName(good)} au comptoir, par ${who}${as}.`;
+  } else if (event.type === EventType.FIRST_PURCHASE) {
+    const from = event.other >= 0 ? ` : il venait de l’individu #${event.other}` : '';
+    text = `Premier achat ${ofName(good)} au comptoir, par ${who}${from}.`;
   }
   if (memoryText) text = memoryText(context);
   else if (makingText) text = makingText(context);

@@ -188,6 +188,11 @@ export function replicate(state, ctx, id) {
     lifespan: lifespanOf(ctx.balance, rng),
   });
   inherit(ctx.genes, a.genes, id, child, r.geneMutation, state.rng.genome);
+  // A share of the parent's écus, and its job to learn by its side for the first days.
+  const gift = Math.floor(a.coins[id] * ctx.balance.economy.birthShare);
+  a.coins[id] -= gift;
+  a.coins[child] = gift;
+  a.job[child] = a.job[id];
   a.lastReplication[id] = state.tick;
   a.children[id]++;
   const colony = state.colonies[a.colony[id]];

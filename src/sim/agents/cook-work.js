@@ -6,6 +6,9 @@ import { PlanNote } from './journal.js';
 import { explore, startHere } from './movement.js';
 import { besideStructure } from './equipment.js';
 import { discover, gather, pursue, useRecipe } from './work.js';
+import { take } from '../economy/market.js';
+import { kitchenMargin } from '../economy/jobs.js';
+import { askOf } from '../economy/prices.js';
 
 // The kitchen of a colony (docs/design/13-agriculture-cuisine.md, « Transformer et cuisiner »):
 // a few cooks turn what the stock holds (grain, berries, meat) into flour and dishes, which
@@ -54,8 +57,10 @@ function feasible(ctx, colony, id, r) {
 }
 
 /**
- * The batch worth making: among the cooking recipes it knows and can make now, the one that adds
- * the most food worth (a dish), else one that prepares an ingredient (flour).
+ * The batch worth making. A miller or a baker makes what pays best among the recipes of its trade
+ * it can pay the ingredients of, at the counter's prices (and only if it pays). A cook for the
+ * colony makes, among the cooking recipes it knows and can make now, the one that adds the most
+ * food worth (a dish), else one that prepares an ingredient (flour).
  * @param {import('../simulation.js').SimContext} ctx
  * @param {import('../colony/colony-store.js').Colony} colony
  * @param {number} id
@@ -63,6 +68,24 @@ function feasible(ctx, colony, id, r) {
  */
 export function chooseBatch(ctx, colony, id) {
   const book = ctx.agents.recipes[id];
+  const trade = kitchenTrade(ctx, colony, id);
+  if (trade !== null) {
+    let best = -1;
+    let bestMargin = 0;
+    for (const r of trade.makes) {
+      if (!book.knows(r) || !feasible(ctx, colony, id, r) || !affordable(ctx, colony, id, r)) {
+        continue;
+      }
+      const m = kitchenMargin(ctx, colony.price, 0, r);
+      if (m > bestMargin) {
+        bestMargin = m;
+        best = r;
+      }
+    }
+    return best;
+  }
+  // In a colony with jobs, batches are the trade of millers and bakers.
+  if (colony.members >= ctx.balance.economy.jobMembers) return -1;
   const value = ctx.foodTables.value;
   let best = -1;
   let bestGain = -Infinity;
@@ -81,8 +104,41 @@ export function chooseBatch(ctx, colony, id) {
 }
 
 /**
+ * The kitchen job of the agent (miller, baker), once its colony has jobs; null otherwise.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} colony
+ * @param {number} id
+ * @returns {import('../economy/jobs.js').Job | null}
+ */
+function kitchenTrade(ctx, colony, id) {
+  const j = ctx.agents.job[id];
+  if (j < 0 || colony.members < ctx.balance.economy.jobMembers) return null;
+  const job = ctx.jobs.jobs[j];
+  return job.makes.length > 0 ? job : null;
+}
+
+/**
+ * True if the agent can pay for one round of the stock ingredients of recipe `r` it lacks.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} colony
+ * @param {number} id
+ * @param {number} r
+ * @returns {boolean}
+ */
+function affordable(ctx, colony, id, r) {
+  const a = ctx.agents;
+  let cost = 0;
+  for (const input of ctx.catalog.recipes[r].inputs) {
+    if (!fromStock(ctx, input.good) || a.carried(id, input.good) >= input.count) continue;
+    cost += askOf(colony.price[input.good], ctx.balance.economy.spread) * input.count;
+  }
+  return cost <= a.coins[id];
+}
+
+/**
  * Food or farm produce waiting in the stock (grain, flour, berries) that no recipe the agent knows
- * makes use of: worth finding out what can be done with it.
+ * makes use of: worth finding out what can be done with it. The most plentiful first: the colony
+ * has the most to gain there.
  * @param {import('../simulation.js').SimContext} ctx
  * @param {import('../colony/colony-store.js').Colony} colony
  * @param {number} id
@@ -93,19 +149,24 @@ export function researchGood(ctx, colony, id) {
   const book = a.recipes[id];
   const recipes = ctx.catalog.recipes;
   const bit = ctx.catalog.ingredientBit;
+  let best = 0;
+  let most = 0;
   for (let g = 1; g < ctx.produce.length; g++) {
     // Ingredients (grain, flour, berries…), not finished dishes.
     if (bit[g] < 0 || (g > ctx.catalog.resourceCount && ctx.foodTables.food[g] === 1)) continue;
     if (ctx.produce[g] !== 1 && ctx.foodTables.food[g] !== 1) continue;
-    if (colony.stock[g] + a.carried(id, g) === 0) continue;
+    const held = colony.stock[g] + a.carried(id, g);
+    if (held <= most) continue;
     let used = false;
     for (let r = 0; r < recipes.length && !used; r++) {
       if (!book.knows(r)) continue;
       for (const input of recipes[r].inputs) if (input.good === g) used = true;
     }
-    if (!used) return g;
+    if (used) continue;
+    best = g;
+    most = held;
   }
-  return 0;
+  return best;
 }
 
 /**
@@ -120,11 +181,20 @@ export function researchGood(ctx, colony, id) {
 export function senseCooking(state, ctx, id, home) {
   const a = ctx.agents;
   if (home === null) return false;
+  const busy = a.cookRecipe[id] >= 0;
+  // A miller or a baker cooks as its trade, without a post.
+  if (kitchenTrade(ctx, home, id) !== null) {
+    if (busy || carriesKitchenWork(ctx, id)) return true;
+    return chooseBatch(ctx, home, id) >= 0 || researchGood(ctx, home, id) > 0;
+  }
   const cfg = ctx.balance.cooking;
   const wanted =
     home.members < cfg.kitchenMembers
       ? 0
       : Math.min(MAX_COOKS, Math.ceil(home.members / cfg.membersPerCook));
+  // Once the colony has jobs, the posts are for finding out what can be cooked: making batches is
+  // the trade of millers and bakers (chooseBatch finds none for the others).
+  const work = () => chooseBatch(ctx, home, id) >= 0 || researchGood(ctx, home, id) > 0;
   let slot = -1;
   let cooks = 0;
   for (let k = 0; k < MAX_COOKS; k++) {
@@ -133,22 +203,19 @@ export function senseCooking(state, ctx, id, home) {
     if (home.cooks[k] >= 0) cooks++;
     if (home.cooks[k] === id) slot = k;
   }
-  const busy = a.cookRecipe[id] >= 0;
   if (slot >= 0 && !busy && state.tick - home.cookTick[slot] > cfg.cookTicks) {
     home.cooks[slot] = -1;
     return false;
   }
   if (slot < 0) {
-    const work = chooseBatch(ctx, home, id) >= 0 || researchGood(ctx, home, id) > 0;
-    if (cooks >= wanted || !atCamp(ctx, home, id) || !work) return false;
+    if (cooks >= wanted || !atCamp(ctx, home, id) || !work()) return false;
     if (home.scribe === id || home.inventor === id || home.guards.includes(id)) return false;
     slot = home.cooks.indexOf(-1);
     home.cooks[slot] = id;
     home.cookTick[slot] = state.tick;
   }
   // A cook with nothing to make and nothing to bring back steps down.
-  const idle = chooseBatch(ctx, home, id) < 0 && researchGood(ctx, home, id) === 0;
-  if (!busy && !carriesKitchenWork(ctx, id) && idle) {
+  if (!busy && !carriesKitchenWork(ctx, id) && !work()) {
     home.cooks[slot] = -1;
     return false;
   }
@@ -205,7 +272,7 @@ export function cookBehaviour(state, ctx, id, plan) {
       const want = ctx.balance.crafting.sampleUnits;
       if (a.carried(id, trial) < want && colony.stock[trial] > 0 && atCamp(ctx, colony, id)) {
         const n = Math.min(want - a.carried(id, trial), colony.stock[trial]);
-        colony.stock[trial] -= n;
+        take(colony, trial, n);
         a.addCarried(id, trial, n, state.tick);
       }
       if (a.carried(id, trial) > 0) {

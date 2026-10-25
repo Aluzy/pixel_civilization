@@ -4,6 +4,7 @@ import { noteDelivery } from '../agents/experience.js';
 import { EventType } from '../core/events.js';
 import { ProjectKind } from './colony-store.js';
 import { stockPortions } from '../farming/food.js';
+import { sell, take } from '../economy/market.js';
 
 // Rules of collective work (docs/design/06-ia.md, couche 4): the blackboard is read and written
 // at the camp only; projects are split into tasks ("bring 10 wood"), reserved by members, and
@@ -123,6 +124,8 @@ export function shareBoard(state, ctx, colony, id) {
   a.farmSeen[id] = colony.farmOpen > 0 ? 1 : 0;
   a.pantryFalling[id] = colony.pantryFalling() ? 1 : 0;
   a.focusSeen[id] = colony.focus;
+  // The counter's prices are posted beside the blackboard.
+  a.priceSeen.set(colony.price, id * a.goodSlots);
   for (let i = 0; i < memory.count; i++) {
     if (memory.subject[i] === danger) continue;
     colony.post(memory.subject[i], memory.x[i], memory.y[i], memory.seen[i], m.sameRadius);
@@ -204,6 +207,9 @@ export function chooseTask(state, ctx, colony, id) {
   let bestGood = 0;
   let total = 0;
   for (let g = 1; g < a.goodSlots; g++) total += a.gathered[id * a.goodSlots + g];
+  const job = a.job[id];
+  const sells =
+    job >= 0 && colony.members >= ctx.balance.economy.jobMembers ? ctx.jobs.jobs[job].sells : null;
   for (let s = 0; s < colony.projects.length; s++) {
     const p = colony.projects[s];
     if (p.kind === ProjectKind.NONE) continue;
@@ -222,7 +228,10 @@ export function chooseTask(state, ctx, colony, id) {
       const urgency = p.kind === ProjectKind.PANTRY ? 1 : 1.2;
       // What it learnt a unit of this good really costs it, once it has brought some.
       const learnt = a.costPerUnit[id * a.goodSlots + g] / ctx.balance.learning.costScale;
-      const score = (urgency * speed * (1 + cfg.habitBonus * habit)) / (1 + d / 32) / (1 + learnt);
+      // Goods of its job come first.
+      const trade = sells !== null && sells.includes(g) ? 1 + ctx.balance.economy.taskBonus : 1;
+      const score =
+        (trade * urgency * speed * (1 + cfg.habitBonus * habit)) / (1 + d / 32) / (1 + learnt);
       if (score > bestScore) {
         bestScore = score;
         bestSlot = s;
@@ -300,8 +309,8 @@ export function deposit(state, ctx, colony, id) {
   const units = Math.min(a.carried(id, g), a.taskAmount[id]);
   if (units > 0) {
     noteDelivery(ctx, id, g, units, state.tick - a.taskTick[id]);
-    a.addCarried(id, g, -units);
-    colony.stock[g] += units;
+    // The counter buys what is brought to the stock.
+    sell(state, ctx, colony, id, g, units);
     if (p.kind !== ProjectKind.PANTRY) p.delivered[g] += units;
     p.addContributor(id);
     a.delivers[id]++;
@@ -323,7 +332,7 @@ export function takeMaterials(colony, ctx, id) {
   for (let g = 1; g < p.needs.length; g++) if (colony.stock[g] < p.needs[g]) return false;
   for (let g = 1; g < p.needs.length; g++) {
     if (p.needs[g] === 0) continue;
-    colony.stock[g] -= p.needs[g];
+    take(colony, g, p.needs[g]);
     // Taken: if the building fails, these materials will have to be brought again.
     p.delivered[g] = Math.max(0, p.delivered[g] - p.needs[g]);
     a.addCarried(id, g, p.needs[g]);

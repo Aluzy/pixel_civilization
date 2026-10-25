@@ -128,6 +128,14 @@
       "considerations": [{ "input": "cookDuty", "curve": { "type": "linear", "m": 0.62, "b": 0 } }]
     },
     {
+      "id": "invent",
+      "name": "Inventer",
+      "level": "knowledge",
+      "considerations": [
+        { "input": "inventDuty", "curve": { "type": "linear", "m": 0.55, "b": 0 } }
+      ]
+    },
+    {
       "id": "rest",
       "name": "Se reposer",
       "level": "survival",

@@ -40,6 +40,9 @@ export const EventType = Object.freeze({
   FIRST_PLOT: 'firstPlot',
   HARVEST: 'harvest',
   FIRST_DISH: 'firstDish',
+  FIRST_JOB: 'firstJob',
+  FIRST_SALE: 'firstSale',
+  FIRST_PURCHASE: 'firstPurchase',
 });
 
 /** Events kept in memory; older ones are dropped (the count keeps growing). */
@@ -55,6 +58,7 @@ const MAX_EVENTS = 500;
  * @property {number} y
  * @property {number} subject - What the event is about: memory subject (water = 0, resource id,
  *   structure), recipe index for crafting events, project index, or -1.
+ * @property {number} other - A second subject (a job, the maker of a good bought), or -1.
  */
 
 export class EventLog {
@@ -72,10 +76,11 @@ export class EventLog {
    * @param {number} x
    * @param {number} y
    * @param {number} [subject=-1]
+   * @param {number} [other=-1]
    * @returns {void}
    */
-  push(tick, type, agent, x, y, subject = -1) {
-    this.events.push({ seq: this.count++, tick, type, agent, x, y, subject });
+  push(tick, type, agent, x, y, subject = -1, other = -1) {
+    this.events.push({ seq: this.count++, tick, type, agent, x, y, subject, other });
     if (this.events.length > MAX_EVENTS) this.events.shift();
   }
 

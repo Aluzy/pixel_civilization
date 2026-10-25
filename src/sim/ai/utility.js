@@ -25,6 +25,7 @@ export const INPUT = Object.freeze({
   huntDuty: 17,
   farmWork: 18,
   cookDuty: 19,
+  inventDuty: 20,
 });
 
 const INPUT_COUNT = Object.keys(INPUT).length;

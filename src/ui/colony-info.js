@@ -1,10 +1,13 @@
+/** Prices shown per line of the colony panel (it must stay narrow). */
+const PRICES_PER_LINE = 4;
+
 /** Harmony components, in the order of the simulation. */
 const COMPONENTS = ['stabilité', 'durabilité', 'ordre spatial', 'savoir', 'bien-être'];
 
 /**
  * Lines of the colony panel (from Simulation#describeColony): population, beds, stock, the
- * projects in progress with what they still need and who worked on them, the libraries and the
- * colony's knowledge (known, written, lost).
+ * projects in progress with what they still need and who worked on them, the libraries, the
+ * counter (treasury, jobs, prices) and the colony's knowledge (known, written, lost).
  * @param {object | null} colony
  * @returns {string[]}
  */
@@ -56,6 +59,25 @@ export function formatColony(colony) {
     lines.push(`Cuisine : ${farm.dishesYesterday} plat(s) mangé(s) hier, ${farm.dishes} en tout`);
   }
   if (farm?.cooks?.length) lines.push(`Cuisiniers : ${farm.cooks.map((k) => `#${k}`).join(' ')}`);
+  const market = colony.market;
+  if (market) {
+    lines.push(
+      `Comptoir : ${market.treasury} écus en caisse, ${market.minted} frappés · ` +
+        `${market.rations} ration(s) données`,
+    );
+    if (market.jobs.length > 0) {
+      lines.push(
+        `Métiers : ${market.jobs.map((j) => `${j.name.toLowerCase()} ${j.count}`).join(' · ')}`,
+      );
+    }
+    if (market.prices.length > 0) {
+      lines.push('Prix achat/vente (stock) :');
+      const shown = market.prices.map((p) => `${p.name} ${p.bid}/${p.ask} (${p.stock})`);
+      for (let i = 0; i < shown.length; i += PRICES_PER_LINE) {
+        lines.push(`  ${shown.slice(i, i + PRICES_PER_LINE).join(' · ')}`);
+      }
+    }
+  }
   if (colony.scribe >= 0) lines.push(`Scribe : #${colony.scribe}`);
   if (colony.inventor >= 0) lines.push(`Inventeur : #${colony.inventor}`);
   if (colony.guards?.length) lines.push(`Gardes : ${colony.guards.map((g) => `#${g}`).join(' ')}`);

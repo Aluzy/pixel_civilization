@@ -1,11 +1,13 @@
 import { PlanStatus, Step } from '../ai/planner.js';
-import { BARE_HANDS, lowestIngredient } from '../crafting/catalog.js';
+import { BARE_HANDS, lowestIngredient, matchRecipe } from '../crafting/catalog.js';
 import { chooseTrial } from '../crafting/experiment.js';
 import { canHarvest } from './actions.js';
 import { Action } from './action-types.js';
 import { besideStructure } from './equipment.js';
 import { PlanNote } from './journal.js';
 import { explore, goToRemembered, moveTo, search, startHere } from './movement.js';
+import { atCamp, campOf } from '../colony/colony-logic.js';
+import { goToCamp } from './colony-work.js';
 
 // Behaviours of the crafting goals (shelter, weapon, tool): the GOAP plan says what to do next,
 // these functions turn its first step into movement and an action. Without a plan (an unknown
@@ -178,6 +180,12 @@ export function useRecipe(state, ctx, id, r, plan) {
   ctx.agents.craftRecipe[id] = r;
   plan.note = PlanNote.PLAN;
   if (recipe.outputKind === 'structure') {
+    // A colony's station is built at its camp, where everyone sees and uses it.
+    if (ctx.catalog.structures[recipe.output - 1].kind === 'station') {
+      const colony = campOf(state, ctx, id);
+      if (colony && !atCamp(ctx, colony, id) && goToCamp(ctx, colony, id, Action.NONE, plan))
+        return;
+    }
     const cell = chooseSite(ctx);
     if (cell === nav.center) {
       startHere(ctx, id, Action.CRAFT);
@@ -232,6 +240,21 @@ export function chooseSite(ctx) {
 }
 
 /**
+ * True if the agent searches for the colony (its inventor or a cook): it keeps the colony's trial
+ * notebook.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @returns {boolean}
+ */
+export function researcher(state, ctx, id) {
+  const c = ctx.agents.colony[id];
+  if (c < 0) return false;
+  const colony = state.colonies[c];
+  return colony.inventor === id || colony.cooks.includes(id);
+}
+
+/**
  * Experimenting to discover how to make things (docs/design/04-fabrication.md): builds a station
  * it knows how to make but has not built (it opens new combinations), else chooses the most
  * promising untried combination among the materials it carries or knows where to find, fetches
@@ -242,9 +265,10 @@ export function chooseSite(ctx) {
  * @param {string | null} wanted - Family sought ("structure", "item:weapon"…), or null.
  * @param {import('./movement.js').Plan} plan
  * @param {number} [focus=0] - Only combinations with this good (what can be done with it?).
+ * @param {number} [focusStation=0] - Only trials at this station (what is it for?).
  * @returns {void}
  */
-export function discover(state, ctx, id, wanted, plan, focus = 0) {
+export function discover(state, ctx, id, wanted, plan, focus = 0, focusStation = 0) {
   const agents = ctx.agents;
   const catalog = ctx.catalog;
   const book = agents.recipes[id];
@@ -284,7 +308,21 @@ export function discover(state, ctx, id, wanted, plan, focus = 0) {
   ctx.trialAgent = id;
   const acquired = ctx.acquired;
   const types = ctx.trialTypes;
-  const found = chooseTrial(
+  // An idea it had turned out known by now (it learnt it otherwise), or left untried for days
+  // (what it needs is out of reach): forgotten.
+  if (agents.ideaStation[id] >= 0) {
+    const r = matchRecipe(catalog, agents.ideaStation[id], agents.ideaMask[id]);
+    const stale =
+      state.tick - agents.ideaTick[id] >
+      ctx.balance.crafting.ideaDays * ctx.balance.time.ticksPerDay;
+    if (r < 0 || book.knows(r) || stale) {
+      agents.ideaStation[id] = -1;
+      agents.ideaMask[id] = 0;
+    }
+  }
+  // The colony's researchers (its inventor, its cooks) keep a notebook of the trials that failed.
+  const notebook = researcher(state, ctx, id) ? state.colonies[agents.colony[id]].notebook : null;
+  let found = chooseTrial(
     catalog,
     book,
     fetch,
@@ -299,7 +337,34 @@ export function discover(state, ctx, id, wanted, plan, focus = 0) {
     out,
     agents.hint[id],
     focus,
+    focusStation,
+    notebook,
+    agents.ideaStation[id],
+    agents.ideaMask[id],
   );
+  // Each material tried alone at the station of unknown use: back to trying freely.
+  if (!found && focusStation > 0) {
+    found = chooseTrial(
+      catalog,
+      book,
+      fetch,
+      acquired,
+      stations,
+      cost,
+      tick,
+      weights,
+      rng,
+      types,
+      wanted,
+      out,
+      agents.hint[id],
+      focus,
+      0,
+      notebook,
+      agents.ideaStation[id],
+      agents.ideaMask[id],
+    );
+  }
   if (!found) {
     // Nothing left to try with known materials: look further for new ones.
     explore(state, ctx, id, plan, ctx.balance.ai.searchLeg);
@@ -315,6 +380,12 @@ export function discover(state, ctx, id, wanted, plan, focus = 0) {
     if (fetch[g] > 0 && (missing === 0 || fetch[g] < fetch[missing])) missing = g;
   }
   if (missing > 0) {
+    // A researcher also asks the counter for it: the price rises and those who gather it bring it.
+    if (notebook !== null && missing <= catalog.resourceCount) {
+      const colony = state.colonies[agents.colony[id]];
+      const want = 2 * ctx.balance.crafting.sampleUnits;
+      if (colony.demand[missing] < want) colony.demand[missing] = want;
+    }
     // A crafted material (paper, ink) is made with its known recipe; a resource is gathered.
     const source = ctx.sourceOf[missing];
     const known = catalog.recipeForGood[missing] >= 0 && book.knows(catalog.recipeForGood[missing]);

@@ -18,6 +18,8 @@ import { roomToReplicate } from '../colony/replication.js';
 import { carriesWriting, wantsMap } from '../knowledge/writing.js';
 import { senseCooking } from '../agents/cook-work.js';
 import { FarmJob } from '../farming/farm-jobs.js';
+import { considerJob, saleGood } from '../economy/jobs.js';
+import { roleOf } from '../economy/market.js';
 import { EventType } from '../core/events.js';
 
 /**
@@ -131,8 +133,10 @@ function senseInputs(state, ctx, id) {
   }
   // Colony: a task in hand, or open tasks seen on the blackboard; room for a replica.
   const researching = home !== null && home.projects.some((p) => p.researcher === id);
-  const hasTask = a.taskProject[id] >= 0 || researching;
-  input[INPUT.colonyTask] = hasTask ? 1 : a.tasksSeen[id] === 1 ? 0.8 : 0;
+  const hasTask = a.taskProject[id] >= 0 || a.saleGood[id] > 0 || researching;
+  // Without an open task, its job may still have something to sell at the counter.
+  const sale = home !== null && saleGood(ctx, home, id) > 0 ? ctx.balance.economy.saleUrge : 0;
+  input[INPUT.colonyTask] = hasTask ? 1 : a.tasksSeen[id] === 1 ? 0.8 : sale;
   input[INPUT.canReplicate] = roomToReplicate(state, ctx, id) ? 1 : 0;
   // Writing and reading: only with a library at home, and from what the agent saw there.
   const library = home !== null && home.librariesStanding() > 0;
@@ -159,6 +163,7 @@ function senseInputs(state, ctx, id) {
   const farming = a.farmJob[id] !== FarmJob.NONE;
   input[INPUT.farmWork] = sower ? (farming ? 1 : a.farmSeen[id] === 1 ? 0.8 : 0) : 0;
   input[INPUT.cookDuty] = senseCooking(state, ctx, id, home) ? 1 : 0;
+  input[INPUT.inventDuty] = home !== null && home.inventor === id ? 1 : 0;
   // One inventor at a time, once the colony is large enough to spare one: the first member at the
   // camp claims it, for a while (it remembers its failed trials).
   if (
@@ -307,6 +312,26 @@ function opensMaterials(ctx, id) {
 }
 
 /**
+ * Weighs the goals by the agent's job (docs/design/14-economie.md, « Métiers »): its own work by
+ * 1 + `jobBonus`, the work of the other jobs by `offJob`. A kitchen post (finding out what can be
+ * cooked) is a duty given by the colony, like its job.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} role - Job index.
+ * @param {Float64Array} weights
+ * @param {boolean} kitchenPost
+ * @returns {void}
+ */
+function jobWeights(ctx, role, weights, kitchenPost) {
+  const cfg = ctx.balance.economy;
+  const own = ctx.jobs.jobs[role].goal;
+  const work = ctx.jobs.workGoals;
+  for (let g = 0; g < weights.length; g++) {
+    if (g === own || (kitchenPost && g === ctx.goalIndex.cook)) weights[g] *= 1 + cfg.jobBonus;
+    else if (work[g] === 1) weights[g] *= cfg.offJob;
+  }
+}
+
+/**
  * Chooses a goal for each agent with the utility AI, then plans it. Agents re-evaluate every
  * `decisionInterval` ticks, staggered by id to spread the load, or at once when their action
  * ends or something interrupts them (an attack). A journal entry is written whenever the goal or
@@ -334,7 +359,10 @@ export function decisionSystem(state, ctx) {
     // At the camp, the blackboard is read and written from time to time.
     const colony = campOf(state, ctx, id);
     const boardDue = state.tick - a.boardTick[id] >= ctx.balance.colony.boardInterval;
-    if (colony && boardDue && atCamp(ctx, colony, id)) shareBoard(state, ctx, colony, id);
+    if (colony && boardDue && atCamp(ctx, colony, id)) {
+      shareBoard(state, ctx, colony, id);
+      considerJob(state, ctx, colony, id);
+    }
     notePass(ctx, id);
     senseInputs(state, ctx, id);
     const favoured = projectGoal(state, ctx, id);
@@ -347,6 +375,12 @@ export function decisionSystem(state, ctx) {
       weights[ctx.goalIndex.write] *= boost;
       weights[ctx.goalIndex.read] *= boost;
     }
+    // Its job: its work matters more, the work of the other jobs less.
+    const role =
+      colony !== null && colony.members >= ctx.balance.economy.jobMembers
+        ? roleOf(ctx, colony, id)
+        : -1;
+    if (role >= 0) jobWeights(ctx, role, weights, colony.cooks.includes(id));
     let goal = scoreGoals(ctx.goals, input, current, scores, a.rng[id], favoured, bonus, weights);
     // Exhaustion overrides choice: the body falls asleep.
     if (a.fatigue[id] >= critical) goal = ctx.goalIndex.sleep;

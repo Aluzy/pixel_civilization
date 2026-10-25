@@ -22,6 +22,10 @@ import { agentAttack, killPredator, train } from './combat.js';
 import { replicate } from '../colony/replication.js';
 import { DocKind } from '../knowledge/document-store.js';
 import { noteMeal, stockPortions } from '../farming/food.js';
+import { buyFood, sell } from '../economy/market.js';
+import { canHarvestOrTool } from '../economy/jobs.js';
+import { noteDelivery } from './experience.js';
+import { researcher } from './work.js';
 import { harvestedPlot } from '../systems/farm-system.js';
 import { fetchInputs, stockProduce, tillDone, waterPlot, sowPlot } from '../farming/farm-jobs.js';
 import {
@@ -250,27 +254,24 @@ export function stepAction(state, ctx, id) {
         } else if (deposit(state, ctx, colony, id) > 0 && agents.delivers[id] === 1) {
           state.events.push(state.tick, EventType.FIRST_DELIVERY, id, agents.x[id], agents.y[id]);
         }
+      } else if (colony && atCamp(ctx, colony, id) && agents.saleGood[id] > 0) {
+        // A load gathered to sell: the counter buys it.
+        const g = agents.saleGood[id];
+        const units = agents.carried(id, g);
+        noteDelivery(ctx, id, g, units, state.tick - agents.saleTick[id]);
+        sell(state, ctx, colony, id, g, units);
+        agents.saleGood[id] = 0;
       }
       finish(ctx, id);
       return;
     }
     case Action.TAKE: {
-      // Food from the pantry, up to a meal's reserve.
+      // Food from the pantry, up to a meal's reserve, bought at the counter (or given).
       const colony = campOf(state, ctx, id);
       if (colony && atCamp(ctx, colony, id)) {
-        // A meal's reserve, in portions, the most nourishing food first.
         const t = ctx.foodTables;
         const portion = ctx.balance.cooking.portion;
-        let want = ctx.balance.actions.carryReserve * portion;
-        for (let k = 0; k < t.order.length && want > 0; k++) {
-          const g = t.order[k];
-          const units = Math.ceil(want / t.nutrition[g]);
-          const n = Math.min(units, colony.stock[g], ctx.capacity(id) - agents.carriedTotal(id));
-          if (n <= 0) continue;
-          colony.stock[g] -= n;
-          agents.addCarried(id, g, n, state.tick);
-          want -= n * t.nutrition[g];
-        }
+        buyFood(state, ctx, colony, id, ctx.balance.actions.carryReserve * portion);
         agents.pantrySeen[id] = Math.min(65535, stockPortions(t, colony.stock, portion));
       }
       finish(ctx, id);
@@ -532,6 +533,7 @@ function craft(state, ctx, id) {
     state.events.push(state.tick, EventType.BUILT, id, x, y, r);
     agents.builds[id]++;
     onBuilt(state, ctx, id, recipe.output, x, y);
+    inspire(state, ctx, id, -1, recipe.output);
   } else {
     agents.addCarried(id, recipe.output, 1, state.tick);
     // A book or a map is an object with its own (blank) content.
@@ -540,8 +542,56 @@ function craft(state, ctx, id) {
     if (recipe.output === ctx.docGood[DocKind.MAP])
       state.documents.create(DocKind.MAP, id, state.tick);
     state.events.push(state.tick, EventType.CRAFTED, id, x, y, r);
+    inspire(state, ctx, id, recipe.output, 0);
   }
   imitate(state, ctx, id, r);
+}
+
+/**
+ * A researcher who makes something new to it (a material no recipe it knows uses, a station it
+ * knows nothing to make at), or tries a material alone at such a station, sometimes has an idea
+ * of what it is for (docs/design/14-economie.md,
+ * « Arbre technologique »): one of the recipes that use it, which it will try first.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {number} good - Good made, or -1.
+ * @param {number} station - Station built, or 0.
+ * @returns {void}
+ */
+function inspire(state, ctx, id, good, station) {
+  const a = ctx.agents;
+  const catalog = ctx.catalog;
+  if (!researcher(state, ctx, id) || a.ideaStation[id] >= 0) return;
+  if (station > 0 && catalog.structures[station - 1].kind !== 'station') return;
+  if (good > 0 && catalog.ingredientBit[good] < 0) return;
+  const book = a.recipes[id];
+  // Only a use it could try: every ingredient carried, harvestable or made with a known recipe.
+  const reachable = (g) =>
+    a.carried(id, g) > 0 ||
+    (g <= catalog.resourceCount
+      ? canHarvestOrTool(ctx, id, g)
+      : catalog.recipeForGood[g] >= 0 && book.knows(catalog.recipeForGood[g]));
+  const uses = (r) =>
+    (station > 0
+      ? catalog.recipes[r].station === station
+      : catalog.recipes[r].inputs.some((i) => i.good === good)) &&
+    catalog.recipes[r].inputs.every((i) => reachable(i.good));
+  let unknown = 0;
+  for (let r = 0; r < catalog.recipes.length; r++) {
+    if (!uses(r)) continue;
+    if (book.knows(r)) return;
+    unknown++;
+  }
+  if (unknown === 0 || a.rng[id].next() >= ctx.balance.crafting.inspiration) return;
+  let pick = Math.floor(a.rng[id].next() * unknown);
+  for (let r = 0; r < catalog.recipes.length; r++) {
+    if (!uses(r) || pick-- > 0) continue;
+    a.ideaStation[id] = catalog.recipes[r].station;
+    a.ideaMask[id] = catalog.recipes[r].mask;
+    a.ideaTick[id] = state.tick;
+    return;
+  }
 }
 
 /**
@@ -595,12 +645,20 @@ function experiment(state, ctx, id) {
       state.knowledge.noteDiscovery(r, id, state.tick);
     }
     agents.hint[id] = 0;
+    if (station === agents.ideaStation[id] && mask === agents.ideaMask[id]) {
+      agents.ideaStation[id] = -1;
+      agents.ideaMask[id] = 0;
+    }
     return;
   }
   for (let m = mask; m !== 0; m &= m - 1) {
     agents.addCarried(id, lowestIngredient(ctx.catalog, m), -1);
   }
   book.recordFailure(station, mask, state.tick, ctx.failureTau);
+  // A material alone at a station: watching what the station does to it may give an idea.
+  if (station !== BARE_HANDS && (mask & (mask - 1)) === 0) inspire(state, ctx, id, -1, station);
+  // A researcher notes it in the colony's notebook, for itself and those after it.
+  if (researcher(state, ctx, id)) state.colonies[agents.colony[id]].notebook.record(station, mask);
 }
 
 /**

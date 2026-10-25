@@ -28,7 +28,13 @@
       "start": 1,
       "goals": ["shelter", "hide"]
     },
-    { "id": "curiosity", "name": "Curiosité", "range": [0, 1], "start": 0.5, "goals": ["explore"] },
+    {
+      "id": "curiosity",
+      "name": "Curiosité",
+      "range": [0, 1],
+      "start": 0.5,
+      "goals": ["explore", "invent"]
+    },
     {
       "id": "risk",
       "name": "Aversion au risque",

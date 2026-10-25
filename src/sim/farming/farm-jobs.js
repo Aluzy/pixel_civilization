@@ -1,4 +1,7 @@
+import { noteDelivery } from '../agents/experience.js';
 import { EventType } from '../core/events.js';
+import { buy, sell, take } from '../economy/market.js';
+import { askOf } from '../economy/prices.js';
 import { PACK } from '../world/chunk-store.js';
 import { FALLOW } from './crop-store.js';
 
@@ -172,7 +175,7 @@ export function carriedSeeds(ctx, id) {
 function takeSeed(ctx, colony, id, tick) {
   for (const crop of ctx.crops) {
     if (colony.stock[crop.seed] <= 0) continue;
-    colony.stock[crop.seed]--;
+    take(colony, crop.seed, 1);
     ctx.agents.addCarried(id, crop.seed, 1, tick);
     return;
   }
@@ -293,16 +296,20 @@ export function stockProduce(state, ctx, id) {
   const r = ctx.balance.colony.campRadius;
   if (Math.abs(a.x[id] - colony.campX) > r || Math.abs(a.y[id] - colony.campY) > r) return 0;
   let n = 0;
+  const job = a.farmJob[id];
+  const farming = job === FarmJob.HARVEST || job === FarmJob.GLEAN;
   for (let g = 1; g < ctx.produce.length; g++) {
     if (ctx.produce[g] !== 1) continue;
     const units = a.carried(id, g);
     if (units === 0) continue;
-    a.addCarried(id, g, -units);
-    colony.stock[g] += units;
+    // A harvest teaches what a unit of grain costs it, from the start of this stint in the fields.
+    if (farming && ctx.cropOfResource[g] >= 0) {
+      noteDelivery(ctx, id, g, units, state.tick - a.goalSince[id]);
+    }
+    sell(state, ctx, colony, id, g, units);
     n += units;
   }
-  const job = a.farmJob[id];
-  if (job === FarmJob.HARVEST || job === FarmJob.GLEAN) releaseFarm(state, ctx, id);
+  if (farming) releaseFarm(state, ctx, id);
   return n;
 }
 
@@ -321,23 +328,45 @@ export function fetchInputs(state, ctx, id) {
   if (c < 0 || r < 0) return;
   const colony = state.colonies[c];
   const inputs = ctx.catalog.recipes[r].inputs;
+  // A miller or a baker buys the ingredients of its trade; a cook trying things for the colony
+  // takes them.
+  const pays = paysFor(ctx, id, r);
+  const spread = ctx.balance.economy.spread;
   let rounds = ctx.balance.cooking.batch;
   let per = 0;
+  let cost = 0;
   for (const input of inputs) {
     rounds = Math.min(
       rounds,
       Math.floor((colony.stock[input.good] + a.carried(id, input.good)) / input.count),
     );
     per += input.count;
+    cost += askOf(colony.price[input.good], spread) * input.count;
   }
-  const room = ctx.capacity(id) - a.carriedTotal(id);
+  const room = Math.floor(ctx.capacity(id) - a.carriedTotal(id));
   rounds = Math.max(1, Math.min(rounds, Math.floor(room / per)));
+  if (pays) rounds = Math.min(rounds, Math.floor(a.coins[id] / cost));
   for (const input of inputs) {
     const n = Math.min(input.count * rounds - a.carried(id, input.good), colony.stock[input.good]);
     if (n <= 0) continue;
-    colony.stock[input.good] -= n;
-    a.addCarried(id, input.good, n, state.tick);
+    if (pays) buy(state, ctx, colony, id, input.good, n, true);
+    else {
+      take(colony, input.good, n);
+      a.addCarried(id, input.good, n, state.tick);
+    }
   }
+}
+
+/**
+ * True if the agent makes recipe `r` as its trade (its job), and so buys its ingredients.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {number} r
+ * @returns {boolean}
+ */
+export function paysFor(ctx, id, r) {
+  const j = ctx.agents.job[id];
+  return j >= 0 && ctx.jobs.jobs[j].makes.includes(r);
 }
 
 /**
