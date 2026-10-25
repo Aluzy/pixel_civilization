@@ -207,6 +207,32 @@ Réalisé :
 
 **Sortie** : sur la majorité des graines, au moins deux colonies au jour 150, la seconde fondée par une expédition ; au moins un échange entre colonies.
 
+Réalisé :
+- **Sortie**, sur 10 graines et 150 jours :
+  - au moins deux colonies vivent au jour 150 sur 8 graines ;
+  - chaque fois, la seconde a été fondée par une expédition de la première, entre les jours 49 et 126 ;
+  - une troisième colonie existe sur 3 graines ;
+  - au jour 150, les colonies filles comptent de 3 à 248 membres ;
+  - dans les 8 cas, une première caravane relie la mère et la fille, le jour même de la fondation ou jusqu'à 25 jours après ;
+  - les 2 autres graines : une colonie restée petite (48 membres), qui ne ressent jamais la foule, et un éclaireur qui ne trouve pas de site ;
+  - test automatique sur les graines 1 et 6 (fondation, caravane, colonie fille de 16 membres).
+- **Tenu** :
+  - les sorties des J5 à J10 passent ;
+  - la graine de démonstration du J3 change (27) ;
+  - `npm run bench` (500 fondateurs, 100 jours) : 1,64 ms par cycle en moyenne, 2,09 ms le pire jour, sous les 6,25 ms de ×16.
+- **Ajouts** :
+  - objectifs Migrer et Commercer ;
+  - éclaireur sur un anneau de 56 à 90 cases ;
+  - expédition affichée au tableau noir, recrutement, provisions et copie de livre ;
+  - fondation par le premier abri, filiation ;
+  - recherche des matériaux inconnus par une jeune colonie ;
+  - fiches de relation (parenté, camp, rencontres, caravanes, prix rapportés) ;
+  - métier de marchand et caravanes entre comptoirs ;
+  - bloc Colonie de l'individu sélectionné, liste des colonies ;
+  - chronique de la migration ;
+  - détail dans [15](15-colonies-et-migration.md) et la décision 0024.
+- **Reporté** : gel des blocs lointains, calque des territoires, tableau de bord par colonie, autres raisons de partir, troc direct entre individus de colonies différentes.
+
 ### J12 — Trésors et forteresses (`v0.13.0`)
 
 - Or et pierres précieuses, salle du trésor.
