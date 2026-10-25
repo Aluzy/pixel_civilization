@@ -71,11 +71,12 @@ describe('experiments', () => {
     const book = new RecipeBook(catalog.recipes.length, 32);
     const hands = new Uint8Array(catalog.structures.length + 1);
     expect(experimentAll(['wood', 'fiber', 'stone'], hands, book).sort()).toEqual([
+      'campfire',
       'shelter',
       'workbench',
     ]);
-    // 7 sets of 3 materials, 2 were recipes.
-    expect(book.failureCount()).toBe(5);
+    // 7 sets of 3 materials, 3 were recipes.
+    expect(book.failureCount()).toBe(4);
     const withBench = hands.slice();
     withBench[1] = 1;
     const more = experimentAll(['wood', 'fiber', 'stone'], withBench, book);
