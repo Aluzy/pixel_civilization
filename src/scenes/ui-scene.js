@@ -4,6 +4,7 @@ import genomeData from '../../data/genome.json' with { type: 'json' };
 import projectData from '../../data/ai-projects.json' with { type: 'json' };
 import balance from '../../data/balance.json' with { type: 'json' };
 import recipeData from '../../data/recipes.json' with { type: 'json' };
+import jobData from '../../data/jobs.json' with { type: 'json' };
 import resourceData from '../../data/resources.json' with { type: 'json' };
 import worldData from '../../data/world.json' with { type: 'json' };
 import { buildProjects } from '../sim/ai/projects.js';
@@ -56,7 +57,8 @@ export class UiScene extends Phaser.Scene {
     super('ui');
     this.tables = buildWorldTables(worldData, resourceData);
     const projects = buildProjects(projectData, buildGoalTable(aiGoals));
-    this.names = buildNames(this.tables, buildCatalog(recipeData, this.tables), projects);
+    const catalog = buildCatalog(recipeData, this.tables);
+    this.names = buildNames(this.tables, catalog, projects, jobData);
     /** @type {import('../sim/core/events.js').SimEvent[]} */
     this.chronicle = [];
     this.filter = 1;

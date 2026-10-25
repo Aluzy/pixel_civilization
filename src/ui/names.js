@@ -6,6 +6,7 @@
  * @property {string[]} [recipes] - Name of what each recipe makes.
  * @property {string[]} [projects]
  * @property {string[]} [goods] - Index = good id (0 unused).
+ * @property {string[]} [jobs] - Index = job index of data/jobs.json.
  */
 
 /**
@@ -13,9 +14,10 @@
  * @param {import('../sim/world/world-data.js').WorldTables} tables
  * @param {import('../sim/crafting/catalog.js').Catalog} catalog
  * @param {import('../sim/ai/projects.js').ProjectTable} projects
+ * @param {{ jobs: { name: string }[] }} [jobs] - Content of data/jobs.json.
  * @returns {Names}
  */
-export function buildNames(tables, catalog, projects) {
+export function buildNames(tables, catalog, projects, jobs = { jobs: [] }) {
   return {
     resources: tables.resources,
     structures: catalog.structures.map((s) => s.name),
@@ -25,6 +27,7 @@ export function buildNames(tables, catalog, projects) {
     goods: Array.from({ length: catalog.goodCount }, (_, g) =>
       g === 0 ? '' : catalog.goodName(g),
     ),
+    jobs: jobs.jobs.map((j) => j.name),
   };
 }
 

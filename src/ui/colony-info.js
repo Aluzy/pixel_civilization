@@ -3,8 +3,8 @@ const COMPONENTS = ['stabilité', 'durabilité', 'ordre spatial', 'savoir', 'bie
 
 /**
  * Lines of the colony panel (from Simulation#describeColony): population, beds, stock, the
- * projects in progress with what they still need and who worked on them, the libraries and the
- * colony's knowledge (known, written, lost).
+ * projects in progress with what they still need and who worked on them, the libraries, the
+ * counter (treasury, jobs, prices) and the colony's knowledge (known, written, lost).
  * @param {object | null} colony
  * @returns {string[]}
  */
@@ -56,6 +56,22 @@ export function formatColony(colony) {
     lines.push(`Cuisine : ${farm.dishesYesterday} plat(s) mangé(s) hier, ${farm.dishes} en tout`);
   }
   if (farm?.cooks?.length) lines.push(`Cuisiniers : ${farm.cooks.map((k) => `#${k}`).join(' ')}`);
+  const market = colony.market;
+  if (market) {
+    lines.push(
+      `Comptoir : ${market.treasury} écus en caisse, ${market.minted} frappés · ` +
+        `${market.rations} ration(s) données`,
+    );
+    if (market.jobs.length > 0) {
+      lines.push(
+        `Métiers : ${market.jobs.map((j) => `${j.name.toLowerCase()} ${j.count}`).join(' · ')}`,
+      );
+    }
+    if (market.prices.length > 0) {
+      const shown = market.prices.map((p) => `${p.name} ${p.bid}/${p.ask} (${p.stock})`);
+      lines.push(`Prix achat/vente (stock) : ${shown.join(' · ')}`);
+    }
+  }
   if (colony.scribe >= 0) lines.push(`Scribe : #${colony.scribe}`);
   if (colony.inventor >= 0) lines.push(`Inventeur : #${colony.inventor}`);
   if (colony.guards?.length) lines.push(`Gardes : ${colony.guards.map((g) => `#${g}`).join(' ')}`);
