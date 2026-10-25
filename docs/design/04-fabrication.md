@@ -87,6 +87,13 @@ Mesure : sur les graines 1 à 10, l'établi, la lance, un outil (presque toujour
 - **Ingrédients fabriqués** : le coût d'aller chercher un matériau fabriqué dont l'individu connaît la recette est 0,2 + 0,3 ; il le fabrique au lieu de le récolter.
 - **On ne fabrique que ce qu'on croit savoir** : un bâtisseur qui découvre qu'il avait mal compris la recette (moitié des ingrédients perdue, échec retenu) rend sa tâche ; il ne peut plus bâtir avec une recette qu'il ne connaît plus. Avant ce correctif, il rebâtissait aussitôt avec la recette juste, sans l'avoir apprise.
 
+## État au jalon J7
+
+- **Arbre complet dans les données** : four (station, 5 argiles + 5 pierres + 2 charbons, mains nues), brique (2 argiles au four), fonderie (station, 8 briques + 4 charbons, mains nues), lingot de cuivre (2 cuivres + 1 charbon, fonderie), lingot de fer (2 fers + 1 charbon, fonderie), pioche de cuivre (2 lingots de cuivre + 1 bois, établi ; ouvre le fer), hache de cuivre (bois ×3), lance de cuivre (attaque ×3), hache de fer (bois ×4), lance de fer (attaque ×4).
+- **Essai libre** : l'inventeur de la colonie ([06-ia](06-ia.md)) essaie sans genre recherché ; chaque matériau qu'aucune recette connue n'utilise vaut +1,5.
+- **Constat** : sur 8 graines et 120 à 160 jours, le four n'a pas encore été découvert. Le charbon demande une pioche, sa position doit être connue (souvent oubliée, et le tableau noir n'est cru que 6 jours), et les combinaisons à essayer sont nombreuses (8 matériaux, 4 lieux). L'arbre est prêt ; sa découverte reste rare.
+- **Pas encore** : un outil meilleur ne remplace pas l'outil exigé (une pioche de cuivre ne suffit pas pour le charbon sans la pioche de pierre), couleur des produits dérivée des ingrédients, feu de camp et cuisson.
+
 ## Imitation
 
 Un individu qui voit un autre individu réaliser une recette (dans son rayon de perception, pendant toute la durée de fabrication) a 50 % de chances de l'apprendre, à force 0,6.

@@ -72,9 +72,15 @@ Sur un écran tactile sans souris, ou dans une fenêtre de moins de 820 pixels d
 
 ## Calques
 
+Au J7, seul le calque de mémoire de l'individu sélectionné existe (touche M). Les calques de colonie (ressources connues, danger, territoire) restent à faire.
+
 Activables séparément, superposés en semi-transparence : ressources connues de la colonie, danger, zones explorées, territoire et zones spécialisées, mémoire de l'individu sélectionné (ce qu'il croit savoir, comparé à la réalité).
 
 ## Tableau de bord
+
+Au J7 (`src/ui/dashboard.js`) : la touche **H** ouvre un panneau à droite (l'onglet « Harmonie » sur téléphone) avec trois graphiques au fil des jours : l'harmonie (0 à 100, trait épais) et ses cinq composantes (0 à 1), la population, et pour chaque gène sa moyenne (trait) et sa dispersion (bande d'un écart-type), la valeur du fondateur en pointillés. Une phrase résume l'harmonie (« Harmonie 62 (J61 : 55) · point faible : savoir 0,00 ») et la plus forte dérive du génome. Couleurs d'Okabe et Ito (lisibles par les daltoniens), chaque graphique a une description textuelle pour les lecteurs d'écran. Le bloc Colonie ajoute l'harmonie et ses composantes, le point faible visé, les champs et les plants, et l'inventeur ; le panneau de l'individu ajoute son génome et ce qu'il a appris ; le bandeau du haut affiche l'harmonie. La chronique annonce les champs plantés.
+
+Cible :
 
 - Jour, heure, vitesse effective.
 - Population, naissances et morts.
@@ -102,6 +108,8 @@ Clic sur un événement → pause et caméra sur le lieu.
 - Sauvegarde : question ouverte (voir [12-risques](12-risques.md)).
 
 ## Accessibilité
+
+Au J7 : palette d'Okabe et Ito pour les courbes, descriptions textuelles des graphiques, commandes au doigt sur téléphone. Pas encore : motifs par type, taille du texte réglable, navigation complète au clavier dans les panneaux.
 
 - Palette vérifiée pour les daltonismes courants ; motifs par type aux zooms élevés.
 - Taille du texte de l'interface réglable.

@@ -40,10 +40,14 @@
 | Famille (de recette) | « structure » ou « item: » + type d'objet ; guide la ressemblance dans le choix des essais | `family` |
 | Savoir sauvé par un livre | Recette lue après la mort de celui qui l'a découverte | `savedByBook` |
 | Durée de vie | Âge auquel un individu meurt de vieillesse | `lifespan` |
+| Point faible | Composante d'harmonie la plus basse, inscrite au tableau noir, que les tâches visent | `focus` |
+| Champ | Sources d'une ressource renouvelable plantées ensemble près du camp | `field` |
+| Inventeur | Membre chargé d'essayer librement de nouvelles combinaisons (un à la fois) | `inventor` |
+| Fondateurs | Individus présents au départ : un seul en partie, plusieurs pour les mesures | `founders` |
 | Projet | But à long terme décomposé en sous-tâches (HTN) | `project` |
 | Simulation mentale | Évaluation de futurs possibles sur un modèle issu des croyances | `imagination` |
 | Fiche sociale | Ce qu'un individu croit savoir d'un autre | `socialModel` |
-| Expérience apprise | Estimations révisées à partir des résultats des actions | `learned` |
+| Expérience apprise | Estimations révisées à partir des résultats des actions (danger des zones, coût des biens) | `experience` |
 | Génome | Gènes qui paramètrent la personnalité de décision, mutés à chaque réplication | `genome` |
 | Budget de réflexion | Unités de travail de l'IA allouées par cycle | `thinkBudget` |
 | Penseur | Worker secondaire qui calcule des décisions | `thinker` |

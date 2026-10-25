@@ -36,6 +36,7 @@ npm run preview      # servir le build localement
 npm run lint         # ESLint (vérifie aussi les interdits de src/sim)
 npm run format       # Prettier
 npm run sim -- --seed 42 --days 30   # simulation headless : rapport par jour, code de sortie 1 si l'individu meurt
+npm run bench                        # mesure : 500 fondateurs pendant 100 jours, coût d'un cycle face au budget de ×16
 ```
 
 Les interdits de `src/sim/` sont vérifiés deux fois : par ESLint (`eslint.config.js`) et par le test `tests/sim/purity.test.js`.
