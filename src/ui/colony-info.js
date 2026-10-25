@@ -44,6 +44,18 @@ export function formatColony(colony) {
         `${lib.recipes.length} recette(s)`,
     );
   }
+  const farm = colony.farm;
+  if (farm && farm.plots > 0) {
+    const share = Math.round(farm.cropShare * 100);
+    lines.push(
+      `Cultures : ${farm.plots} parcelle(s), ${farm.harvests} moisson(s) · ` +
+        `hier ${share} % de la nourriture venait des cultures`,
+    );
+  }
+  if (farm && farm.dishes > 0) {
+    lines.push(`Cuisine : ${farm.dishesYesterday} plat(s) mangé(s) hier, ${farm.dishes} en tout`);
+  }
+  if (farm?.cooks?.length) lines.push(`Cuisiniers : ${farm.cooks.map((k) => `#${k}`).join(' ')}`);
   if (colony.scribe >= 0) lines.push(`Scribe : #${colony.scribe}`);
   if (colony.inventor >= 0) lines.push(`Inventeur : #${colony.inventor}`);
   if (colony.guards?.length) lines.push(`Gardes : ${colony.guards.map((g) => `#${g}`).join(' ')}`);

@@ -12,12 +12,13 @@ export function hexToRgb(hex) {
  * @property {Uint8Array} biomes - RGB triplets, indexed by biome index.
  * @property {Uint8Array} resources - RGB triplets, indexed by resource id (0 unused).
  * @property {Uint8Array} structures - RGB triplets, indexed by structure code (0 unused).
+ * @property {Uint8Array} [cropBeds] - 1 per structure code that shows what grows on it (a plot).
  */
 
 /**
  * Colour lookup tables built from the world data.
  * @param {import('../sim/world/world-data.js').WorldTables} tables
- * @param {{ color: string }[]} [structureDefs] - Structures, index = code − 1.
+ * @param {{ color: string, kind?: string }[]} [structureDefs] - Structures, index = code − 1.
  * @returns {Palette}
  */
 export function buildPalette(tables, structureDefs = []) {
@@ -27,12 +28,14 @@ export function buildPalette(tables, structureDefs = []) {
   tables.resources.forEach((r, i) => resources.set(hexToRgb(r.color), (i + 1) * 3));
   const structures = new Uint8Array((structureDefs.length + 1) * 3);
   structureDefs.forEach((s, i) => structures.set(hexToRgb(s.color), (i + 1) * 3));
-  return { biomes, resources, structures };
+  const cropBeds = new Uint8Array(structureDefs.length + 1);
+  structureDefs.forEach((s, i) => (cropBeds[i + 1] = s.kind === 'plot' ? 1 : 0));
+  return { biomes, resources, structures, cropBeds };
 }
 
 /**
- * Fills an RGBA buffer with the colours of a chunk: the structure if any, else the resource,
- * else the biome.
+ * Fills an RGBA buffer with the colours of a chunk: the structure if any (but a ripe crop shows on
+ * its plot), else the resource, else the biome.
  * @param {Uint8ClampedArray} rgba - Length = tiles × 4.
  * @param {{ biome: Uint8Array, resource: Uint8Array, structure?: Uint8Array }} chunk
  * @param {Palette} palette
@@ -45,7 +48,7 @@ export function paintChunk(rgba, chunk, palette) {
     const r = resource[i];
     let table = palette.biomes;
     let c = biome[i] * 3;
-    if (s !== 0) {
+    if (s !== 0 && !(r !== 0 && palette.cropBeds?.[s] === 1)) {
       table = palette.structures;
       c = s * 3;
     } else if (r !== 0) {

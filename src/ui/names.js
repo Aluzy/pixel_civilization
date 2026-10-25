@@ -5,6 +5,7 @@
  * @property {boolean[]} [feminine] - Per structure code − 1: its name is feminine.
  * @property {string[]} [recipes] - Name of what each recipe makes.
  * @property {string[]} [projects]
+ * @property {string[]} [goods] - Index = good id (0 unused).
  */
 
 /**
@@ -21,6 +22,9 @@ export function buildNames(tables, catalog, projects) {
     feminine: catalog.structures.map((s) => s.feminine),
     recipes: catalog.recipes.map((r) => r.name),
     projects: projects.projects.map((p) => p.name),
+    goods: Array.from({ length: catalog.goodCount }, (_, g) =>
+      g === 0 ? '' : catalog.goodName(g),
+    ),
   };
 }
 

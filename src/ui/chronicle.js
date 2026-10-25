@@ -62,6 +62,8 @@ const TEXT = {
   [EventType.FIRST_DELIVERY]: (who) => `Première contribution de ${who} à la réserve.`,
   [EventType.GUARD]: (who) => `${who} prend la garde du camp.`,
   [EventType.SHELTER_FORCED]: (who) => `Une meute force l’abri isolé de ${who} !`,
+  [EventType.FIRST_PLOT]: (who) => `${who} sème la première parcelle de la colonie.`,
+  [EventType.HARVEST]: (who) => `Première moisson de la colonie, par ${who}.`,
 };
 
 // Events about places, not individuals.
@@ -97,6 +99,9 @@ export const FILTERS = Object.freeze([
       EventType.KNOWLEDGE_RECOVERED,
       EventType.DEN_DESTROYED,
       EventType.SHELTER_FORCED,
+      EventType.FIRST_PLOT,
+      EventType.HARVEST,
+      EventType.FIRST_DISH,
     ],
   },
   {
@@ -105,6 +110,9 @@ export const FILTERS = Object.freeze([
       EventType.BIRTH,
       EventType.DEATH,
       EventType.COLONY_PROJECT,
+      EventType.FIRST_PLOT,
+      EventType.HARVEST,
+      EventType.FIRST_DISH,
       EventType.FIRST_DELIVERY,
       EventType.TOLD,
       EventType.IMITATED,
@@ -184,6 +192,10 @@ export function formatEvent(event, time, names) {
     subject: event.subject,
   };
   let text = TEXT[event.type]?.(who) ?? event.type;
+  if (event.type === EventType.FIRST_DISH) {
+    const dish = names?.goods?.[event.subject]?.toLowerCase() ?? 'un plat';
+    text = `Premier plat cuisiné de la colonie : ${who} mange ${dish}.`;
+  }
   if (memoryText) text = memoryText(context);
   else if (makingText) text = makingText(context);
   else if (placeText) text = placeText(context);

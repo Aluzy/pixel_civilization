@@ -23,6 +23,8 @@ const NOTE_TEXT = {
   [PlanNote.HIDING]: 'à couvert',
   [PlanNote.GUARDING]: 'garde',
   [PlanNote.HUNTING]: 'chasse',
+  [PlanNote.FARMING]: 'travail aux champs',
+  [PlanNote.COOKING]: 'cuisine',
 };
 
 /**
