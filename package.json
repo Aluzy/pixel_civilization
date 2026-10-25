@@ -1,6 +1,6 @@
 {
   "name": "pixel-civilization",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "An observation simulation where a lone black pixel builds a harmonious civilization.",
   "private": true,
   "type": "module",

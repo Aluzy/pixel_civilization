@@ -14,7 +14,9 @@ import { formatAgent } from '../ui/agent-info.js';
 import { FILTERS, formatEvent, passes } from '../ui/chronicle.js';
 import { formatColony } from '../ui/colony-info.js';
 import { formatClock, formatSpeed } from '../ui/format.js';
+import { chooseHud } from '../ui/hud-model.js';
 import { buildNames } from '../ui/names.js';
+import { PhoneHud } from '../ui/phone-hud.js';
 
 const TEXT_STYLE = {
   fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
@@ -76,30 +78,37 @@ export class UiScene extends Phaser.Scene {
       .text(0, 12, '', { ...TEXT_STYLE, fontSize: '13px' })
       .setScrollFactor(0)
       .setVisible(false);
+    this.phone = this.createPhoneHud(sim, seed, version);
     this.layout();
     this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
 
     const unsubscribe = sim.onFrame((frame) => this.render(frame));
     const showTile = (text) => {
       this.agentSelected = false;
-      this.inspection.setText(text).setVisible(true);
+      this.phone?.tileInspected(text);
+      this.inspection.setText(text).setVisible(!this.phone);
       this.layout();
     };
     const onAgent = (id) => {
       this.agentSelected = id >= 0;
+      this.phone?.agentSelected(id);
       if (!this.agentSelected) this.inspection.setVisible(false);
     };
     const onFollow = (on) => {
       this.following = on;
+      this.phone?.setFollowing(on);
     };
+    const onMemory = (on) => this.phone?.setMemory(on);
     this.game.events.on('tile-inspected', showTile);
     this.game.events.on('agent-selected', onAgent);
     this.game.events.on('follow-changed', onFollow);
+    this.game.events.on('memory-layer-changed', onMemory);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       unsubscribe();
       this.game.events.off('tile-inspected', showTile);
       this.game.events.off('agent-selected', onAgent);
       this.game.events.off('follow-changed', onFollow);
+      this.game.events.off('memory-layer-changed', onMemory);
     });
     this.render(null);
 
@@ -111,15 +120,62 @@ export class UiScene extends Phaser.Scene {
     keyboard.on('keydown-SIX', () => sim.setSpeed('max'));
     keyboard.on('keydown-L', () => sim.skip(SkipKind.DAWN));
     keyboard.on('keydown-N', () => sim.skip(SkipKind.EVENT));
-    keyboard.on('keydown-C', () => {
-      this.filter = (this.filter + 1) % FILTERS.length;
-      this.drawChronicle();
-      if (this.auto) sim.setAuto(true, this.alerts());
+    keyboard.on('keydown-C', () => this.setFilter((this.filter + 1) % FILTERS.length));
+    keyboard.on('keydown-T', () => this.toggleAuto());
+  }
+
+  /**
+   * The phone HUD (a DOM layer) when the screen calls for it; the Phaser panels then hide.
+   * @param {import('../bridge/sim-client.js').SimClient} sim
+   * @param {number} seed
+   * @param {string} version
+   * @returns {PhoneHud | null}
+   */
+  createPhoneHud(sim, seed, version) {
+    const hud = chooseHud({
+      search: window.location.search,
+      width: window.innerWidth,
+      coarse: window.matchMedia('(pointer: coarse)').matches,
+      fine: window.matchMedia('(pointer: fine)').matches,
     });
-    keyboard.on('keydown-T', () => {
-      this.auto = !this.auto;
-      sim.setAuto(this.auto, this.alerts());
+    if (hud !== 'phone') return null;
+    for (const t of [this.status, this.footer, this.help, this.chronicleText, this.colonyText]) {
+      t.setVisible(false);
+    }
+    this.inspection.setVisible(false);
+    const important = new Set(FILTERS[1].types);
+    return new PhoneHud({
+      root: document.body,
+      sim,
+      speedSteps: balance.time.speedSteps,
+      filters: FILTERS,
+      seed,
+      version,
+      getFilter: () => this.filter,
+      setFilter: (i) => this.setFilter(i),
+      toggleAuto: () => this.toggleAuto(),
+      important: (e) => important.has(e.type),
+      passes: (e) => passes(e, FILTERS[this.filter]),
+      describe: (e) => formatEvent(e, balance.time, this.names),
+      command: (type) => this.game.events.emit('hud-command', type),
+      onInsets: (top, bottom) => this.game.events.emit('view-insets', top, bottom),
     });
+  }
+
+  /**
+   * @param {number} i - Index in FILTERS.
+   * @returns {void}
+   */
+  setFilter(i) {
+    this.filter = i;
+    this.drawChronicle();
+    if (this.auto) this.registry.get('sim').setAuto(true, this.alerts());
+  }
+
+  /** @returns {void} */
+  toggleAuto() {
+    this.auto = !this.auto;
+    this.registry.get('sim').setAuto(this.auto, this.alerts());
   }
 
   /**
@@ -138,7 +194,7 @@ export class UiScene extends Phaser.Scene {
       .filter((e) => passes(e, filter))
       .slice(-CHRONICLE_LINES)
       .map((e) => formatEvent(e, balance.time, this.names));
-    this.chronicleText.setText([`Chronique (${filter.name})`, ...lines]).setVisible(true);
+    this.chronicleText.setText([`Chronique (${filter.name})`, ...lines]).setVisible(!this.phone);
     this.layout();
   }
 
@@ -182,13 +238,15 @@ export class UiScene extends Phaser.Scene {
       this.drawChronicle();
     }
     const colony = formatColony(frame.colony);
-    this.colonyText.setText(colony).setVisible(colony.length > 0);
+    this.colonyText.setText(colony).setVisible(colony.length > 0 && !this.phone);
 
+    let panel = null;
     if (this.agentSelected && frame.selected) {
-      const panel = formatAgent(frame.selected, this.names, balance.time);
+      panel = formatAgent(frame.selected, this.names, balance.time);
       if (this.following) panel[0] += ' · suivi';
-      this.inspection.setText(panel).setVisible(true);
+      this.inspection.setText(panel).setVisible(!this.phone);
     }
+    this.phone?.update(frame, colony, panel);
     this.layout();
   }
 }

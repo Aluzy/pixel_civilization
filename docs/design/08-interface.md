@@ -55,6 +55,21 @@ Au J5, le panneau ajoute la génération, la lignée (fondateur ou réplique de 
 
 Au J6, le panneau ajoute l'âge sur l'espérance de vie (« 12/58 j »), le rôle « scribe », et pour chaque livre porté les recettes écrites (pour une carte, le nombre de lieux). Le bloc **Colonie** ajoute chaque bibliothèque (position, abandonnée ou non, documents et recettes rangés), le scribe, et le savoir collectif : recettes connues et écrites, savoir perdu, recettes sauvées par un livre, recettes retrouvées.
 
+## Sur téléphone
+
+Sur un écran tactile sans souris, ou dans une fenêtre de moins de 820 pixels de large, une interface pour le pouce (`src/ui/phone-hud.js`, une couche HTML au-dessus du canevas) remplace les panneaux de bureau ; `?hud=phone` ou `?hud=desktop` dans l'adresse force l'une ou l'autre (décision 0015). Elle ne fait que lire les images envoyées par le Worker et envoyer les mêmes commandes que le clavier.
+
+- **Bandeau du haut** : jour et heure, vitesse (effective si la machine ne suit pas), « auto », population.
+- **Barre du bas**, cibles d'au moins 44 pixels : pause ou reprise, palier plus lent, palier courant (le toucher revient à ×1), palier plus rapide (jusqu'à Max), Aube, Événement suivant, Auto ; puis quatre onglets.
+- **Onglets** (feuille qui monte au-dessus de la barre, défilable, fermée par ✕ ou en retouchant l'onglet) :
+  - *Colonie* : le bloc Colonie du bureau ;
+  - *Chronique* : les 60 derniers événements du filtre, du plus récent au plus ancien, et les quatre filtres en boutons (ils choisissent aussi ce qui coupe l'accélération automatique) ;
+  - *Fiche* : l'individu touché (le panneau complet) avec Suivre, Mémoire (le calque « ce qu'il croit savoir ») et Lâcher, ou la case touchée ;
+  - *Plus* : zoom − et +, recentrer sur le camp, graine courante et version, charger une graine ou en tirer une au hasard, et la liste de toutes les commandes.
+- **Bandeau d'alerte** : un événement important (ceux du filtre « important ») s'affiche 4 secondes au-dessus de la barre ; le toucher ouvre la chronique.
+- **Toucher** : un doigt sélectionne un individu à moins de 24 pixels écran (au lieu de 1,2 case), toucher un individu ouvre sa fiche, toucher une case ouvre la fiche de la case. Glisser déplace, pincer zoome.
+- La caméra centre l'individu suivi (et le camp quand on recentre) dans la partie de l'écran que la feuille et les barres laissent visible.
+
 ## Calques
 
 Activables séparément, superposés en semi-transparence : ressources connues de la colonie, danger, zones explorées, territoire et zones spécialisées, mémoire de l'individu sélectionné (ce qu'il croit savoir, comparé à la réalité).
