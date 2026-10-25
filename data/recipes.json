@@ -20,7 +20,23 @@
     },
     { "id": "den", "name": "Tanière", "color": "#3e0a0a", "kind": "den", "feminine": true },
     { "id": "plot", "name": "Parcelle", "color": "#5c3d22", "kind": "plot", "feminine": true },
-    { "id": "campfire", "name": "Feu de camp", "color": "#ff8a2a", "kind": "station" }
+    { "id": "campfire", "name": "Feu de camp", "color": "#ff8a2a", "kind": "station" },
+    {
+      "id": "treasure_room",
+      "name": "Salle du trésor",
+      "color": "#c9a227",
+      "kind": "treasury",
+      "feminine": true
+    },
+    {
+      "id": "palisade",
+      "name": "Palissade",
+      "color": "#4a2f17",
+      "kind": "wall",
+      "feminine": true
+    },
+    { "id": "gate", "name": "Porte", "color": "#b07a3c", "kind": "gate", "feminine": true },
+    { "id": "tower", "name": "Tour", "color": "#8c8c94", "kind": "tower", "feminine": true }
   ],
   "items": [
     { "id": "spear", "name": "Lance", "kind": "weapon", "attack": 2 },
@@ -278,6 +294,34 @@
       "inputs": { "flour": 1, "berries": 2 },
       "durationTicks": 30,
       "output": { "item": "berry_pie" }
+    },
+    {
+      "id": "treasure_room",
+      "station": null,
+      "inputs": { "stone": 8, "clay": 4 },
+      "durationTicks": 200,
+      "output": { "structure": "treasure_room" }
+    },
+    {
+      "id": "palisade",
+      "station": null,
+      "inputs": { "wood": 2 },
+      "durationTicks": 20,
+      "output": { "structure": "palisade" }
+    },
+    {
+      "id": "gate",
+      "station": null,
+      "inputs": { "wood": 4, "clay": 2 },
+      "durationTicks": 60,
+      "output": { "structure": "gate" }
+    },
+    {
+      "id": "tower",
+      "station": null,
+      "inputs": { "stone": 6, "fiber": 2 },
+      "durationTicks": 160,
+      "output": { "structure": "tower" }
     }
   ]
 }

@@ -113,11 +113,11 @@ describe('crafting', () => {
     runAction(sim, id);
     expect(a.recipes[id].knows(recipe('workbench'))).toBe(true);
     expect(a.carried(id, good('wood'))).toBe(3);
-    a.trialMask[id] = 1 << bit('wood');
+    a.trialMask[id] = 1 << bit('fiber');
     start(sim, id, Action.EXPERIMENT);
     runAction(sim, id);
-    expect(a.carried(id, good('wood'))).toBe(2);
-    expect(a.recipes[id].hasFailed(BARE_HANDS, 1 << bit('wood'))).toBe(true);
+    expect(a.carried(id, good('fiber'))).toBe(2);
+    expect(a.recipes[id].hasFailed(BARE_HANDS, 1 << bit('fiber'))).toBe(true);
   });
 
   it('cannot harvest ore without a pickaxe', () => {

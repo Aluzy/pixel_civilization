@@ -8,6 +8,7 @@ import { explore, moveTo, startHere } from './movement.js';
 import { discover, gather, pursue, useRecipe } from './work.js';
 import { canHarvest } from './actions.js';
 import { saleGood } from '../economy/jobs.js';
+import { wallWork } from './wall-work.js';
 
 // Behaviours of the colony goals: collective tasks and replication.
 
@@ -78,6 +79,14 @@ export function colonyWork(state, ctx, id, plan) {
   const project = colony.projects[a.taskProject[id]];
   if (a.taskBuild[id] === 1 && project.kind === ProjectKind.FIELD) {
     plantField(state, ctx, colony, project, id, plan);
+    return;
+  }
+  if (
+    a.taskBuild[id] === 1 &&
+    (project.kind === ProjectKind.ENCLOSURE || project.kind === ProjectKind.TOWER)
+  ) {
+    wallWork(state, ctx, colony, project, id, plan);
+    plan.note = PlanNote.COLONY;
     return;
   }
   if (a.taskBuild[id] === 1) {

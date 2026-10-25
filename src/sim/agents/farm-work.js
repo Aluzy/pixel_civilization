@@ -109,6 +109,12 @@ export function farmBehaviour(state, ctx, id, plan, fresh = false) {
     till(state, ctx, colony, id, plan);
     return;
   }
+  if (job === FarmJob.GLEAN && carriedSeeds(ctx, id) > 0 && a.recipes[id].knows(ctx.plotRecipe)) {
+    // A seed in hand is sown at once: rare wild grain may never make a full load.
+    a.farmJob[id] = FarmJob.TILL;
+    till(state, ctx, colony, id, plan);
+    return;
+  }
   if (job === FarmJob.GLEAN) {
     // Wild grain until it carries a sample's worth (seeds come with it), then to the stock.
     const grain = ctx.crops[0].resource;

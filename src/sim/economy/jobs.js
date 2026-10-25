@@ -2,6 +2,7 @@ import { harvestMultiplier } from '../agents/equipment.js';
 import { canHarvest } from '../agents/actions.js';
 import { geneLevel } from '../genome/genome.js';
 import { askOf, bidOf } from './prices.js';
+import { treasureSpare } from './market.js';
 
 // Jobs (docs/design/14-economie.md, « Métiers »): a member of a large enough colony chooses a job
 // for several days, the one whose expected income is the best for it — its comparative advantage.
@@ -269,6 +270,8 @@ export function saleGood(ctx, colony, id) {
   for (const g of ctx.jobs.jobs[j].sells) {
     const bid = bidOf(a.priceSeen[o + g]);
     if (bid < 1 || g > ctx.catalog.resourceCount) continue;
+    // Gold and gems sell only while the counter has écus to spare for them.
+    if (ctx.treasureGoods[g] === 1 && treasureSpare(ctx, colony) < bid) continue;
     // A good it knows no place of is sought only if the colony asks for it (prospecting).
     const known =
       a.carried(id, g) > 0 || memory.nearest(ctx.subjectMasks[g], a.x[id], a.y[id]) >= 0;

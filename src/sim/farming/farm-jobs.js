@@ -102,8 +102,9 @@ export function countFarmJobs(state, ctx, colony) {
     if (crops.claim[p] < 0 && jobOf(state, ctx, p, seeds) !== FarmJob.NONE) open++;
   }
   colony.plots = plots;
-  // A new plot to make, or seeds to glean for it.
-  if (plots < wantedPlots(ctx, colony)) open++;
+  // A new plot to make, or seeds to glean for it (while few glean).
+  const glean = colony.gleaning < ctx.balance.agriculture.gleaners;
+  if (plots < wantedPlots(ctx, colony) && (seeds > 0 || glean)) open++;
   colony.farmOpen = open;
 }
 
@@ -142,6 +143,11 @@ export function chooseFarmJob(state, ctx, colony, id) {
   if (best < 0) {
     if (plots >= wantedPlots(ctx, colony)) return false;
     bestJob = seeds > bare ? FarmJob.TILL : FarmJob.GLEAN;
+    // Wild grain is rare: a few glean, the others keep feeding the colony.
+    if (bestJob === FarmJob.GLEAN) {
+      if (colony.gleaning >= ctx.balance.agriculture.gleaners) return false;
+      colony.gleaning++;
+    }
   } else {
     crops.claim[best] = id;
     crops.claimTick[best] = state.tick;

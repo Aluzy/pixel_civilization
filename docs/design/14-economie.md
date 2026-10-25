@@ -27,6 +27,7 @@ Aujourd'hui tout ce qui est rapporté au camp est commun (la réserve), et les r
 - **Prérequis** : la fonderie et la pioche de cuivre doivent être atteignables dans une partie ordinaire, ce qui n'est pas encore le cas au J7 (le four n'a jamais été découvert). Rendre l'arbre technologique atteignable est la première tâche du J10.
 - **Écu** : 1 pépite d'or fondue à la fonderie = 10 écus 🟡. L'écu est un bien portable sans autre usage : c'est la monnaie. Avant l'or, les échanges se font **en troc**.
 - Les pierres précieuses n'ont pas de nutrition ni d'usage de fabrication : leur valeur vient seulement de ce que les autres en offrent, et du **prestige** (une composante d'harmonie possible, voir plus bas).
+- **Au J12** (décision 0025) : l'or et les pierres précieuses s'extraient à la pioche de pierre ; leur prix de base est une valeur fixe (40 et 80 écus) ; le mineur les vend ; le comptoir les paie avec les écus qu'il a au-delà de 100 par membre ; ils sont gardés dans la salle du trésor avec les écus du comptoir ([16](16-guerre-et-forteresses.md), « Ce que fait le J12 »). La fonte en écus et le prestige restent à faire.
 
 ## Le marché
 

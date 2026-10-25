@@ -113,6 +113,10 @@ Implémenté au J9 (décision 0022). Là où il s'écarte des sections précéde
   - semer une parcelle nue avec une graine de la réserve ;
   - tracer une nouvelle parcelle, tant que la colonie en a moins de 1,5 par membre, à partir de 8 membres. L'emplacement est choisi près de l'eau et des autres parcelles, à 20 cases du camp au plus.
 - Sans graine, le membre glane du blé sauvage pour ses graines.
+- Glaner (corrigé au J12, décision 0025) :
+  - trois membres au plus glanent à la fois, les autres continuent de nourrir la colonie ;
+  - un glaneur qui tient une graine la sème aussitôt, sans attendre une pleine charge de blé (le blé sauvage est parfois trop rare pour la faire) ;
+  - un membre qui a oublié comment semer rend son travail agricole : il le gardait pour toujours, sans plus jamais le faire.
 - Grain et graines vont à la réserve. Ne pas tout manger se fait seul : les graines ne se mangent pas.
 
 **Cuisine** :

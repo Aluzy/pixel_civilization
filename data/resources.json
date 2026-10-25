@@ -90,6 +90,29 @@
       "forage": false,
       "harvestTicks": 12,
       "regrowTicks": 4800
+    },
+    {
+      "id": "gold",
+      "name": "Or",
+      "color": "#ffd23a",
+      "renewable": false,
+      "quantity": [4, 20],
+      "harvestTicks": 80,
+      "tool": "stone_pickaxe",
+      "value": 40,
+      "treasure": true
+    },
+    {
+      "id": "gems",
+      "name": "Pierres précieuses",
+      "color": "#3ae0d0",
+      "renewable": false,
+      "quantity": [2, 8],
+      "harvestTicks": 100,
+      "tool": "stone_pickaxe",
+      "value": 80,
+      "treasure": true,
+      "feminine": true
     }
   ],
   "placement": [
@@ -113,6 +136,16 @@
       "density": 0.4,
       "minAltitude": 0.86
     },
-    { "resource": "wheat", "biome": "plain", "scale": 0.08, "threshold": 0.72, "density": 0.15 }
+    { "resource": "wheat", "biome": "plain", "scale": 0.08, "threshold": 0.72, "density": 0.15 },
+    { "resource": "gold", "biome": "mountain", "scale": 0.09, "threshold": 0.72, "density": 0.3 },
+    { "resource": "gold", "biome": "desert", "scale": 0.09, "threshold": 0.8, "density": 0.2 },
+    {
+      "resource": "gems",
+      "biome": "mountain",
+      "scale": 0.09,
+      "threshold": 0.74,
+      "density": 0.25,
+      "minAltitude": 0.8
+    }
   ]
 }

@@ -1,4 +1,5 @@
 import { EventType } from '../core/events.js';
+import { PACK } from '../world/chunk-store.js';
 import { isStructure, isVital, memoryEvent, salienceOf, tauOf } from './beliefs.js';
 import { FORGOTTEN_SLOTS, Remembered, WATER_SUBJECT } from './memory.js';
 
@@ -12,8 +13,10 @@ import { FORGOTTEN_SLOTS, Remembered, WATER_SUBJECT } from './memory.js';
 export function perceptionRadius(ctx, id, dark) {
   const a = ctx.balance.actions;
   const base = ctx.agents.perception[id];
-  const r = Math.floor(dark ? base * a.nightPerceptionFactor : base);
-  return r < a.minPerception ? a.minPerception : r;
+  let r = Math.floor(dark ? base * a.nightPerceptionFactor : base);
+  if (r < a.minPerception) r = a.minPerception;
+  // From the top of a tower one sees farther.
+  return ctx.agents.onTower[id] === 1 ? r + ctx.balance.fortress.towerSight : r;
 }
 
 /**
@@ -85,9 +88,11 @@ function confirms(ctx, subject, cell) {
 export function perceive(state, ctx, id) {
   const agents = ctx.agents;
   const nav = ctx.nav;
-  const radius = perceptionRadius(ctx, id, ctx.dark);
   const ax = agents.x[id];
   const ay = agents.y[id];
+  const code = state.world.packedAt(ax, ay) >>> PACK.STRUCTURE_SHIFT;
+  agents.onTower[id] = code !== 0 && code === ctx.towerCode ? 1 : 0;
+  const radius = perceptionRadius(ctx, id, ctx.dark);
   nav.prepare(state.world, ax, ay, radius);
   agents.explored[id].markArea(ax - radius, ay - radius, ax + radius, ay + radius, state.tick);
 

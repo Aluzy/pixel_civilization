@@ -5,6 +5,7 @@ import { inShelter, structureAt } from '../agents/equipment.js';
 import { EventType } from '../core/events.js';
 import { PACK } from '../world/chunk-store.js';
 import { Mood } from '../threats/threat-store.js';
+import { insideClosed, noteBreach } from '../colony/fortress.js';
 
 const DX = Int8Array.from([1, -1, 0, 0, 1, 1, -1, -1]);
 const DY = Int8Array.from([0, 0, 1, -1, 1, -1, 1, -1]);
@@ -100,6 +101,7 @@ function stepToward(state, ctx, p, tx, ty, away) {
   t.moveProgress[p] -= 1;
   t.x[p] = x + DX[best];
   t.y[p] = y + DY[best];
+  noteBreach(state, x, y, t.x[p], t.y[p]);
 }
 
 /**
@@ -110,7 +112,9 @@ function stepToward(state, ctx, p, tx, ty, away) {
  * @returns {boolean}
  */
 function passable(state, ctx, x, y) {
-  return ctx.biomeSpeed[state.world.packedAt(x, y) & PACK.MASK] > 0;
+  const p = state.world.packedAt(x, y);
+  // Walls and gates stop predators.
+  return ctx.biomeSpeed[p & PACK.MASK] > 0 && ctx.blocksPredator[p >>> PACK.STRUCTURE_SHIFT] !== 1;
 }
 
 /**
@@ -139,6 +143,8 @@ function spawnPredators(state, ctx) {
       const p = state.world.packedAt(x, y);
       if (ctx.predatorBiomes[p & PACK.MASK] !== 1) continue;
       if (((p >>> PACK.STRUCTURE_SHIFT) & PACK.MASK) !== 0) continue;
+      // Nothing comes out of the ground inside a closed enclosure.
+      if (insideClosed(state.colonies, x, y)) continue;
       t.spawn(x, y, cfg.hp);
       break;
     }

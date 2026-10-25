@@ -19,7 +19,8 @@ import { describeTick, phaseIndexAt } from './core/clock.js';
 import { EventLog, EventType } from './core/events.js';
 import { createHasher, hashCoords } from './core/hash.js';
 import { createRng, seedToKey } from './core/rng.js';
-import { Colony, Expedition, MAX_COLONIES } from './colony/colony-store.js';
+import { Colony, Enclosure, Expedition, MAX_COLONIES } from './colony/colony-store.js';
+import { treasureValue } from './colony/fortress.js';
 import { History } from './colony/history.js';
 import { lifespanOf } from './colony/replication.js';
 import { buildCatalog } from './crafting/catalog.js';
@@ -120,6 +121,13 @@ export const RNG_STREAMS = Object.freeze([
  * @property {Uint8Array} plantBiome - 1 per biome where a field can be planted.
  * @property {Uint8Array} denBiomes - 1 per biome where a den can be.
  * @property {number} denCode - Structure code of a den.
+ * @property {Uint8Array} blocksAgent - 1 for each structure code agents cannot cross (walls).
+ * @property {Uint8Array} blocksPredator - 1 for each structure code predators cannot cross.
+ * @property {Uint8Array} treasureGoods - 1 for each good kept in the treasure (gold, gems).
+ * @property {number} wallCode - Structure code of the wall the colonies build (palisade).
+ * @property {number} gateCode
+ * @property {number} towerCode
+ * @property {number} treasuryCode - Structure code of the treasure room.
  * @property {number} carcass - Resource id of a carcass (0 if none).
  * @property {number} carcassUnits - Units of meat in a carcass.
  * @property {number} hideGood - Good id of a hide (0 if none).
@@ -329,6 +337,17 @@ function buildContext(balance, tables, agents, seedKey) {
   const R = catalog.resourceCount;
   const shelterCodes = new Uint8Array(catalog.structures.length + 1);
   for (const st of catalog.structures) if (st.kind === 'shelter') shelterCodes[st.code] = 1;
+  // Walls stop everyone; a gate (or a tower, climbed) lets agents through but not predators.
+  const codeOf = (kind) => catalog.structures.find((st) => st.kind === kind)?.code ?? 0;
+  const blocksAgent = new Uint8Array(catalog.structures.length + 1);
+  const blocksPredator = new Uint8Array(catalog.structures.length + 1);
+  for (const st of catalog.structures) {
+    if (st.kind === 'wall') blocksAgent[st.code] = blocksPredator[st.code] = 1;
+    if (st.kind === 'gate' || st.kind === 'tower') blocksPredator[st.code] = 1;
+  }
+  const treasureGoods = Uint8Array.from({ length: catalog.goodCount }, (_, g) =>
+    g > 0 && g <= R && tables.resources[g - 1].treasure ? 1 : 0,
+  );
   const predator = worldData.threats.predator;
   const den = worldData.threats.den;
   const days = (d) => d * time.ticksPerDay;
@@ -375,7 +394,14 @@ function buildContext(balance, tables, agents, seedKey) {
     goalKinds,
     goalIndex,
     agents,
-    nav: new Navigator({ biomeSpeed, waterBiome }),
+    nav: new Navigator({ biomeSpeed, waterBiome, blocks: blocksAgent }),
+    blocksAgent,
+    blocksPredator,
+    treasureGoods,
+    wallCode: codeOf('wall'),
+    gateCode: codeOf('gate'),
+    towerCode: codeOf('tower'),
+    treasuryCode: codeOf('treasury'),
     biomeSpeed,
     waterBiome,
     edible,
@@ -524,8 +550,26 @@ function describePlan(ctx, plan) {
 }
 
 /** Project kinds and names for the inspector, indexed by ProjectKind. */
-const PROJECT_KINDS = ['none', 'shelter', 'pantry', 'library', 'field'];
-const PROJECT_NAMES = ['', 'Abri', 'Réserve', 'Bibliothèque', 'Champ'];
+const PROJECT_KINDS = [
+  'none',
+  'shelter',
+  'pantry',
+  'library',
+  'field',
+  'treasure',
+  'enclosure',
+  'tower',
+];
+const PROJECT_NAMES = [
+  '',
+  'Abri',
+  'Réserve',
+  'Bibliothèque',
+  'Champ',
+  'Salle du trésor',
+  'Enceinte',
+  'Tour',
+];
 
 /**
  * Readable colony project: what it still needs and who contributed.
@@ -578,7 +622,7 @@ function describeTask(ctx, state, a, id) {
   if (slot < 0 || a.colony[id] < 0) return null;
   const colony = state.colonies[a.colony[id]];
   const p = colony.projects[slot];
-  const label = p.kind === 3 ? 'Bibliothèque' : 'Abri';
+  const label = PROJECT_NAMES[p.kind];
   const name = p.kind === 2 ? 'la réserve de nourriture' : `« ${label} n°${p.number} »`;
   if (a.taskBuild[id] === 1) return `bâtir ${name}`;
   return `apporter ${a.taskAmount[id]} ${ctx.catalog.goodName(a.taskGood[id])} pour ${name}`;
@@ -688,6 +732,7 @@ export class Simulation {
     this.ctx = buildContext(balance, tables, agents, seedKey);
     this.tables = tables;
     this.ctx.colonies = this.state.colonies;
+    this.ctx.nav.colonies = this.state.colonies;
     this.state.colonies[0].price.set(this.ctx.basePrices);
 
     const first = agents.create({
@@ -865,6 +910,54 @@ export class Simulation {
             },
       scout: colony.scout,
       relations: this.describeRelations(colony),
+      fortress: this.describeFortress(colony),
+    };
+  }
+
+  /**
+   * The colony's treasure (room, gold, gems, écus) and enclosure, for the inspector.
+   * @param {import('./colony/colony-store.js').Colony} colony
+   * @returns {object}
+   */
+  describeFortress(colony) {
+    const catalog = this.ctx.catalog;
+    const goods = [];
+    for (let g = 1; g < this.ctx.treasureGoods.length; g++) {
+      if (this.ctx.treasureGoods[g] === 1) {
+        goods.push({ name: catalog.goodName(g), count: colony.stock[g] });
+      }
+    }
+    const day = this.state.balance.time.ticksPerDay;
+    return {
+      treasure: colony.hasTreasure ? { x: colony.treasureX, y: colony.treasureY } : null,
+      goods,
+      coins: colony.treasury,
+      value: Math.round(treasureValue(this.ctx, colony)),
+      danger: colony.danger,
+      enclosure:
+        colony.encState === Enclosure.NONE
+          ? null
+          : {
+              closed: colony.encState === Enclosure.CLOSED,
+              x0: colony.encX0,
+              y0: colony.encY0,
+              x1: colony.encX1,
+              y1: colony.encY1,
+              gates: Array.from({ length: colony.gateCount }, (_, i) => ({
+                x: colony.gateX[i],
+                y: colony.gateY[i],
+                built: (colony.gatesBuilt & (1 << i)) !== 0,
+              })),
+              tower: colony.hasTower ? { x: colony.towerX, y: colony.towerY } : null,
+              built: colony.encTotal - colony.encOpen,
+              total: colony.encTotal,
+              plannedDay: Math.floor(colony.encTick / day) + 1,
+              closedDay:
+                colony.encState === Enclosure.CLOSED
+                  ? Math.floor(colony.encClosedTick / day) + 1
+                  : null,
+              breaches: colony.breaches,
+            },
     };
   }
 

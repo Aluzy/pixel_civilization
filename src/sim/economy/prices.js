@@ -28,7 +28,9 @@ export function basePrices(catalog, tables, food, sourceOf, cfg) {
     const eaten = food.value[g] * cfg.coinsPerNutrition + food.pleasure[g] * cfg.pleasureCoins;
     let work = 0;
     if (g <= catalog.resourceCount) {
-      work = (tables.resources[g - 1].harvestTicks ?? 1) * cfg.coinsPerTick;
+      const r = tables.resources[g - 1];
+      // Gold and gems are worth more than the work of mining them.
+      work = Math.max((r.harvestTicks ?? 1) * cfg.coinsPerTick, r.value ?? 0);
     } else if (catalog.recipeForGood[g] >= 0) {
       const recipe = catalog.recipes[catalog.recipeForGood[g]];
       work = recipe.duration * cfg.coinsPerTick;

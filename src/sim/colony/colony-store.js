@@ -7,6 +7,19 @@ export const ProjectKind = Object.freeze({
   PANTRY: 2, // Keep a stock of food at the camp (never finished).
   LIBRARY: 3, // Gather the materials of a library, then build it at the camp.
   FIELD: 4, // Gather berries, then plant them as bushes near the camp.
+  TREASURE: 5, // Gather the materials of a treasure room, then build it at the camp.
+  ENCLOSURE: 6, // Gather wood (and clay for the gate), then build the wall segment by segment.
+  TOWER: 7, // Raise a tower on the wall, opposite the gate.
+});
+
+/** Most gates of an enclosure (one per side). */
+export const MAX_GATES = 4;
+
+/** States of a colony's enclosure. */
+export const Enclosure = Object.freeze({
+  NONE: 0,
+  BUILDING: 1, // Planned: the gate, then the wall, segment by segment.
+  CLOSED: 2, // Every tile of the ring is a wall, the gate, the tower or impassable ground.
 });
 
 /** Most libraries a colony keeps track of. */
@@ -184,6 +197,8 @@ export class Colony {
     // Farming and cooking (docs/design/13-agriculture-cuisine.md): free farm jobs at the last
     // count, plots and crop harvests, cooks (-1 for a free post) and since when.
     this.farmOpen = 0;
+    /** Members gleaning wild grain for seeds, at the last count. */
+    this.gleaning = 0;
     this.plots = 0;
     this.cropHarvests = 0;
     this.withered = 0;
@@ -245,6 +260,34 @@ export class Colony {
     this.relTrades = new Int32Array(MAX_COLONIES);
     this.relPrice = new Float64Array(MAX_COLONIES * goods);
     this.relPriceTick = new Int32Array(MAX_COLONIES).fill(-1);
+    // Fortress (docs/design/16-guerre-et-forteresses.md, « Trésors et forteresses »): danger
+    // felt at the camp (days with an attack, fading), the treasure room, the enclosure (a
+    // rectangle ring: corners, gate, tower, open tiles left, when planned and closed) and the
+    // predators that got inside once it was closed.
+    this.danger = 0;
+    this.hasTreasure = false;
+    this.treasureX = 0;
+    this.treasureY = 0;
+    this.encState = Enclosure.NONE;
+    this.encX0 = 0;
+    this.encY0 = 0;
+    this.encX1 = 0;
+    this.encY1 = 0;
+    /** Gates: one in the middle of each side where one can stand; bit i set once gate i stands. */
+    this.gateX = new Int32Array(MAX_GATES);
+    this.gateY = new Int32Array(MAX_GATES);
+    this.gateCount = 0;
+    this.gatesBuilt = 0;
+    /** True once every gate stands (then the wall goes up). */
+    this.gateBuilt = false;
+    this.towerX = 0;
+    this.towerY = 0;
+    this.hasTower = false;
+    this.encOpen = 0;
+    this.encTotal = 0;
+    this.encTick = 0;
+    this.encClosedTick = 0;
+    this.breaches = 0;
     /** @type {Project[]} */
     this.projects = [];
     for (let i = 0; i < cfg.projectSlots; i++) this.projects.push(new Project(goods));
@@ -453,6 +496,56 @@ export class Colony {
     h.typedArray(this.relKnown).typedArray(this.relCampX).typedArray(this.relCampY);
     h.typedArray(this.relKin).typedArray(this.relMeetings).typedArray(this.relTrades);
     h.typedArray(this.relPrice).typedArray(this.relPriceTick);
+    h.uint32(Math.round(this.danger * 1000)).uint32(this.hasTreasure ? 1 : 0);
+    h.uint32(this.treasureX).uint32(this.treasureY).uint32(this.encState);
+    h.uint32(this.encX0).uint32(this.encY0).uint32(this.encX1).uint32(this.encY1);
+    h.typedArray(this.gateX).typedArray(this.gateY).uint32(this.gateCount);
+    h.uint32(this.gatesBuilt).uint32(this.gateBuilt ? 1 : 0);
+    h.uint32(this.towerX)
+      .uint32(this.towerY)
+      .uint32(this.hasTower ? 1 : 0);
+    h.uint32(this.encOpen).uint32(this.encTotal).uint32(this.encTick);
+    h.uint32(this.encClosedTick).uint32(this.breaches).uint32(this.gleaning);
+  }
+
+  /**
+   * True if (x, y) is strictly inside the enclosure's ring.
+   * @param {number} x
+   * @param {number} y
+   * @returns {boolean}
+   */
+  inside(x, y) {
+    return (
+      this.encState !== Enclosure.NONE &&
+      x > this.encX0 &&
+      x < this.encX1 &&
+      y > this.encY0 &&
+      y < this.encY1
+    );
+  }
+
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @returns {number} Index of the gate at (x, y), or -1.
+   */
+  gateAt(x, y) {
+    for (let i = 0; i < this.gateCount; i++) {
+      if (this.gateX[i] === x && this.gateY[i] === y) return i;
+    }
+    return -1;
+  }
+
+  /**
+   * True if (x, y) is a tile of the enclosure's ring.
+   * @param {number} x
+   * @param {number} y
+   * @returns {boolean}
+   */
+  onRing(x, y) {
+    if (this.encState === Enclosure.NONE) return false;
+    if (x < this.encX0 || x > this.encX1 || y < this.encY0 || y > this.encY1) return false;
+    return x === this.encX0 || x === this.encX1 || y === this.encY0 || y === this.encY1;
   }
 
   /**

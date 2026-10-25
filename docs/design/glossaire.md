@@ -77,6 +77,11 @@
 | Fiche de relation | Ce qu'une colonie sait d'une autre : camp, parenté, rencontres, caravanes, prix (J11) | `relKnown`, `relTrades`… |
 | Caravane | Voyage d'un marchand qui porte des biens d'un comptoir de colonie à l'autre (J11) | `caravanTo` |
 | Marchand | Métier qui mène les caravanes (J11) | `merchant` |
+| Salle du trésor | Construction de la colonie qui garde ses écus, son or et ses pierres précieuses (J12) | `treasury`, `hasTreasure` |
+| Danger ressenti | Jours récents avec une attaque près du camp, qui s'effacent (×0,8 par jour) (J12) | `danger` |
+| Enceinte | Anneau rectangulaire de palissade autour de la salle du trésor et des abris, avec une porte et une tour (J12) | `encState`, `encX0`… |
+| Porte | Pan de l'enceinte que les individus franchissent, pas les prédateurs (J12) | `gate` |
+| Intrusion | Entrée d'un prédateur dans une enceinte fermée (attendu : aucune) (J12) | `breaches` |
 | Raid | Troupe envoyée par une colonie piller une autre (vision v2) | `raid` |
 | Projet | But à long terme décomposé en sous-tâches (HTN) | `project` |
 | Simulation mentale | Évaluation de futurs possibles sur un modèle issu des croyances | `imagination` |

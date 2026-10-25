@@ -181,7 +181,8 @@ export function useRecipe(state, ctx, id, r, plan) {
   plan.note = PlanNote.PLAN;
   if (recipe.outputKind === 'structure') {
     // A colony's station is built at its camp, where everyone sees and uses it.
-    if (ctx.catalog.structures[recipe.output - 1].kind === 'station') {
+    const kind = ctx.catalog.structures[recipe.output - 1].kind;
+    if (kind === 'station' || kind === 'treasury') {
       const colony = campOf(state, ctx, id);
       if (colony && !atCamp(ctx, colony, id) && goToCamp(ctx, colony, id, Action.NONE, plan))
         return;
