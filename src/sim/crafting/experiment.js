@@ -1,4 +1,4 @@
-import { BARE_HANDS } from './catalog.js';
+import { BARE_HANDS, lowestIngredient } from './catalog.js';
 
 /**
  * @typedef {object} TrialWeights
@@ -81,7 +81,8 @@ export function chooseTrial(
           const a = types[i];
           const b = types[j];
           const c = types[k];
-          const mask = (1 << a) | (1 << b) | (1 << c);
+          const bit = catalog.ingredientBit;
+          const mask = (1 << bit[a]) | (1 << bit[b]) | (1 << bit[c]);
           const score = scoreTrial(catalog, book, acquired, s, mask, tick, weights, wanted);
           if (score === -Infinity) continue;
           candidates++;
@@ -158,7 +159,7 @@ export function scoreTrial(catalog, book, acquired, station, mask, tick, weights
   let count = 0;
   let crafted = 0;
   for (let m = mask; m !== 0; m &= m - 1) {
-    const g = 31 - Math.clz32(m & -m);
+    const g = lowestIngredient(catalog, m);
     count++;
     if (tick - acquired(g) < weights.recentTicks) score += weights.recentBonus;
     if (g > catalog.resourceCount) crafted++;

@@ -1,5 +1,5 @@
 import { PlanStatus, Step } from '../ai/planner.js';
-import { BARE_HANDS } from '../crafting/catalog.js';
+import { BARE_HANDS, lowestIngredient } from '../crafting/catalog.js';
 import { chooseTrial } from '../crafting/experiment.js';
 import { canHarvest } from './actions.js';
 import { Action } from './action-types.js';
@@ -298,7 +298,7 @@ export function discover(state, ctx, id, wanted, plan) {
   // Fetch the nearest missing ingredient first.
   let missing = 0;
   for (let m = out[1]; m !== 0; m &= m - 1) {
-    const g = 31 - Math.clz32(m & -m);
+    const g = lowestIngredient(catalog, m);
     if (fetch[g] > 0 && (missing === 0 || fetch[g] < fetch[missing])) missing = g;
   }
   if (missing > 0) {

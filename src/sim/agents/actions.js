@@ -1,5 +1,5 @@
 import { EventType } from '../core/events.js';
-import { BARE_HANDS, matchRecipe } from '../crafting/catalog.js';
+import { BARE_HANDS, lowestIngredient, matchRecipe } from '../crafting/catalog.js';
 import { PACK } from '../world/chunk-store.js';
 import { Action } from './action-types.js';
 import { consolidate, forgetEmptied } from './beliefs.js';
@@ -538,7 +538,7 @@ function experiment(state, ctx, id) {
   const mask = agents.trialMask[id];
   if (!canUse(state, ctx, id, station)) return;
   for (let m = mask; m !== 0; m &= m - 1) {
-    if (agents.carried(id, 31 - Math.clz32(m & -m)) === 0) return;
+    if (agents.carried(id, lowestIngredient(ctx.catalog, m)) === 0) return;
   }
   const book = agents.recipes[id];
   const r = matchRecipe(ctx.catalog, station, mask);
@@ -549,7 +549,9 @@ function experiment(state, ctx, id) {
     }
     return;
   }
-  for (let m = mask; m !== 0; m &= m - 1) agents.addCarried(id, 31 - Math.clz32(m & -m), -1);
+  for (let m = mask; m !== 0; m &= m - 1) {
+    agents.addCarried(id, lowestIngredient(ctx.catalog, m), -1);
+  }
   book.recordFailure(station, mask, state.tick, ctx.failureTau);
 }
 

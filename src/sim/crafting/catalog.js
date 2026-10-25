@@ -4,6 +4,10 @@
  * Goods share one id space: 0 is unused, 1…R are resources (same ids as in the world), R+1…R+I
  * are crafted items. Structures (stations and shelters) live on the world's structure layer with
  * codes 1…S. Memory subjects: 0 water, 1…R resources, R+1…R+S structures, R+S+1 danger.
+ *
+ * Trials and recipes name their ingredients as a bit set over the ingredients only (goods that
+ * can be tried or are used by a recipe), so the number of goods is not bounded by 31: only the
+ * number of ingredients is.
  */
 
 /** Recipe station code meaning "bare hands, no station". */
@@ -39,7 +43,7 @@ export const BARE_HANDS = 0;
  * @property {string} name - Name of what it makes.
  * @property {number} station - Structure code, or {@link BARE_HANDS}.
  * @property {{ good: number, count: number }[]} inputs
- * @property {number} mask - Bit set of input goods (identifies the recipe with the station).
+ * @property {number} mask - Bit set of input ingredients (identifies the recipe with the station).
  * @property {number} duration - Ticks.
  * @property {'item' | 'structure'} outputKind
  * @property {string} family - "structure", or "item:" + the item kind ("item:weapon"…): what the
@@ -57,6 +61,8 @@ export const BARE_HANDS = 0;
  * @property {Int16Array} recipeForGood - Recipe index making each good, or −1.
  * @property {Int16Array} recipeForStructure - Recipe index making each structure code, or −1.
  * @property {Uint8Array} material - 1 for goods usable in experiments (non-edible resources).
+ * @property {Int8Array} ingredientBit - Bit of each good in a trial or recipe mask, or −1.
+ * @property {Int16Array} ingredientGood - Good of each mask bit.
  * @property {Int16Array} requiredTool - Per resource id: good id of the tool needed to harvest it,
  *   0 if none, -1 if that tool does not exist yet (out of reach).
  * @property {number} subjectCount - Number of memory subjects.
@@ -84,7 +90,6 @@ export function buildCatalog(data, tables) {
   const goodIds = new Map(tables.resources.map((r, i) => [r.id, i + 1]));
   data.items.forEach((item, i) => goodIds.set(item.id, resourceCount + 1 + i));
   const goodCount = resourceCount + data.items.length + 1;
-  if (goodCount > 31) throw new Error('At most 30 goods (recipe masks are 31-bit).');
   const goodOf = (id) => {
     const g = goodIds.get(id);
     if (g === undefined) throw new Error(`Unknown good: ${id}`);
@@ -118,6 +123,28 @@ export function buildCatalog(data, tables) {
   }));
   const structureCode = new Map(structures.map((s) => [s.id, s.code]));
 
+  const material = new Uint8Array(goodCount);
+  const requiredTool = new Int16Array(resourceCount + 1);
+  tables.resources.forEach((r, i) => {
+    if (!(r.nutrition > 0)) material[i + 1] = 1;
+    // A tool not in the recipes yet (a later tier) leaves the resource out of reach.
+    if (r.tool) requiredTool[i + 1] = goodIds.get(r.tool) ?? -1;
+  });
+
+  // Crafted materials (paper, ink) can be combined in trials too.
+  for (const item of items) if (item.kind === 'material') material[item.good] = 1;
+  // Ingredient bits: materials first in good order, then any other recipe input.
+  const ingredientBit = new Int8Array(goodCount).fill(-1);
+  const ingredientList = [];
+  const used = new Set(data.recipes.flatMap((r) => Object.keys(r.inputs).map(goodOf)));
+  for (let g = 1; g < goodCount; g++) {
+    if (material[g] !== 1 && !used.has(g)) continue;
+    ingredientBit[g] = ingredientList.length;
+    ingredientList.push(g);
+  }
+  if (ingredientList.length > 31) throw new Error('At most 31 ingredients (masks are 31-bit).');
+  const ingredientGood = Int16Array.from(ingredientList);
+
   const recipeForGood = new Int16Array(goodCount).fill(-1);
   const recipeForStructure = new Int16Array(structures.length + 1).fill(-1);
   const byKey = new Map();
@@ -128,7 +155,7 @@ export function buildCatalog(data, tables) {
     const inputs = Object.entries(r.inputs).map(([id, count]) => ({ good: goodOf(id), count }));
     if (inputs.length < 1 || inputs.length > 3) throw new Error(`Recipe ${r.id}: 1 to 3 inputs`);
     let mask = 0;
-    for (const { good } of inputs) mask |= 1 << good;
+    for (const { good } of inputs) mask |= 1 << ingredientBit[good];
     const key = recipeKey(station, mask);
     if (byKey.has(key)) throw new Error(`Recipes ${r.id} and another share station and inputs`);
     byKey.set(key, index);
@@ -152,16 +179,6 @@ export function buildCatalog(data, tables) {
     };
   });
 
-  const material = new Uint8Array(goodCount);
-  const requiredTool = new Int16Array(resourceCount + 1);
-  tables.resources.forEach((r, i) => {
-    if (!(r.nutrition > 0)) material[i + 1] = 1;
-    // A tool not in the recipes yet (a later tier) leaves the resource out of reach.
-    if (r.tool) requiredTool[i + 1] = goodIds.get(r.tool) ?? -1;
-  });
-
-  // Crafted materials (paper, ink) can be combined in trials too.
-  for (const item of items) if (item.kind === 'material') material[item.good] = 1;
   return {
     resourceCount,
     goodCount,
@@ -171,6 +188,8 @@ export function buildCatalog(data, tables) {
     recipeForGood,
     recipeForStructure,
     material,
+    ingredientBit,
+    ingredientGood,
     requiredTool,
     byKey,
     subjectCount: resourceCount + structures.length + 2,
@@ -180,6 +199,16 @@ export function buildCatalog(data, tables) {
         ? tables.resources[good - 1].name
         : items[good - resourceCount - 1].name,
   };
+}
+
+/**
+ * Good of the lowest bit of an ingredient mask (`m & -m` isolates it).
+ * @param {Catalog} catalog
+ * @param {number} m - Non-zero mask.
+ * @returns {number}
+ */
+export function lowestIngredient(catalog, m) {
+  return catalog.ingredientGood[31 - Math.clz32(m & -m)];
 }
 
 /**

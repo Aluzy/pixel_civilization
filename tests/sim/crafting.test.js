@@ -12,6 +12,7 @@ const good = (id) => {
   const item = CATALOG.items.find((i) => i.id === id);
   return item ? item.good : WORLD_TABLES.resources.findIndex((r) => r.id === id) + 1;
 };
+const bit = (id) => CATALOG.ingredientBit[good(id)];
 const recipe = (id) => CATALOG.recipes.findIndex((r) => r.id === id);
 
 /**
@@ -107,16 +108,16 @@ describe('crafting', () => {
     a.addCarried(id, good('wood'), 3);
     a.addCarried(id, good('fiber'), 3);
     a.trialStation[id] = BARE_HANDS;
-    a.trialMask[id] = (1 << good('wood')) | (1 << good('fiber'));
+    a.trialMask[id] = (1 << bit('wood')) | (1 << bit('fiber'));
     start(sim, id, Action.EXPERIMENT);
     runAction(sim, id);
     expect(a.recipes[id].knows(recipe('workbench'))).toBe(true);
     expect(a.carried(id, good('wood'))).toBe(3);
-    a.trialMask[id] = 1 << good('wood');
+    a.trialMask[id] = 1 << bit('wood');
     start(sim, id, Action.EXPERIMENT);
     runAction(sim, id);
     expect(a.carried(id, good('wood'))).toBe(2);
-    expect(a.recipes[id].hasFailed(BARE_HANDS, 1 << good('wood'))).toBe(true);
+    expect(a.recipes[id].hasFailed(BARE_HANDS, 1 << bit('wood'))).toBe(true);
   });
 
   it('cannot harvest ore without a pickaxe', () => {
