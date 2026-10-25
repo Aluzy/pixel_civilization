@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import balance from '../../data/balance.json' with { type: 'json' };
-import { CATALOG, PROJECTS, Simulation, WORLD_TABLES } from '../../src/sim/simulation.js';
+import jobData from '../../data/jobs.json' with { type: 'json' };
+import { EventType } from '../../src/sim/core/events.js';
+import { sell } from '../../src/sim/economy/market.js';
+import { CATALOG, JOBS, PROJECTS, Simulation, WORLD_TABLES } from '../../src/sim/simulation.js';
 import { bar, formatAgent } from '../../src/ui/agent-info.js';
 import { formatEvent } from '../../src/ui/chronicle.js';
 import { formatColony } from '../../src/ui/colony-info.js';
 import { buildNames, subjectLabel } from '../../src/ui/names.js';
 import { formatTile } from '../../src/ui/tile-info.js';
 
-const NAMES = buildNames(WORLD_TABLES, CATALOG, PROJECTS);
+const NAMES = buildNames(WORLD_TABLES, CATALOG, PROJECTS, jobData);
 
 describe('agent panel', () => {
   it('draws proportional bars', () => {
@@ -155,5 +158,52 @@ describe('written knowledge in the panels and the chronicle', () => {
     expect(text).toContain('Livre : Lance');
     expect(text).toContain('rôle : scribe');
     expect(text).toMatch(/· 0\/\d+ j ·/);
+  });
+});
+
+describe('economy panels', () => {
+  const wheat = WORLD_TABLES.resources.findIndex((r) => r.id === 'wheat') + 1;
+
+  it('shows the counter, the jobs and the prices, and an agent’s écus, job and trades', () => {
+    const sim = new Simulation({ seed: 2, balance });
+    const a = sim.agents;
+    const colony = sim.state.colonies[0];
+    colony.hasCamp = true;
+    colony.campX = a.x[0];
+    colony.campY = a.y[0];
+    colony.treasury = 500;
+    a.job[0] = JOBS.index.farmer;
+    a.addCarried(0, wheat, 4);
+    sell(sim.state, sim.ctx, colony, 0, wheat, 4);
+    colony.jobHolders[JOBS.index.farmer] = 1;
+    const lines = formatColony(sim.describeColony(0));
+    expect(lines.some((l) => l.startsWith('Comptoir : '))).toBe(true);
+    expect(lines).toContain('Métiers : agriculteur 1');
+    expect(lines).toContain('Prix achat/vente (stock) :');
+    expect(lines.some((l) => /^ {2}Blé \d+\/\d+ \(4\)/.test(l))).toBe(true);
+    const text = formatAgent(sim.describeAgent(0), NAMES, balance.time).join('\n');
+    expect(text).toMatch(/Écus : \d+ · métier : agriculteur depuis J1/);
+    expect(text).toContain('Revenu attendu par jour : ');
+    expect(text).toMatch(/Échanges : vend 4 Blé \+\d+/);
+    expect(text).toContain('rôle : agriculteur');
+  });
+
+  it('tells the first job holder, the first sale and the first purchase', () => {
+    const at = { tick: 0, x: 0, y: 0, agent: 4 };
+    const job = formatEvent({ ...at, type: EventType.FIRST_JOB, subject: 1 }, balance.time, NAMES);
+    expect(job).toContain('L’individu #4 est le premier meunier de la colonie.');
+    const sale = formatEvent(
+      { ...at, type: EventType.FIRST_SALE, subject: wheat, other: 0 },
+      balance.time,
+      NAMES,
+    );
+    expect(sale).toContain('Première vente de blé au comptoir, par l’individu #4 (agriculteur).');
+    const clay = WORLD_TABLES.resources.findIndex((r) => r.id === 'clay') + 1;
+    const buy = formatEvent(
+      { ...at, type: EventType.FIRST_PURCHASE, subject: clay, other: 9 },
+      balance.time,
+      NAMES,
+    );
+    expect(buy).toContain('Premier achat d’argile au comptoir, par l’individu #4 : il venait');
   });
 });

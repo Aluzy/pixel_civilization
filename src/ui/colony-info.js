@@ -1,3 +1,6 @@
+/** Prices shown per line of the colony panel (it must stay narrow). */
+const PRICES_PER_LINE = 4;
+
 /** Harmony components, in the order of the simulation. */
 const COMPONENTS = ['stabilité', 'durabilité', 'ordre spatial', 'savoir', 'bien-être'];
 
@@ -68,8 +71,11 @@ export function formatColony(colony) {
       );
     }
     if (market.prices.length > 0) {
+      lines.push('Prix achat/vente (stock) :');
       const shown = market.prices.map((p) => `${p.name} ${p.bid}/${p.ask} (${p.stock})`);
-      lines.push(`Prix achat/vente (stock) : ${shown.join(' · ')}`);
+      for (let i = 0; i < shown.length; i += PRICES_PER_LINE) {
+        lines.push(`  ${shown.slice(i, i + PRICES_PER_LINE).join(' · ')}`);
+      }
     }
   }
   if (colony.scribe >= 0) lines.push(`Scribe : #${colony.scribe}`);
