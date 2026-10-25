@@ -18,10 +18,12 @@ export const BARE_HANDS = 0;
  * @property {number} good - Good id.
  * @property {string} id
  * @property {string} name
- * @property {string} kind - "weapon", "tool", "armor", "material" (paper, ink, hide), "book" or
- *   "map".
+ * @property {string} kind - "weapon", "tool", "armor", "material" (paper, ink, hide, seed: tried
+ *   in experiments), "ingredient" (flour: only tried when looking for its use), "food" (dishes),
+ *   "book" or "map".
  * @property {number} attack - Attack multiplier (weapons), 1 otherwise.
  * @property {number} defense - Defense added while carried (armour, shields), 0 otherwise.
+ * @property {number} pleasure - Pleasure of eating it (dishes), 0 otherwise.
  * @property {Float64Array} harvest - Harvest speed multiplier per resource id (tools).
  */
 
@@ -31,7 +33,7 @@ export const BARE_HANDS = 0;
  * @property {string} id
  * @property {string} name
  * @property {string} color
- * @property {string} kind - "station", "shelter" or "library".
+ * @property {string} kind - "station", "shelter", "library", "den" or "plot".
  * @property {number} sleepRecovery - Fatigue recovery multiplier while sleeping inside.
  * @property {boolean} feminine - Grammatical gender of its French name, for the chronicle.
  */
@@ -107,6 +109,7 @@ export function buildCatalog(data, tables) {
       kind: item.kind,
       attack: item.attack ?? 1,
       defense: item.defense ?? 0,
+      pleasure: item.pleasure ?? 0,
       harvest,
     };
   });
@@ -133,10 +136,12 @@ export function buildCatalog(data, tables) {
 
   // Crafted materials (paper, ink) can be combined in trials too.
   for (const item of items) if (item.kind === 'material') material[item.good] = 1;
-  // Ingredient bits: materials first in good order, then any other recipe input.
+  // Foods some recipe transforms (berries, meat) are ingredients too, but they are only tried
+  // when looking for what can be done with one of them (cooking): never thrown into trials.
+  const used = new Set(data.recipes.flatMap((r) => Object.keys(r.inputs).map(goodOf)));
+  // Ingredient bits: every material and recipe input, in good order.
   const ingredientBit = new Int8Array(goodCount).fill(-1);
   const ingredientList = [];
-  const used = new Set(data.recipes.flatMap((r) => Object.keys(r.inputs).map(goodOf)));
   for (let g = 1; g < goodCount; g++) {
     if (material[g] !== 1 && !used.has(g)) continue;
     ingredientBit[g] = ingredientList.length;

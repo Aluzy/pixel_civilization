@@ -1,7 +1,7 @@
 import { atCamp, campOf, chooseTask, readyToBuild, releaseTask } from '../colony/colony-logic.js';
 import { ProjectKind } from '../colony/colony-store.js';
 import { chooseFieldSite } from '../colony/field.js';
-import { fedEnough, missingCost, unhurt } from '../colony/replication.js';
+import { FOOD_COST, fedEnough, missingCost, unhurt } from '../colony/replication.js';
 import { Action } from './action-types.js';
 import { PlanNote } from './journal.js';
 import { explore, moveTo, startHere } from './movement.js';
@@ -202,7 +202,21 @@ export function prepareReplication(state, ctx, id, plan, eat) {
     return;
   }
   const out = ctx.costOut;
-  if (missingCost(ctx, id, out) > 0) {
+  const missing = missingCost(ctx, id, out);
+  if (missing === FOOD_COST) {
+    // Food for the newborn: from the pantry if it believes there is some to spare, else picked.
+    if (a.pantrySeen[id] > out[1] && goToCamp(ctx, colony, id, Action.TAKE, plan)) {
+      plan.note = PlanNote.REPLICATION;
+      return;
+    }
+    const units = Math.ceil(
+      (out[1] * ctx.balance.cooking.portion) / ctx.nutrition[ctx.firstEdible],
+    );
+    gather(state, ctx, id, ctx.firstEdible, units, plan);
+    plan.note = PlanNote.REPLICATION;
+    return;
+  }
+  if (missing > 0) {
     gather(state, ctx, id, out[0], out[1], plan);
     plan.note = PlanNote.REPLICATION;
     return;

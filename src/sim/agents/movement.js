@@ -179,3 +179,30 @@ export function explore(state, ctx, id, plan, legRange = ctx.balance.ai.exploreL
   plan.action = Action.IDLE;
   return false;
 }
+
+/**
+ * Walks next to (x, y) and starts `then` there, or towards it if it is out of sight.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {number} x
+ * @param {number} y
+ * @param {number} then
+ * @param {import('./movement.js').Plan} plan
+ * @returns {boolean}
+ */
+export function approach(ctx, id, x, y, then, plan) {
+  const a = ctx.agents;
+  if (Math.max(Math.abs(a.x[id] - x), Math.abs(a.y[id] - y)) <= 1) {
+    startHere(ctx, id, then);
+    plan.action = then;
+    return true;
+  }
+  const nav = ctx.nav;
+  const near = nav.cellAt(x, y);
+  const cell = near >= 0 && nav.reachable(near) ? near : nav.toward(x, y);
+  if (cell < 0 || !moveTo(ctx, id, cell, cell === near ? then : Action.NONE)) return false;
+  plan.action = Action.MOVE;
+  plan.x = x;
+  plan.y = y;
+  return true;
+}

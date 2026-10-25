@@ -23,6 +23,8 @@ export const INPUT = Object.freeze({
   fear: 15,
   guardDuty: 16,
   huntDuty: 17,
+  farmWork: 18,
+  cookDuty: 19,
 });
 
 const INPUT_COUNT = Object.keys(INPUT).length;

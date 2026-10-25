@@ -1,40 +1,13 @@
 import { atCamp, campOf } from '../colony/colony-logic.js';
 import { Action } from './action-types.js';
 import { PlanNote } from './journal.js';
-import { explore, moveTo, startHere } from './movement.js';
+import { approach, explore, moveTo, startHere } from './movement.js';
 import { carriesKind } from './equipment.js';
 import { perceptionRadius } from './perception.js';
 import { pursue } from './work.js';
 
 // Behaviours of the safety goals (docs/design/16-guerre-et-forteresses.md): take cover when
 // afraid, keep watch over the camp at night, hunt a known den by day.
-
-/**
- * Walks next to (x, y) and starts `then` there, or towards it if it is out of sight.
- * @param {import('../simulation.js').SimContext} ctx
- * @param {number} id
- * @param {number} x
- * @param {number} y
- * @param {number} then
- * @param {import('./movement.js').Plan} plan
- * @returns {boolean}
- */
-function approach(ctx, id, x, y, then, plan) {
-  const a = ctx.agents;
-  if (Math.max(Math.abs(a.x[id] - x), Math.abs(a.y[id] - y)) <= 1) {
-    startHere(ctx, id, then);
-    plan.action = then;
-    return true;
-  }
-  const nav = ctx.nav;
-  const near = nav.cellAt(x, y);
-  const cell = near >= 0 && nav.reachable(near) ? near : nav.toward(x, y);
-  if (cell < 0 || !moveTo(ctx, id, cell, cell === near ? then : Action.NONE)) return false;
-  plan.action = Action.MOVE;
-  plan.x = x;
-  plan.y = y;
-  return true;
-}
 
 /**
  * Takes cover: into the nearest shelter of its colony, else among the others at the camp.

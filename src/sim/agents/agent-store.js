@@ -152,6 +152,17 @@ export class AgentStore {
     /** Food it saw in the pantry at that time, and whether there were open tasks (beliefs). */
     this.pantrySeen = new Uint16Array(max);
     this.tasksSeen = u8();
+    // Farming (docs/design/13-agriculture-cuisine.md): the plot of its farm job (-1 none), the job,
+    // and whether it saw free farm jobs on the blackboard.
+    this.farmPlot = new Int32Array(max).fill(-1);
+    this.farmJob = u8();
+    this.farmSeen = u8();
+    /** Whether the pantry was running down when it last looked at it. */
+    this.pantryFalling = u8();
+    /** Recipe of the batch it cooks (-1 none). */
+    this.cookRecipe = new Int16Array(max).fill(-1);
+    /** A good it guessed can be used alone, bare-handed (a seed in the ground), or 0. */
+    this.hint = new Int16Array(max);
     /** Units gathered per good, crafts and builds: habits from which roles emerge. */
     this.gathered = new Uint16Array(max * goodCount);
     this.builds = new Uint16Array(max);
@@ -278,6 +289,12 @@ export class AgentStore {
     this.boardTick[id] = -1e9;
     this.pantrySeen[id] = 0;
     this.tasksSeen[id] = 0;
+    this.farmPlot[id] = -1;
+    this.farmJob[id] = 0;
+    this.farmSeen[id] = 0;
+    this.pantryFalling[id] = 0;
+    this.cookRecipe[id] = -1;
+    this.hint[id] = 0;
     this.gathered.fill(0, id * this.goodSlots, (id + 1) * this.goodSlots);
     this.builds[id] = 0;
     this.delivers[id] = 0;
@@ -424,6 +441,10 @@ export class AgentStore {
       h.uint32(this.taskGood[id]).uint32(this.taskAmount[id]).uint32(this.taskTick[id]);
       h.uint32(this.taskBuild[id]).uint32(this.boardTick[id]);
       h.uint32(this.pantrySeen[id]).uint32(this.tasksSeen[id]);
+      h.uint32(this.farmPlot[id]).uint32(this.farmJob[id]).uint32(this.farmSeen[id]);
+      h.uint32(this.cookRecipe[id] & 0xffff)
+        .uint32(this.hint[id])
+        .uint32(this.pantryFalling[id]);
       h.typedArray(this.gathered.subarray(g0, g0 + this.goodSlots));
       h.uint32(this.builds[id]).uint32(this.delivers[id]);
       this.social[id].hashInto(h);

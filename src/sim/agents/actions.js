@@ -21,6 +21,9 @@ import { Mood } from '../threats/threat-store.js';
 import { agentAttack, killPredator, train } from './combat.js';
 import { replicate } from '../colony/replication.js';
 import { DocKind } from '../knowledge/document-store.js';
+import { noteMeal, stockPortions } from '../farming/food.js';
+import { harvestedPlot } from '../systems/farm-system.js';
+import { fetchInputs, stockProduce, tillDone, waterPlot, sowPlot } from '../farming/farm-jobs.js';
 import {
   libraryBeside,
   lookAtLibrary,
@@ -88,17 +91,21 @@ function besideWater(state, ctx, x, y) {
 }
 
 /**
- * Eats one carried edible unit, if any.
+ * Eats one carried food unit, the most nourishing first (a dish before berries), if any.
+ * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
  * @param {number} id
  * @returns {boolean} False if nothing edible is carried.
  */
-function eatCarried(ctx, id) {
+function eatCarried(state, ctx, id) {
   const agents = ctx.agents;
-  for (let r = 1; r < ctx.edible.length; r++) {
-    if (ctx.edible[r] !== 1 || agents.carried(id, r) === 0) continue;
-    agents.addCarried(id, r, -1);
-    agents.hunger[id] = Math.max(0, agents.hunger[id] - ctx.nutrition[r]);
+  const t = ctx.foodTables;
+  for (let k = 0; k < t.order.length; k++) {
+    const g = t.order[k];
+    if (agents.carried(id, g) === 0) continue;
+    agents.addCarried(id, g, -1);
+    agents.hunger[id] = Math.max(0, agents.hunger[id] - t.nutrition[g]);
+    noteMeal(state, ctx, id, g);
     return true;
   }
   return false;
@@ -187,6 +194,7 @@ export function stepAction(state, ctx, id) {
       const full = agents.hunger[id] < nutrition / 2;
       if (!full) {
         agents.hunger[id] = Math.max(0, agents.hunger[id] - nutrition);
+        noteMeal(state, ctx, id, taken);
         firstTime(state, ctx, id, Flag.ATE, EventType.FIRST_MEAL);
       } else if (agents.carriedTotal(id) < ctx.capacity(id)) {
         agents.addCarried(id, taken, 1, state.tick);
@@ -200,7 +208,7 @@ export function stepAction(state, ctx, id) {
       agents.actionProgress[id] += 1;
       if (agents.actionProgress[id] < ctx.balance.actions.eatTicksPerUnit) return;
       agents.actionProgress[id] = 0;
-      const ate = eatCarried(ctx, id);
+      const ate = eatCarried(state, ctx, id);
       if (ate) firstTime(state, ctx, id, Flag.ATE, EventType.FIRST_MEAL);
       if (!ate || agents.hunger[id] < ctx.balance.actions.eatUntilHunger) finish(ctx, id);
       return;
@@ -250,19 +258,20 @@ export function stepAction(state, ctx, id) {
       // Food from the pantry, up to a meal's reserve.
       const colony = campOf(state, ctx, id);
       if (colony && atCamp(ctx, colony, id)) {
-        let want = ctx.balance.actions.carryReserve;
-        for (let r = 1; r < ctx.edible.length && want > 0; r++) {
-          if (ctx.edible[r] !== 1) continue;
-          const n = Math.min(want, colony.stock[r], ctx.capacity(id) - agents.carriedTotal(id));
+        // A meal's reserve, in portions, the most nourishing food first.
+        const t = ctx.foodTables;
+        const portion = ctx.balance.cooking.portion;
+        let want = ctx.balance.actions.carryReserve * portion;
+        for (let k = 0; k < t.order.length && want > 0; k++) {
+          const g = t.order[k];
+          const units = Math.ceil(want / t.nutrition[g]);
+          const n = Math.min(units, colony.stock[g], ctx.capacity(id) - agents.carriedTotal(id));
           if (n <= 0) continue;
-          colony.stock[r] -= n;
-          agents.addCarried(id, r, n, state.tick);
-          want -= n;
+          colony.stock[g] -= n;
+          agents.addCarried(id, g, n, state.tick);
+          want -= n * t.nutrition[g];
         }
-        let left = 0;
-        for (let r = 1; r < ctx.edible.length; r++)
-          if (ctx.edible[r] === 1) left += colony.stock[r];
-        agents.pantrySeen[id] = Math.min(65535, left);
+        agents.pantrySeen[id] = Math.min(65535, stockPortions(t, colony.stock, portion));
       }
       finish(ctx, id);
       return;
@@ -303,6 +312,28 @@ export function stepAction(state, ctx, id) {
       return;
     case Action.PLANT:
       plant(state, ctx, id);
+      finish(ctx, id);
+      return;
+    case Action.WATER:
+      agents.actionProgress[id] += 1;
+      if (agents.actionProgress[id] >= ctx.balance.agriculture.waterTicks) {
+        waterPlot(state, ctx, id);
+        finish(ctx, id);
+      }
+      return;
+    case Action.SOW:
+      agents.actionProgress[id] += 1;
+      if (agents.actionProgress[id] >= ctx.balance.agriculture.sowTicks) {
+        sowPlot(state, ctx, id);
+        finish(ctx, id);
+      }
+      return;
+    case Action.STOCK:
+      stockProduce(state, ctx, id);
+      finish(ctx, id);
+      return;
+    case Action.FETCH:
+      fetchInputs(state, ctx, id);
       finish(ctx, id);
       return;
     case Action.REPLICATE:
@@ -348,11 +379,23 @@ function harvest(state, ctx, id) {
   }
   noteHarvest(state, ctx, id, x, y, taken);
   agents.addCarried(id, taken, 1, state.tick);
+  // Grain gives a seed now and then.
+  const crop = ctx.cropOfResource[taken];
+  if (crop >= 0 && agents.rng[id].next() < ctx.crops[crop].seedChance) {
+    const seed = ctx.crops[crop].seed;
+    agents.addCarried(id, seed, 1, state.tick);
+    // A seed in wild grain: it may guess that seeds make plants (docs/design/13, « Découvrir »).
+    const wild = state.crops.at(x, y) < 0;
+    const sower = ctx.plotRecipe >= 0 && agents.recipes[id].knows(ctx.plotRecipe);
+    if (wild && !sower && agents.rng[id].next() < ctx.crops[crop].hintChance)
+      agents.hint[id] = seed;
+  }
   // The last of a carcass leaves its hide.
   if (state.world.lastTakeDepleted && taken === ctx.carcass) agents.addCarried(id, ctx.hideGood, 1);
   const habit = id * agents.goodSlots + taken;
   if (agents.gathered[habit] < 65535) agents.gathered[habit]++;
   if (state.world.lastTakeDepleted) {
+    harvestedPlot(state, x, y, id);
     ctx.scheduleRegrowth(state, x, y, taken);
     forgetEmptied(ctx, id, taken, x, y);
   } else {
@@ -479,7 +522,11 @@ function craft(state, ctx, id) {
   const m = ctx.balance.memory;
   book.use(r, state.tick, m.consolidation, ctx.maxTau);
   agents.recordMade(id, r, state.tick);
-  if (building) {
+  if (building && recipe.output === ctx.plotCode) {
+    // Sowing: a plot, its seed already in the ground.
+    state.world.setStructure(x, y, recipe.output);
+    tillDone(state, ctx, id, x, y);
+  } else if (building) {
     state.world.setStructure(x, y, recipe.output);
     notice(state, ctx, id, ctx.catalog.resourceCount + recipe.output, x, y, 0);
     state.events.push(state.tick, EventType.BUILT, id, x, y, r);
@@ -547,6 +594,7 @@ function experiment(state, ctx, id) {
       state.events.push(state.tick, EventType.DISCOVERED, id, agents.x[id], agents.y[id], r);
       state.knowledge.noteDiscovery(r, id, state.tick);
     }
+    agents.hint[id] = 0;
     return;
   }
   for (let m = mask; m !== 0; m &= m - 1) {

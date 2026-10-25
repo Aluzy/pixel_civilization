@@ -18,7 +18,9 @@
       "kind": "station",
       "feminine": true
     },
-    { "id": "den", "name": "Tanière", "color": "#3e0a0a", "kind": "den", "feminine": true }
+    { "id": "den", "name": "Tanière", "color": "#3e0a0a", "kind": "den", "feminine": true },
+    { "id": "plot", "name": "Parcelle", "color": "#5c3d22", "kind": "plot", "feminine": true },
+    { "id": "campfire", "name": "Feu de camp", "color": "#ff8a2a", "kind": "station" }
   ],
   "items": [
     { "id": "spear", "name": "Lance", "kind": "weapon", "attack": 2 },
@@ -54,6 +56,23 @@
       "kind": "armor",
       "defense": 3,
       "feminine": true
+    },
+    { "id": "seed", "name": "Graine", "kind": "material", "feminine": true },
+    { "id": "flour", "name": "Farine", "kind": "ingredient", "feminine": true },
+    { "id": "bread", "name": "Pain", "kind": "food", "pleasure": 3 },
+    {
+      "id": "grilled_meat",
+      "name": "Viande grillée",
+      "kind": "food",
+      "feminine": true,
+      "pleasure": 3
+    },
+    {
+      "id": "berry_pie",
+      "name": "Tarte aux baies",
+      "kind": "food",
+      "feminine": true,
+      "pleasure": 5
     }
   ],
   "recipes": [
@@ -217,6 +236,48 @@
       "inputs": { "hide": 2, "fiber": 2 },
       "durationTicks": 60,
       "output": { "item": "hide_armor" }
+    },
+    {
+      "id": "plot",
+      "station": null,
+      "inputs": { "seed": 1 },
+      "durationTicks": 20,
+      "output": { "structure": "plot" }
+    },
+    {
+      "id": "campfire",
+      "station": null,
+      "inputs": { "wood": 3, "stone": 3 },
+      "durationTicks": 60,
+      "output": { "structure": "campfire" }
+    },
+    {
+      "id": "flour",
+      "station": null,
+      "inputs": { "wheat": 3 },
+      "durationTicks": 30,
+      "output": { "item": "flour" }
+    },
+    {
+      "id": "bread",
+      "station": "campfire",
+      "inputs": { "flour": 2 },
+      "durationTicks": 30,
+      "output": { "item": "bread" }
+    },
+    {
+      "id": "grilled_meat",
+      "station": "campfire",
+      "inputs": { "carcass": 1 },
+      "durationTicks": 20,
+      "output": { "item": "grilled_meat" }
+    },
+    {
+      "id": "berry_pie",
+      "station": "campfire",
+      "inputs": { "flour": 1, "berries": 2 },
+      "durationTicks": 30,
+      "output": { "item": "berry_pie" }
     }
   ]
 }

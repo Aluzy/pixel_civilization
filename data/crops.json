@@ -1,0 +1,14 @@
+{
+  "crops": [
+    {
+      "id": "wheat",
+      "name": "Blé",
+      "resource": "wheat",
+      "seed": "seed",
+      "stages": 3,
+      "yield": 40,
+      "seedChance": 0.3,
+      "hintChance": 0.25
+    }
+  ]
+}

@@ -18,6 +18,11 @@ import { BARE_HANDS, lowestIngredient } from './catalog.js';
  *   made, when looking for something to write on (another material may be made there).
  * @property {number} noveltyBonus - Per material of the set that no known recipe uses, when
  *   trying freely (no kind sought).
+ * @property {number} hintBonus - The good it guessed can be used alone, tried alone bare-handed.
+ * @property {number} focusExtra - Malus per other ingredient when looking for a use of one good:
+ *   it is tried alone first, then with one more, and so on.
+ * @property {number} unknownStationBonus - Looking for a use of one good: a station none of its
+ *   known recipes uses (what it is for is still to find out).
  * @property {number} jitter - Random part, so that equal candidates are tried in varied order.
  */
 
@@ -50,6 +55,8 @@ function popcount(m) {
  * @param {Int32Array} types - Scratch, length ≥ goods count.
  * @param {string | null} wanted - Family sought ("structure", "item:weapon"…), or null.
  * @param {Int32Array} out - Receives station, mask, and the number of candidates.
+ * @param {number} [hint=0] - Good it guessed can be used alone, bare-handed, or 0.
+ * @param {number} [focus=0] - If set, only combinations that contain this good.
  * @returns {boolean} False when there is nothing left to try.
  */
 export function chooseTrial(
@@ -65,10 +72,20 @@ export function chooseTrial(
   types,
   wanted,
   out,
+  hint = 0,
+  focus = 0,
 ) {
   let n = 0;
+  const hinted = hint > 0 ? 1 << catalog.ingredientBit[hint] : -1;
+  const focused = focus > 0 ? 1 << catalog.ingredientBit[focus] : 0;
+  // Looking for a use of one good: a station none of its known recipes uses is worth a try.
+  let usedStations = 0;
+  for (let r = 0; r < catalog.recipes.length && focused !== 0; r++) {
+    if (book.knows(r)) usedStations |= 1 << catalog.recipes[r].station;
+  }
   for (let g = 1; g < catalog.goodCount; g++) {
-    if (catalog.material[g] === 1 && fetchCost[g] !== Infinity) types[n++] = g;
+    const usable = catalog.material[g] === 1 || (focus > 0 && catalog.ingredientBit[g] >= 0);
+    if (usable && fetchCost[g] !== Infinity) types[n++] = g;
   }
   let best = -Infinity;
   let candidates = 0;
@@ -83,8 +100,16 @@ export function chooseTrial(
           const c = types[k];
           const bit = catalog.ingredientBit;
           const mask = (1 << bit[a]) | (1 << bit[b]) | (1 << bit[c]);
-          const score = scoreTrial(catalog, book, acquired, s, mask, tick, weights, wanted);
+          if ((mask & focused) !== focused) continue;
+          let score = scoreTrial(catalog, book, acquired, s, mask, tick, weights, wanted, !focus);
           if (score === -Infinity) continue;
+          if (mask === hinted && s === BARE_HANDS) score += weights.hintBonus;
+          if (focused !== 0) {
+            score -= (popcount(mask) - 1) * weights.focusExtra;
+            if (s !== BARE_HANDS && (usedStations & (1 << s)) === 0) {
+              score += weights.unknownStationBonus;
+            }
+          }
           candidates++;
           let fetch = fetchCost[a];
           if (b !== a) fetch += fetchCost[b];
@@ -130,9 +155,21 @@ function isCanonical(i, j, k) {
  * @param {number} tick
  * @param {TrialWeights} weights
  * @param {string | null} wanted - Family sought ("structure", "item:weapon"…), or null.
+ * @param {boolean} [novelty=true] - Free invention values unused materials (not when looking for
+ *   a use of one given good).
  * @returns {number}
  */
-export function scoreTrial(catalog, book, acquired, station, mask, tick, weights, wanted) {
+export function scoreTrial(
+  catalog,
+  book,
+  acquired,
+  station,
+  mask,
+  tick,
+  weights,
+  wanted,
+  novelty = true,
+) {
   if (book.hasFailed(station, mask)) return -Infinity;
   let similar = 0;
   let familiar = 0;
@@ -162,16 +199,17 @@ export function scoreTrial(catalog, book, acquired, station, mask, tick, weights
     const g = lowestIngredient(catalog, m);
     count++;
     if (tick - acquired(g) < weights.recentTicks) score += weights.recentBonus;
-    if (g > catalog.resourceCount) crafted++;
+    if (catalog.recipeForGood[g] >= 0) crafted++;
   }
   // Writing needs writing materials: a book or a map is guessed to be made of crafted ones, and
   // more of them are made where one already was.
   if (writing) {
-    score += crafted * weights.craftedBonus;
+    // Raw materials in the set count against it (a book is not made of wood).
+    score += (crafted - (crafted > 0 ? count - crafted : 0)) * weights.craftedBonus;
     if (crafted === 0 && materialsHere) score += weights.materialStationBonus;
   }
   // Free invention: materials no known recipe uses are the most promising.
-  if (wanted === null) score += popcount(mask & ~used) * weights.noveltyBonus;
+  if (wanted === null && novelty) score += popcount(mask & ~used) * weights.noveltyBonus;
   score -= count * weights.costPerType;
   if (kindHere) score += weights.kindStationBonus;
   // Things of this kind were made elsewhere: this station is a poor bet.

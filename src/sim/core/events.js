@@ -37,6 +37,9 @@ export const EventType = Object.freeze({
   ABANDONED: 'abandoned',
   KNOWLEDGE_LOST: 'knowledgeLost',
   KNOWLEDGE_RECOVERED: 'knowledgeRecovered',
+  FIRST_PLOT: 'firstPlot',
+  HARVEST: 'harvest',
+  FIRST_DISH: 'firstDish',
 });
 
 /** Events kept in memory; older ones are dropped (the count keeps growing). */

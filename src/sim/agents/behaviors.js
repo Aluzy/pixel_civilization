@@ -9,6 +9,8 @@ import { atCamp, campOf, shareBoard } from '../colony/colony-logic.js';
 import { colonyWork, goToCamp, prepareReplication } from './colony-work.js';
 import { readBehaviour, writeBehaviour } from './scribe-work.js';
 import { guardBehaviour, hideBehaviour, huntBehaviour } from './guard-work.js';
+import { farmBehaviour } from './farm-work.js';
+import { cookBehaviour } from './cook-work.js';
 
 // Turns a chosen goal into a concrete action, using only what the agent perceives and remembers.
 // Survival goals are hand-written; crafting goals follow the GOAP planner (work.js).
@@ -48,9 +50,8 @@ function invent(state, ctx, id, plan) {
  * @returns {boolean} True if the agent carries something edible.
  */
 function carriesFood(ctx, id) {
-  for (let r = 1; r < ctx.edible.length; r++) {
-    if (ctx.edible[r] === 1 && ctx.agents.carried(id, r) > 0) return true;
-  }
+  const order = ctx.foodTables.order;
+  for (let k = 0; k < order.length; k++) if (ctx.agents.carried(id, order[k]) > 0) return true;
   return false;
 }
 
@@ -126,10 +127,19 @@ export function planGoal(state, ctx, id, goal, plan) {
     case 'hunt':
       huntBehaviour(state, ctx, id, plan);
       return;
+    case 'farm':
+      farmBehaviour(state, ctx, id, plan);
+      return;
+    case 'cook':
+      cookBehaviour(state, ctx, id, plan);
+      return;
     case 'explore': {
       // The colony's inventor spends its curiosity trying new combinations instead.
       const colony = campOf(state, ctx, id);
+      const hint = agents.hint[id];
       if (colony && colony.inventor === id) invent(state, ctx, id, plan);
+      // A guess to check (a seed it found): it tries it.
+      else if (hint > 0 && agents.carried(id, hint) > 0) discover(state, ctx, id, null, plan);
       else explore(state, ctx, id, plan);
       return;
     }

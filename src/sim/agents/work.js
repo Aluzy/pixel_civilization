@@ -241,14 +241,24 @@ export function chooseSite(ctx) {
  * @param {number} id
  * @param {string | null} wanted - Family sought ("structure", "item:weapon"…), or null.
  * @param {import('./movement.js').Plan} plan
+ * @param {number} [focus=0] - Only combinations with this good (what can be done with it?).
  * @returns {void}
  */
-export function discover(state, ctx, id, wanted, plan) {
+export function discover(state, ctx, id, wanted, plan, focus = 0) {
   const agents = ctx.agents;
   const catalog = ctx.catalog;
   const book = agents.recipes[id];
   const planner = fillBeliefs(ctx, id);
+  // A station opens new item recipes: one it knows how to make is built when trying freely, or when
+  // looking for an item without any station at hand (structures are made bare-handed: a station
+  // does not help to find one).
+  let anyStation = false;
   for (let c = 1; c < planner.stations.length; c++) {
+    if (planner.stations[c] === 1 && catalog.structures[c - 1].kind === 'station')
+      anyStation = true;
+  }
+  const buildOne = wanted === null || (wanted !== 'structure' && !anyStation);
+  for (let c = 1; c < planner.stations.length && buildOne; c++) {
     const r = catalog.recipeForStructure[c];
     if (planner.stations[c] === 1 || r < 0 || !book.knows(r)) continue;
     if (catalog.structures[c - 1].kind !== 'station') continue;
@@ -264,7 +274,8 @@ export function discover(state, ctx, id, wanted, plan) {
   for (let c = 1; c < stations.length; c++) {
     stations[c] = catalog.structures[c - 1].kind === 'station' ? planner.stations[c] : 0;
   }
-  const fetch = fetchCosts(ctx, id);
+  // Free invention also looks for by-products (seeds in grain) it has never held.
+  const fetch = fetchCosts(ctx, id, wanted === null);
   const cost = stationCosts(state, ctx, id, stations);
   const weights = ctx.balance.crafting.trial;
   const out = ctx.trialOut;
@@ -286,6 +297,8 @@ export function discover(state, ctx, id, wanted, plan) {
     types,
     wanted,
     out,
+    agents.hint[id],
+    focus,
   );
   if (!found) {
     // Nothing left to try with known materials: look further for new ones.
@@ -303,7 +316,15 @@ export function discover(state, ctx, id, wanted, plan) {
   }
   if (missing > 0) {
     // A crafted material (paper, ink) is made with its known recipe; a resource is gathered.
-    if (missing > catalog.resourceCount) {
+    const source = ctx.sourceOf[missing];
+    const known = catalog.recipeForGood[missing] >= 0 && book.knows(catalog.recipeForGood[missing]);
+    if (missing > catalog.resourceCount && !known && source > 0) {
+      // The by-product comes with fresh harvest: grain already carried is laid aside.
+      const sample = ctx.balance.crafting.sampleUnits;
+      if (agents.carried(id, source) >= sample)
+        agents.addCarried(id, source, -agents.carried(id, source));
+      gather(state, ctx, id, source, sample, plan);
+    } else if (missing > catalog.resourceCount) {
       pursue(state, ctx, id, ctx.goodTargets[missing], plan, false);
     } else gather(state, ctx, id, missing, ctx.balance.crafting.sampleUnits, plan);
     plan.note = PlanNote.TRIAL;
@@ -317,9 +338,10 @@ export function discover(state, ctx, id, wanted, plan) {
  * place (in sight, else remembered), Infinity if out of reach or unknown.
  * @param {import('../simulation.js').SimContext} ctx
  * @param {number} id
+ * @param {boolean} byProducts - Count by-products as fetchable through their source.
  * @returns {Float64Array}
  */
-function fetchCosts(ctx, id) {
+function fetchCosts(ctx, id, byProducts) {
   const agents = ctx.agents;
   const catalog = ctx.catalog;
   const nav = ctx.nav;
@@ -330,7 +352,7 @@ function fetchCosts(ctx, id) {
   const fetch = ctx.fetchCost;
   fetch.fill(Infinity);
   for (let g = 1; g <= catalog.resourceCount; g++) {
-    if (catalog.material[g] !== 1) continue;
+    if (catalog.ingredientBit[g] < 0) continue;
     if (agents.carried(id, g) > 0) {
       fetch[g] = 0;
       continue;
@@ -346,13 +368,17 @@ function fetchCosts(ctx, id) {
     }
     if (distance >= 0) fetch[g] = c.fetchBase + (c.fetchWalk * distance) / c.sampleDistance;
   }
-  // Crafted materials: carried, or made with a recipe it knows.
+  // Crafted materials: carried, or made with a recipe it knows, or found while gathering their
+  // source (seeds in grain, a hide in a carcass).
   const book = agents.recipes[id];
   for (let g = catalog.resourceCount + 1; g < catalog.goodCount; g++) {
-    if (catalog.material[g] !== 1) continue;
+    if (catalog.ingredientBit[g] < 0) continue;
+    const source = ctx.sourceOf[g];
     if (agents.carried(id, g) > 0) fetch[g] = 0;
     else if (catalog.recipeForGood[g] >= 0 && book.knows(catalog.recipeForGood[g])) {
       fetch[g] = c.fetchBase + c.fetchCraft;
+    } else if (byProducts && source > 0 && fetch[source] < Infinity) {
+      fetch[g] = fetch[source] + c.fetchBase;
     }
   }
   return fetch;

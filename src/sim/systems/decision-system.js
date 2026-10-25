@@ -16,6 +16,8 @@ import { Component } from '../colony/harmony.js';
 import { atCamp, campOf, shareBoard } from '../colony/colony-logic.js';
 import { roomToReplicate } from '../colony/replication.js';
 import { carriesWriting, wantsMap } from '../knowledge/writing.js';
+import { senseCooking } from '../agents/cook-work.js';
+import { FarmJob } from '../farming/farm-jobs.js';
 import { EventType } from '../core/events.js';
 
 /**
@@ -152,6 +154,11 @@ function senseInputs(state, ctx, id) {
   }
   input[INPUT.unwritten] = scribe ? 1 : 0;
   senseSafety(state, ctx, id, home);
+  // Farming: a job in hand, or free jobs seen on the blackboard, for those who know how to sow.
+  const sower = home !== null && ctx.plotRecipe >= 0 && a.recipes[id].knows(ctx.plotRecipe);
+  const farming = a.farmJob[id] !== FarmJob.NONE;
+  input[INPUT.farmWork] = sower ? (farming ? 1 : a.farmSeen[id] === 1 ? 0.8 : 0) : 0;
+  input[INPUT.cookDuty] = senseCooking(state, ctx, id, home) ? 1 : 0;
   // One inventor at a time, once the colony is large enough to spare one: the first member at the
   // camp claims it, for a while (it remembers its failed trials).
   if (

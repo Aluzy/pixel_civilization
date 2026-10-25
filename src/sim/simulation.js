@@ -1,4 +1,5 @@
 import aiGoals from '../../data/ai-goals.json' with { type: 'json' };
+import cropData from '../../data/crops.json' with { type: 'json' };
 import genomeData from '../../data/genome.json' with { type: 'json' };
 import projectData from '../../data/ai-projects.json' with { type: 'json' };
 import recipeData from '../../data/recipes.json' with { type: 'json' };
@@ -21,6 +22,8 @@ import { Colony } from './colony/colony-store.js';
 import { History } from './colony/history.js';
 import { lifespanOf } from './colony/replication.js';
 import { buildCatalog } from './crafting/catalog.js';
+import { CropStore } from './farming/crop-store.js';
+import { buildFood, stockPortions } from './farming/food.js';
 import { buildGeneTable } from './genome/genome.js';
 import { DocKind, DocumentStore } from './knowledge/document-store.js';
 import { KnowledgeLog } from './knowledge/knowledge-log.js';
@@ -79,6 +82,7 @@ export const RNG_STREAMS = Object.freeze([
  * @property {EventLog} events
  * @property {Regrowth[]} regrowth - Sorted by tick.
  * @property {History} history - Daily record for the dashboard.
+ * @property {CropStore} crops - Plots and their plants.
  */
 
 /**
@@ -109,7 +113,7 @@ export const RNG_STREAMS = Object.freeze([
  * @property {Navigator} nav
  * @property {Float64Array} biomeSpeed
  * @property {number} waterBiome
- * @property {Uint8Array} edible - 1 per edible resource id.
+ * @property {Uint8Array} edible - 1 per resource id eaten where it grows (foraged).
  * @property {Float64Array} nutrition - Hunger removed per unit, per resource id.
  * @property {Float64Array} harvestTicks - Base ticks to harvest one unit, per resource id.
  * @property {number} harvestForceScale
@@ -133,7 +137,48 @@ export const RNG_STREAMS = Object.freeze([
  * @property {Int32Array} exploreTarget - Scratch: x, y of a chosen exploration target.
  * @property {Int32Array} recallTarget - Scratch: x, y where a memory is believed to be.
  * @property {(state: SimState, x: number, y: number, resource: number) => void} scheduleRegrowth
+ * @property {Crop[]} crops - Crops of data/crops.json.
+ * @property {Int8Array} cropOfResource - Crop index per resource id, -1 if none.
+ * @property {number} plotCode - Structure code of a plot (0 if none).
+ * @property {number} plotRecipe - Recipe making a plot (sowing), -1 if none.
+ * @property {import('./farming/food.js').FoodTables} foodTables
+ * @property {Int16Array} cookRecipes - Kitchen recipes: dishes and their prepared ingredients.
+ * @property {Uint8Array} produce - 1 per good the farm and the kitchen put in the stock.
+ * @property {Int16Array} sourceOf - Per good: resource that yields it as a by-product, 0 if none.
  */
+
+/**
+ * @typedef {object} Crop
+ * @property {string} id
+ * @property {number} resource - Resource id it yields.
+ * @property {number} seed - Good id of its seed.
+ * @property {number} stages - Watered days to ripen.
+ * @property {number} yield - Units of the resource when ripe.
+ * @property {number} seedChance - Chance of a seed with each unit harvested.
+ * @property {number} hintChance - Chance, with a seed from wild grain, of guessing it can be sown.
+ */
+
+/**
+ * @param {import('./crafting/catalog.js').Catalog} catalog
+ * @param {import('./world/world-data.js').WorldTables} tables
+ * @returns {Crop[]}
+ */
+function buildCrops(catalog, tables) {
+  return cropData.crops.map((c) => {
+    const resource = tables.resources.findIndex((r) => r.id === c.resource) + 1;
+    const seed = catalog.items.find((i) => i.id === c.seed)?.good ?? 0;
+    if (resource === 0 || seed === 0) throw new Error(`Crop ${c.id}: unknown resource or seed`);
+    return {
+      id: c.id,
+      resource,
+      seed,
+      stages: c.stages,
+      yield: c.yield,
+      seedChance: c.seedChance,
+      hintChance: c.hintChance ?? 0,
+    };
+  });
+}
 
 /**
  * @param {number} slots - Number of memory subjects.
@@ -245,7 +290,9 @@ function buildContext(balance, tables, agents, seedKey) {
   const zoneSide = Math.ceil((2 * balance.harmony.territoryRadius + 1) / balance.harmony.zoneCell);
   tables.resources.forEach((r, i) => {
     const id = i + 1;
-    if (r.nutrition > 0) {
+    // Edible where it grows (foraged, gathered for the pantry), unless it is only eaten once
+    // brought home (grain): its food worth is in the food tables either way.
+    if (r.nutrition > 0 && r.forage !== false) {
       edible[id] = 1;
       nutrition[id] = r.nutrition;
     }
@@ -266,6 +313,27 @@ function buildContext(balance, tables, agents, seedKey) {
   const predator = worldData.threats.predator;
   const den = worldData.threats.den;
   const days = (d) => d * time.ticksPerDay;
+  const crops = buildCrops(catalog, tables);
+  const cropOfResource = new Int8Array(resourceSlots).fill(-1);
+  crops.forEach((c, i) => (cropOfResource[c.resource] = i));
+  const cropResource = Uint8Array.from(cropOfResource, (c) => (c >= 0 ? 1 : 0));
+  const plotCode = catalog.structures.find((st) => st.kind === 'plot')?.code ?? 0;
+  // Kitchen recipes: dishes, and what prepares their ingredients (flour).
+  const isFood = (g) => g > R && catalog.items[g - R - 1].kind === 'food';
+  const dishes = catalog.recipes.filter((r) => r.outputKind === 'item' && isFood(r.output));
+  const prepared = new Set(dishes.flatMap((r) => r.inputs.map((i) => i.good)));
+  const cookRecipes = catalog.recipes
+    .filter((r) => r.outputKind === 'item' && (isFood(r.output) || prepared.has(r.output)))
+    .map((r) => r.index);
+  // By-products found while gathering a resource: seeds in grain, a hide in a carcass.
+  const sourceOf = new Int16Array(catalog.goodCount);
+  for (const c of crops) sourceOf[c.seed] = c.resource;
+  const hide = catalog.items.find((i) => i.id === 'hide');
+  const carcassId = tables.resources.findIndex((r) => r.id === 'carcass') + 1;
+  if (hide && carcassId > 0) sourceOf[hide.good] = carcassId;
+  const produce = new Uint8Array(catalog.goodCount);
+  for (const c of crops) produce[c.resource] = produce[c.seed] = 1;
+  for (const r of cookRecipes) produce[catalog.recipes[r].output] = 1;
   const darknessByPhase = Float64Array.from(phases.map((p) => worldData.darkness[p] ?? 0));
   const phase0 = phaseIndexAt(0, time);
   /** @type {SimContext} */
@@ -380,9 +448,18 @@ function buildContext(balance, tables, agents, seedKey) {
     nearestBySubject: new Int32Array(CATALOG.dangerSubject),
     exploreTarget: new Int32Array(2),
     recallTarget: new Int32Array(2),
+    crops,
+    cropOfResource,
+    plotCode,
+    cookRecipes: Int16Array.from(cookRecipes),
+    produce,
+    sourceOf,
+    plotRecipe: plotCode > 0 ? catalog.recipeForStructure[plotCode] : -1,
+    foodTables: buildFood(catalog, tables, cropResource, balance.cooking.dishFactor),
     scheduleRegrowth(state, x, y, resource) {
       const delay = regrowTicks[resource];
-      if (delay <= 0) return;
+      // A crop does not grow back by itself on its plot: it is sown again.
+      if (delay <= 0 || state.crops.at(x, y) >= 0) return;
       const [qMin, qMax] = tables.resources[resource - 1].quantity;
       const q = qMin + (hashCoords(seedKey, x, y, state.tick) % (qMax - qMin + 1));
       const entry = { tick: state.tick + delay, x, y, resource, quantity: q };
@@ -436,13 +513,20 @@ const PROJECT_NAMES = ['', 'Abri', 'Réserve', 'Bibliothèque', 'Champ'];
 function describeProject(ctx, colony, p, cfg) {
   const pantry = p.kind === 2;
   const goods = [];
-  for (let g = 1; g < p.needs.length; g++) {
+  if (pantry) {
+    // One line in portions of any food.
+    const need = Math.round((colony.members + 1) * cfg.foodPerMember * colony.pantryBoost);
+    const have = stockPortions(ctx.foodTables, colony.stock, ctx.balance.cooking.portion);
+    let reserved = 0;
+    for (let g = 1; g < p.needs.length; g++) reserved += p.reserved[g];
+    goods.push({ name: 'Portions', have: Math.min(need, have), need, reserved });
+  }
+  for (let g = 1; g < p.needs.length && !pantry; g++) {
     if (p.needs[g] === 0) continue;
-    const target = (colony.members + 1) * cfg.foodPerMember * colony.pantryBoost;
-    const need = pantry ? Math.round(target) : p.needs[g];
+    const need = p.needs[g];
     goods.push({
       name: ctx.catalog.goodName(g),
-      have: Math.min(need, pantry ? colony.stock[g] : Math.min(p.delivered[g], colony.stock[g])),
+      have: Math.min(need, Math.min(p.delivered[g], colony.stock[g])),
       need,
       reserved: p.reserved[g],
     });
@@ -569,6 +653,7 @@ export class Simulation {
       knowledge: new KnowledgeLog(CATALOG.recipes.length),
       events: new EventLog(),
       regrowth: [],
+      crops: new CropStore(),
     };
     /** @type {SimContext} */
     this.ctx = buildContext(balance, tables, agents, seedKey);
@@ -719,6 +804,15 @@ export class Simulation {
       guards: [...colony.guards].filter((g) => g >= 0 && this.state.agents.alive[g] === 1),
       lastThreat: colony.lastThreat,
       fields: colony.fields,
+      farm: {
+        plots: colony.plots,
+        harvests: colony.cropHarvests,
+        withered: colony.withered,
+        cropShare: colony.eatenYesterday > 0 ? colony.cropYesterday / colony.eatenYesterday : 0,
+        dishes: colony.dishes,
+        dishesYesterday: colony.dishesYesterday,
+        cooks: [...colony.cooks].filter((k) => k >= 0 && this.state.agents.alive[k] === 1),
+      },
       inventor: colony.inventor,
       scribe: colony.scribe,
       knowledge: this.describeKnowledge(),
@@ -957,6 +1051,7 @@ export class Simulation {
     s.documents.hashInto(h);
     s.knowledge.hashInto(h);
     s.history.hashInto(h);
+    s.crops.hashInto(h);
     h.uint32(s.events.count);
     for (const e of s.events.events) h.uint32(e.tick).string(e.type).uint32(e.agent);
     for (const g of s.regrowth) h.uint32(g.tick).uint32(g.x).uint32(g.y).uint32(g.resource);

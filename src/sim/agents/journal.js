@@ -33,6 +33,8 @@ export const PlanNote = Object.freeze({
   HIDING: 15, // Taking cover in a shelter or at the camp.
   GUARDING: 16, // Night watch over the camp.
   HUNTING: 17, // Hunting a den or a predator.
+  FARMING: 18, // A farm job: water, harvest, sow, make a plot.
+  COOKING: 19, // A batch for the colony's kitchen.
 });
 
 /**

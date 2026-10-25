@@ -42,7 +42,11 @@ export function lifecycleSystem(state, ctx) {
     // A death of hunger or thirst is a famine for the colony's stability.
     const critical = ctx.balance.needs.critical;
     const starved = !old && (a.hunger[id] >= critical || a.thirst[id] >= critical);
-    if (starved && a.colony[id] >= 0) state.colonies[a.colony[id]].lastStarvation = state.tick;
+    if (starved && a.colony[id] >= 0) {
+      const colony = state.colonies[a.colony[id]];
+      colony.lastStarvation = state.tick;
+      colony.starvedToday++;
+    }
     // What it carried is lost with it, its writings too.
     const docs = state.documents;
     for (let d = 0; d < docs.max; d++) if (docs.holder[d] === id) docs.destroy(d);
