@@ -219,17 +219,21 @@ describe('colony (J5 exit)', () => {
     for (let seed = 1; seed <= 10; seed++) {
       const sim = new Simulation({ seed, balance });
       let extinct = false;
+      let together = false;
+      let seen = 0;
       for (let d = 0; d < 30 && !extinct; d++) {
         sim.step(DAY);
         extinct = sim.agents.aliveCount === 0;
+        // The log keeps only the latest events: look at them day by day.
+        for (const e of sim.events.since(seen)) {
+          if (e.type === EventType.COLONY_PROJECT && e.subject >> 4 >= 2) together = true;
+        }
+        seen = sim.events.count;
         // Let Vitest's worker messages through during this long test.
         await new Promise((resolve) => setTimeout(resolve, 0));
       }
       const n = sim.agents.aliveCount;
       if (!extinct && n >= 20 && n <= balance.colony.maxPopulation) ok++;
-      const together = sim.events.events.some(
-        (e) => e.type === EventType.COLONY_PROJECT && e.subject >> 4 >= 2,
-      );
       if (together) cooperative++;
     }
     expect(ok).toBeGreaterThanOrEqual(8);
