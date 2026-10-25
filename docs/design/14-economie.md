@@ -138,3 +138,5 @@ Implémenté au J10 (décision 0023). Là où il s'écarte des sections précéd
 **Mesures** (10 graines, 100 jours) : voir la feuille de route ([11](11-feuille-de-route.md), J10).
 
 **Reporté** : or et pierres précieuses (J12), coffre personnel et héritage des biens, troc et carnet d'offres et de demandes entre individus, prospérité dans l'harmonie, péremption, courbes de prix au tableau de bord.
+
+**Au J11** ([15](15-colonies-et-migration.md), décision 0024) : un septième métier choisi, **marchand**, fait voyager des biens d'un comptoir de colonie à l'autre (caravanes), quand sa colonie en connaît une autre et ses prix.

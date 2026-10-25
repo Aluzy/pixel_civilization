@@ -18,7 +18,7 @@ Ces documents décrivent le jeu tel qu'il doit être construit. Ils font référ
 | 12 | [Risques](12-risques.md) | Risques, parades, questions ouvertes |
 | 13 | [Agriculture et cuisine](13-agriculture-cuisine.md) | Graines, parcelles, arrosage, transformation, plats (vision v2) |
 | 14 | [Économie](14-economie.md) | Propriété, troc, or et écus, marché, métiers (vision v2, comptoir et métiers au J10) |
-| 15 | [Colonies et migration](15-colonies-et-migration.md) | Expéditions, fondation, relations, commerce entre colonies (vision v2) |
+| 15 | [Colonies et migration](15-colonies-et-migration.md) | Expéditions, fondation, relations, commerce entre colonies (vision v2, en partie au J11) |
 | 16 | [Guerre et forteresses](16-guerre-et-forteresses.md) | Menaces renforcées, combattants, trésors, murs, conflits (vision v2) |
 | — | [Glossaire](glossaire.md) | Vocabulaire commun |
 

@@ -71,7 +71,12 @@
 | Carnet d'essais | Essais ratés des chercheurs d'une colonie, transmis d'un inventeur à l'autre (J10) | `notebook` |
 | Idée | Usage deviné d'un bien qu'un chercheur vient de fabriquer, essayé en priorité (J10) | `ideaStation`, `ideaMask` |
 | Demande | Ressource qu'un chercheur demande au comptoir : son prix monte, les mineurs l'apportent (J10) | `demand` |
-| Expédition | Groupe qui quitte sa colonie pour en fonder une autre (vision v2) | `expedition` |
+| Expédition | Groupe qui quitte sa colonie pour en fonder une autre ; menée par l'éclaireur qui a trouvé le site (J11) | `expState`, `expMembers` |
+| Éclaireur | Membre qui cherche loin du camp un site pour une nouvelle colonie (J11) | `scout` |
+| Colonie mère, colonie fille | Filiation : la colonie d'où est partie l'expédition qui a fondé une autre (J11) | `parent` |
+| Fiche de relation | Ce qu'une colonie sait d'une autre : camp, parenté, rencontres, caravanes, prix (J11) | `relKnown`, `relTrades`… |
+| Caravane | Voyage d'un marchand qui porte des biens d'un comptoir de colonie à l'autre (J11) | `caravanTo` |
+| Marchand | Métier qui mène les caravanes (J11) | `merchant` |
 | Raid | Troupe envoyée par une colonie piller une autre (vision v2) | `raid` |
 | Projet | But à long terme décomposé en sous-tâches (HTN) | `project` |
 | Simulation mentale | Évaluation de futurs possibles sur un modèle issu des croyances | `imagination` |

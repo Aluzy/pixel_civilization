@@ -7,18 +7,31 @@ const COMPONENTS = ['stabilité', 'durabilité', 'ordre spatial', 'savoir', 'bie
 /**
  * Lines of the colony panel (from Simulation#describeColony): population, beds, stock, the
  * projects in progress with what they still need and who worked on them, the libraries, the
- * counter (treasury, jobs, prices) and the colony's knowledge (known, written, lost).
+ * counter (treasury, jobs, prices), its filiation, expedition and relations with the other
+ * colonies, and the colony's knowledge (known, written, lost).
  * @param {object | null} colony
+ * @param {{ id: number, members: number }[]} [colonies] - All colonies, for the list.
  * @returns {string[]}
  */
-export function formatColony(colony) {
+export function formatColony(colony, colonies = []) {
   if (!colony || colony.members === 0) return [];
-  const lines = [
-    `Colonie : ${colony.members} individu(s) · ${colony.births} naissance(s) · ` +
+  const lines = [];
+  if (colonies.length > 1) {
+    const shown = colonies.filter((c) => c.members > 0).map((c) => `n°${c.id} (${c.members})`);
+    lines.push(`Colonies : ${shown.join(' · ')}`);
+  }
+  const name = colonies.length > 1 || colony.parent >= 0 ? `Colonie n°${colony.id}` : 'Colonie';
+  lines.push(
+    `${name} : ${colony.members} individu(s) · ${colony.births} naissance(s) · ` +
       `${colony.deaths} mort(s)`,
+  );
+  if (colony.parent >= 0) {
+    lines.push(`Fille de la colonie n°${colony.parent}, fondée le jour ${colony.foundedDay}`);
+  }
+  lines.push(
     `${colony.shelters} abri(s), ${colony.beds} lit(s)` +
       (colony.fields ? ` · ${colony.fields} champ(s), ${colony.planted} plant(s)` : ''),
-  ];
+  );
   const h = colony.harmony;
   if (h && h.focus >= 0) {
     const parts = COMPONENTS.map((name, k) => `${name} ${h.components[k].toFixed(2)}`);
@@ -77,6 +90,23 @@ export function formatColony(colony) {
         lines.push(`  ${shown.slice(i, i + PRICES_PER_LINE).join(' · ')}`);
       }
     }
+  }
+  const exp = colony.expedition;
+  if (exp) {
+    const where = `(${exp.x}, ${exp.y})`;
+    const state = !exp.posted
+      ? `site trouvé ${where}, le chef #${exp.leader} rentre l’annoncer`
+      : exp.recruiting
+        ? `recrute pour ${where}, ${exp.members} inscrit(s), menée par #${exp.leader}`
+        : `en route vers ${where}, ${exp.members} membre(s), menée par #${exp.leader}`;
+    lines.push(`Expédition : ${state}`);
+  } else if (colony.scout >= 0) lines.push(`Éclaireur : #${colony.scout}`);
+  for (const r of colony.relations ?? []) {
+    const kin = r.kin ? ` (${r.kin})` : '';
+    lines.push(
+      `Colonie n°${r.id}${kin} : camp (${r.camp.x}, ${r.camp.y}) · ${r.meetings} rencontre(s) · ` +
+        `${r.trades} caravane(s)`,
+    );
   }
   if (colony.scribe >= 0) lines.push(`Scribe : #${colony.scribe}`);
   if (colony.inventor >= 0) lines.push(`Inventeur : #${colony.inventor}`);

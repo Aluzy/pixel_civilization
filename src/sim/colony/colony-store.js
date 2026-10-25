@@ -18,6 +18,19 @@ export const MAX_GUARDS = 12;
 /** Most cooks a colony keeps at once. */
 export const MAX_COOKS = 8;
 
+/** Most colonies in a game (relation sheets are preallocated for each). */
+export const MAX_COLONIES = 16;
+
+/** Most members of an expedition. */
+export const MAX_EXPEDITION = 12;
+
+/** States of a colony's expedition. */
+export const Expedition = Object.freeze({
+  NONE: 0,
+  RECRUITING: 1, // Posted on the blackboard: members may join at the camp.
+  TRAVELLING: 2, // On its way to the site.
+});
+
 /** Most contributors remembered per project. */
 export const MAX_CONTRIBUTORS = 8;
 
@@ -208,6 +221,30 @@ export class Colony {
     this.bought = new Int32Array((jobCount + 1) * goods);
     this.jobHolders = new Int32Array(Math.max(1, jobCount));
     this.jobFirst = new Uint8Array(Math.max(1, jobCount));
+    // Migration (docs/design/15-colonies-et-migration.md): the colony it was founded from (-1 for
+    // the first) and when; its expedition (state, leader, site, members, since when), the last one
+    // and the member scouting for a site.
+    this.parent = -1;
+    this.foundedTick = 0;
+    this.expState = Expedition.NONE;
+    this.expLeader = -1;
+    this.expX = 0;
+    this.expY = 0;
+    this.expTick = 0;
+    this.expMembers = new Int32Array(MAX_EXPEDITION).fill(-1);
+    this.lastExpedition = -0x40000000;
+    this.scout = -1;
+    this.scoutTick = 0;
+    // Relation sheets, one per other colony: known, its camp, kin, meetings of members, trades,
+    // its counter's prices as last brought back, and when.
+    this.relKnown = new Uint8Array(MAX_COLONIES);
+    this.relCampX = new Int32Array(MAX_COLONIES);
+    this.relCampY = new Int32Array(MAX_COLONIES);
+    this.relKin = new Uint8Array(MAX_COLONIES);
+    this.relMeetings = new Int32Array(MAX_COLONIES);
+    this.relTrades = new Int32Array(MAX_COLONIES);
+    this.relPrice = new Float64Array(MAX_COLONIES * goods);
+    this.relPriceTick = new Int32Array(MAX_COLONIES).fill(-1);
     /** @type {Project[]} */
     this.projects = [];
     for (let i = 0; i < cfg.projectSlots; i++) this.projects.push(new Project(goods));
@@ -410,5 +447,48 @@ export class Colony {
     h.typedArray(this.demand);
     h.typedArray(this.sold).typedArray(this.bought).typedArray(this.jobHolders);
     h.typedArray(this.jobFirst);
+    h.uint32(this.parent).uint32(this.foundedTick).uint32(this.expState).uint32(this.expLeader);
+    h.uint32(this.expX).uint32(this.expY).uint32(this.expTick).typedArray(this.expMembers);
+    h.uint32(this.lastExpedition).uint32(this.scout).uint32(this.scoutTick);
+    h.typedArray(this.relKnown).typedArray(this.relCampX).typedArray(this.relCampY);
+    h.typedArray(this.relKin).typedArray(this.relMeetings).typedArray(this.relTrades);
+    h.typedArray(this.relPrice).typedArray(this.relPriceTick);
+  }
+
+  /**
+   * @param {number} id
+   * @returns {boolean} True if the agent is in the colony's expedition.
+   */
+  inExpedition(id) {
+    if (this.expState === Expedition.NONE) return false;
+    for (let k = 0; k < MAX_EXPEDITION; k++) if (this.expMembers[k] === id) return true;
+    return false;
+  }
+
+  /**
+   * Units of a good in the stock that no building project has claimed.
+   * @param {number} good
+   * @returns {number}
+   */
+  freeStock(good) {
+    let n = this.stock[good];
+    for (const p of this.projects) {
+      if (p.kind !== ProjectKind.NONE && p.kind !== ProjectKind.PANTRY) n -= p.delivered[good];
+    }
+    return n > 0 ? n : 0;
+  }
+
+  /** @returns {number} Members of the expedition. */
+  expeditionSize() {
+    let n = 0;
+    for (let k = 0; k < MAX_EXPEDITION; k++) if (this.expMembers[k] >= 0) n++;
+    return n;
+  }
+
+  /** @returns {void} */
+  clearExpedition() {
+    this.expState = Expedition.NONE;
+    this.expLeader = -1;
+    this.expMembers.fill(-1);
   }
 }

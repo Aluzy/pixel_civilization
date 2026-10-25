@@ -19,7 +19,7 @@ import { describeTick, phaseIndexAt } from './core/clock.js';
 import { EventLog, EventType } from './core/events.js';
 import { createHasher, hashCoords } from './core/hash.js';
 import { createRng, seedToKey } from './core/rng.js';
-import { Colony } from './colony/colony-store.js';
+import { Colony, Expedition, MAX_COLONIES } from './colony/colony-store.js';
 import { History } from './colony/history.js';
 import { lifespanOf } from './colony/replication.js';
 import { buildCatalog } from './crafting/catalog.js';
@@ -162,6 +162,8 @@ export const RNG_STREAMS = Object.freeze([
  * @property {import('./economy/jobs.js').JobTable} jobs
  * @property {Float64Array} basePrices - Per good: price when a counter opens, in écus.
  * @property {Int32Array} wantedGoods - Scratch: units the projects of a colony still need.
+ * @property {import('./colony/colony-store.js').Colony[]} colonies - The state's colonies (same
+ *   array), for rules that read a colony from an agent alone.
  */
 
 /**
@@ -425,6 +427,7 @@ function buildContext(balance, tables, agents, seedKey) {
       harvestTicks,
     }),
     shelterCodes,
+    shelterCode: shelterCodes.indexOf(1),
     predatorBiomes: Uint8Array.from(tables.biomes, (b) => (predator.biomes.includes(b.id) ? 1 : 0)),
     predatorPhases: Uint8Array.from(phases, (p) => (predator.phases.includes(p) ? 1 : 0)),
     denBiomes: Uint8Array.from(tables.biomes, (b) => (den.biomes.includes(b.id) ? 1 : 0)),
@@ -474,6 +477,7 @@ function buildContext(balance, tables, agents, seedKey) {
     plotRecipe: plotCode > 0 ? catalog.recipeForStructure[plotCode] : -1,
     foodTables: buildFood(catalog, tables, cropResource, balance.cooking.dishFactor),
     jobs: JOBS,
+    colonies: [],
     basePrices: new Float64Array(0),
     wantedGoods: new Int32Array(catalog.goodCount),
     scheduleRegrowth(state, x, y, resource) {
@@ -683,6 +687,7 @@ export class Simulation {
     /** @type {SimContext} */
     this.ctx = buildContext(balance, tables, agents, seedKey);
     this.tables = tables;
+    this.ctx.colonies = this.state.colonies;
     this.state.colonies[0].price.set(this.ctx.basePrices);
 
     const first = agents.create({
@@ -845,7 +850,69 @@ export class Simulation {
       scribe: colony.scribe,
       knowledge: this.describeKnowledge(),
       market: this.describeMarket(colony),
+      parent: colony.parent,
+      foundedDay: Math.floor(colony.foundedTick / this.state.balance.time.ticksPerDay) + 1,
+      expedition:
+        colony.expState === Expedition.NONE
+          ? null
+          : {
+              recruiting: colony.expState === Expedition.RECRUITING,
+              posted: colony.expTick >= 0,
+              leader: colony.expLeader,
+              x: colony.expX,
+              y: colony.expY,
+              members: colony.expeditionSize(),
+            },
+      scout: colony.scout,
+      relations: this.describeRelations(colony),
     };
+  }
+
+  /**
+   * One line per colony: id, mother, members, camp.
+   * @returns {{ id: number, parent: number, members: number,
+   *   camp: { x: number, y: number } | null }[]}
+   */
+  describeColonies() {
+    return this.state.colonies.map((c) => ({
+      id: c.id,
+      parent: c.parent,
+      members: c.members,
+      camp: c.hasCamp ? { x: c.campX, y: c.campY } : null,
+    }));
+  }
+
+  /**
+   * A colony's relation sheets (docs/design/15-colonies-et-migration.md): the colonies it knows,
+   * kin or not, where their camp is, meetings of members, trades, and when it last heard of
+   * their prices.
+   * @param {Colony} colony
+   * @returns {{ id: number, kin: string | null, camp: { x: number, y: number },
+   *   meetings: number, trades: number, prices: number }[]}
+   */
+  describeRelations(colony) {
+    const out = [];
+    for (let k = 0; k < MAX_COLONIES; k++) {
+      if (colony.relKnown[k] !== 1) continue;
+      const other = this.state.colonies[k];
+      const kin =
+        colony.relKin[k] !== 1
+          ? null
+          : colony.parent === k
+            ? 'mère'
+            : other && other.parent === colony.id
+              ? 'fille'
+              : 'parente';
+      out.push({
+        id: k,
+        kin,
+        camp: { x: colony.relCampX[k], y: colony.relCampY[k] },
+        meetings: colony.relMeetings[k],
+        trades: colony.relTrades[k],
+        prices: colony.relPriceTick[k],
+      });
+    }
+    return out;
   }
 
   /**
@@ -1042,6 +1109,8 @@ export class Simulation {
       kills: a.kills[id],
       fightRisk: a.fightRisk[id],
       generation: a.generation[id],
+      colony: a.colony[id],
+      caravan: a.caravanTo[id] >= 0 ? { to: a.caravanTo[id], back: a.caravanLeg[id] === 2 } : null,
       lifespan: a.lifespan[id],
       fear: a.fear[id],
       combatSkill: a.combatSkill[id],

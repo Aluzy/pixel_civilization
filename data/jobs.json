@@ -41,6 +41,7 @@
       "goal": "colony",
       "sells": ["stone", "clay", "coal", "copper", "iron"]
     },
+    { "id": "merchant", "name": "Marchand", "goal": "trade", "trade": true, "gene": "curiosity" },
     { "id": "guard", "name": "Garde", "goal": "guard", "post": "guard" },
     { "id": "inventor", "name": "Inventeur", "goal": "invent", "post": "inventor" },
     { "id": "scribe", "name": "Scribe", "goal": "write", "post": "scribe" }

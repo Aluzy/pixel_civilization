@@ -20,6 +20,7 @@ import { askOf, bidOf } from './prices.js';
  * @property {number[]} sells - Goods it brings to the counter.
  * @property {number[]} makes - Kitchen recipes it makes (one known is enough).
  * @property {number} gene - Gene index that draws towards it, -1 if none.
+ * @property {boolean} trade - Caravans to other colonies (needs another colony known).
  */
 
 /**
@@ -69,6 +70,7 @@ export function buildJobs(data, catalog, tables, goalIndex, genes) {
       sells: (j.sells ?? []).map(good),
       makes: (j.makes ?? []).map(recipe),
       gene,
+      trade: j.trade === true,
     };
   });
   const workGoals = new Uint8Array(Object.keys(goalIndex).length);
@@ -86,6 +88,7 @@ export function buildJobs(data, catalog, tables, goalIndex, genes) {
  */
 export function canDo(ctx, job, id) {
   if (job.post) return false;
+  if (job.trade) return bestCaravan(ctx, id, null) > 0;
   const book = ctx.agents.recipes[id];
   for (const r of job.requires) if (!book.knows(r)) return false;
   if (job.makes.length === 0) return true;
@@ -168,6 +171,7 @@ export function expectedIncome(ctx, j, id) {
 export function estimatedIncome(ctx, job, id) {
   const a = ctx.agents;
   const cfg = ctx.balance.economy;
+  if (job.trade) return bestCaravan(ctx, id, null);
   const seen = a.priceSeen;
   const o = id * a.goodSlots;
   let best = 0;
@@ -277,4 +281,65 @@ export function saleGood(ctx, colony, id) {
     }
   }
   return best;
+}
+
+/**
+ * The best caravan the agent's colony knows of (docs/design/15-colonies-et-migration.md,
+ * « Commerce »): a good bought at its counter and sold at another colony's, by the prices posted
+ * at the camp (its own as it saw them, the other's as last brought back). Returns the income it
+ * promises per day of work (a load per trip, there and back), 0 if none pays.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {Int32Array | null} out - Receives colony, good of the best one.
+ * @returns {number}
+ */
+export function bestCaravan(ctx, id, out) {
+  const a = ctx.agents;
+  const c = a.colony[id];
+  if (c < 0) return 0;
+  const home = ctx.colonies[c];
+  const cfg = ctx.balance.economy;
+  const G = a.goodSlots;
+  const o = id * G;
+  const load = ctx.capacity(id);
+  let best = 0;
+  for (let k = 0; k < home.relKnown.length; k++) {
+    if (k === c || home.relKnown[k] !== 1 || home.relPriceTick[k] < 0) continue;
+    // Enough caravans already on that road (they left from the camp: everyone saw them go).
+    if (a.caravanTo[id] !== k && caravansTo(ctx, c, k) >= cfg.caravans) continue;
+    const far = Math.max(
+      Math.abs(home.relCampX[k] - home.campX),
+      Math.abs(home.relCampY[k] - home.campY),
+    );
+    const trip = 2 * far * cfg.ticksPerTile + cfg.tripOverhead;
+    for (let g = 1; g < G; g++) {
+      if (a.priceSeen[o + g] <= 0) continue;
+      const margin = bidOf(home.relPrice[k * G + g]) - askOf(a.priceSeen[o + g], cfg.spread);
+      const v = (margin * load * cfg.workTicks) / trip;
+      if (v > best) {
+        best = v;
+        if (out) {
+          out[0] = k;
+          out[1] = g;
+        }
+      }
+    }
+  }
+  return best;
+}
+
+/**
+ * Merchants of colony `c` on their way to or back from colony `k`.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} c
+ * @param {number} k
+ * @returns {number}
+ */
+function caravansTo(ctx, c, k) {
+  const a = ctx.agents;
+  let n = 0;
+  for (let id = 0; id < a.highWater; id++) {
+    if (a.alive[id] === 1 && a.colony[id] === c && a.caravanTo[id] === k) n++;
+  }
+  return n;
 }

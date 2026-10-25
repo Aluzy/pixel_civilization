@@ -19,6 +19,21 @@ import { carriesWriting, wantsMap } from '../knowledge/writing.js';
 import { senseCooking } from '../agents/cook-work.js';
 import { FarmJob } from '../farming/farm-jobs.js';
 import { considerJob, saleGood } from '../economy/jobs.js';
+import { senseMigration } from '../colony/migration.js';
+import { senseTrade } from '../agents/trade-work.js';
+
+/** Inputs of the colony's work, silenced for a member who leaves on an expedition. */
+const AWAY_INPUTS = Object.freeze([
+  INPUT.colonyTask,
+  INPUT.canReplicate,
+  INPUT.unwritten,
+  INPUT.unread,
+  INPUT.guardDuty,
+  INPUT.huntDuty,
+  INPUT.farmWork,
+  INPUT.cookDuty,
+  INPUT.inventDuty,
+]);
 import { roleOf } from '../economy/market.js';
 import { EventType } from '../core/events.js';
 
@@ -163,7 +178,23 @@ function senseInputs(state, ctx, id) {
   const farming = a.farmJob[id] !== FarmJob.NONE;
   input[INPUT.farmWork] = sower ? (farming ? 1 : a.farmSeen[id] === 1 ? 0.8 : 0) : 0;
   input[INPUT.cookDuty] = senseCooking(state, ctx, id, home) ? 1 : 0;
+  // The inventor's post lapses when the colony becomes too small to spare it.
+  if (home !== null && home.inventor === id && home.members < ctx.balance.colony.inventorMembers) {
+    home.inventor = -1;
+  }
   input[INPUT.inventDuty] = home !== null && home.inventor === id ? 1 : 0;
+  input[INPUT.migrateDuty] = senseMigration(
+    state,
+    ctx,
+    id,
+    home,
+    home !== null && atCamp(ctx, home, id),
+  );
+  input[INPUT.tradeDuty] = senseTrade(ctx, id, home) ? 1 : 0;
+  // Scouting or on an expedition, the colony's work is left to those who stay.
+  if (home !== null && (home.scout === id || home.inExpedition(id))) {
+    for (const k of AWAY_INPUTS) input[k] = 0;
+  }
   // One inventor at a time, once the colony is large enough to spare one: the first member at the
   // camp claims it, for a while (it remembers its failed trials).
   if (

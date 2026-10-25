@@ -136,6 +136,20 @@
       ]
     },
     {
+      "id": "migrate",
+      "name": "Migrer",
+      "level": "harmony",
+      "considerations": [
+        { "input": "migrateDuty", "curve": { "type": "linear", "m": 0.75, "b": 0 } }
+      ]
+    },
+    {
+      "id": "trade",
+      "name": "Commercer",
+      "level": "efficiency",
+      "considerations": [{ "input": "tradeDuty", "curve": { "type": "linear", "m": 0.6, "b": 0 } }]
+    },
+    {
       "id": "rest",
       "name": "Se reposer",
       "level": "survival",

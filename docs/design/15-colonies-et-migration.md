@@ -1,6 +1,6 @@
 # 15 — Migration et colonies multiples
 
-> Chantier préparé après le J7 (décision 0020). Rien n'est encore implémenté. Valeurs 🟡 à caler.
+> Chantier préparé après le J7 (décision 0020), implémenté en partie au J11 (décision 0024) : voir « Ce que fait le J11 » à la fin, qui prime sur les valeurs de départ 🟡 des sections précédentes.
 
 Aujourd'hui une seule colonie naît du premier pixel et ne se divise jamais (l'exploration est tenue en laisse à 40 cases du camp). Des pixels doivent pouvoir **partir fonder leur propre colonie**, qui vivra ensuite sa vie : son camp, son tableau noir, sa bibliothèque, ses métiers, ses relations avec les autres.
 
@@ -47,3 +47,69 @@ Il faut aussi un **lieu en vue** : un endroit remémoré (ou lu sur une carte) a
 ## Critère de sortie proposé (J11)
 
 Sur la majorité des graines, au moins deux colonies existent au jour 150, la seconde fondée par une expédition partie de la première ; au moins un échange entre colonies (caravane ou troc) est observé ; la filiation et les relations sont visibles dans l'inspecteur.
+
+## Ce que fait le J11
+
+Implémenté au J11 (décision 0024). Là où il s'écarte des sections précédentes, c'est ce qui suit qui vaut.
+
+**Pourquoi partir** : la seule raison retenue est la foule, telle que lue au tableau noir.
+
+- La pression vaut (membres − 100) / 150, bornée à [0, 1], × (1 + 0,5 × (curiosité − sociabilité)).
+- Saturation des lits, de la réserve, harmonie et danger ne comptent pas encore.
+
+**Trouver un site** : un **éclaireur** à la fois, au camp, dont la pression dépasse 0,3.
+
+- Il n'y en a qu'une fois que 15 jours sont passés depuis la dernière expédition.
+- Il prend 6 portions de nourriture et part pour 20 jours au plus.
+- Il va de point en point d'un anneau de 56 à 90 cases autour du camp, au-delà de la laisse d'exploration, et dort où il se trouve.
+- Un site convient quand il voit de l'eau, que de la nourriture est vue ou remémorée à 10 cases, et qu'aucun camp connu n'est à moins de 56 cases.
+- Les matériaux ne sont pas exigés : le chef apporte ceux du premier abri, et la jeune colonie cherche le reste.
+
+**Partir à plusieurs** :
+
+- L'éclaireur devient le chef de l'expédition. Il rentre l'annoncer au tableau noir, et c'est seulement là que le recrutement commence.
+- Pendant 2 jours, les membres au camp dont la pression dépasse 0,2 s'inscrivent (8 au plus). Ils apprennent où est l'eau du site et quittent leurs postes, tâches et travaux.
+- À 4 membres au moins, l'expédition part ; à moins, elle est abandonnée au bout de 4 jours.
+- **Provisions** :
+  - 6 portions de nourriture par membre, prises à la réserve ;
+  - les matériaux d'un abri pour le chef ;
+  - une copie du livre le plus riche de la bibliothèque, si la réserve a le papier et l'encre d'un livre : le savoir voyage.
+- En route, chacun marche vers le site, mange ce qu'il porte et dort où il est. L'expédition est abandonnée après 8 jours de voyage.
+
+**Fonder** :
+
+- Sur le site, qui sait bâtir un abri le bâtit avec ce qu'il porte, ou récolte sur place ce qui manque.
+- Cet abri, à 10 cases du site au plus, crée la nouvelle colonie : identifiant, camp, comptoir aux prix de base, colonie mère, jour de fondation.
+- Les membres de l'expédition y passent avec leur savoir et leurs écus. Les écus de la nouvelle colonie sont frappés dès le lendemain.
+- Un projet qui attend depuis 2 jours laisse un membre partir chercher un matériau dont il ne connaît pas de gisement (score × 0,4) : c'est ainsi que la fille trouve sa pierre.
+
+**Relations** (fiches au tableau noir de chaque colonie, jusqu'à 16 colonies) :
+
+- **Contenu** : colonie connue ou non, son camp, la parenté, les rencontres de membres qui se parlent, les caravanes, et les prix de son comptoir avec leur date.
+- **À la fondation** : la mère et la fille se connaissent et sont parentes. La fille connaît les prix de la mère ; la mère sait qu'un comptoir neuf ouvre aux prix de base.
+
+**Caravanes** (métier **marchand**, objectif **Commercer**, efficacité, 0,6, pesé par la curiosité) :
+
+- On peut être marchand quand sa colonie connaît une autre colonie et ses prix. Le revenu attendu est la meilleure marge (prix d'achat de l'autre comptoir − prix de vente du sien) × la charge × 480 / (2 × distance × 3 + 300).
+- **Un voyage** :
+  - acheter une charge au comptoir de sa colonie ;
+  - marcher jusqu'à l'autre camp (au-delà de la laisse) et y vendre ;
+  - y acheter ce que son comptoir paie mieux ;
+  - rentrer, vendre, et afficher les prix vus.
+- Deux caravanes au plus sur une même route.
+- La colonie visitée apprend le camp de la colonie du marchand.
+- Le commerce ne fait pas encore de troc direct entre individus : il passe par les comptoirs.
+
+**Interface** :
+
+- Le bloc Colonie montre la colonie de l'individu sélectionné (la première sinon), avec :
+  - la liste des colonies et leurs membres ;
+  - la filiation (fille de, jour de fondation) ;
+  - l'expédition (site trouvé, recrutement, en route) ou l'éclaireur ;
+  - une ligne par colonie connue (parenté, camp, rencontres, caravanes).
+- L'inspecteur nomme la colonie de l'individu et sa caravane.
+- La chronique annonce l'expédition, la fondation et la première caravane de chaque route.
+
+**Mesures** (10 graines, 150 jours) : voir la feuille de route ([11](11-feuille-de-route.md), J11).
+
+**Reporté** : gel des blocs lointains, calque des territoires, tableau de bord par colonie, incidents et rancunes (J13), troc direct entre individus, groupe soudé en voyage, autres raisons de partir (lits, harmonie, danger).

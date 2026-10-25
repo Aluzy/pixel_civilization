@@ -33,7 +33,7 @@
       "name": "Curiosité",
       "range": [0, 1],
       "start": 0.5,
-      "goals": ["explore", "invent"]
+      "goals": ["explore", "invent", "migrate"]
     },
     {
       "id": "risk",

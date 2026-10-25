@@ -256,7 +256,7 @@ export class UiScene extends Phaser.Scene {
       if (extra > 0) this.chronicle.splice(0, extra);
       this.drawChronicle();
     }
-    const colony = formatColony(frame.colony);
+    const colony = formatColony(frame.colony, frame.colonies);
     this.colonyText.setText(colony).setVisible(colony.length > 0 && !this.phone);
 
     let panel = null;

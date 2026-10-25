@@ -25,6 +25,8 @@ const NOTE_TEXT = {
   [PlanNote.HUNTING]: 'chasse',
   [PlanNote.FARMING]: 'travail aux champs',
   [PlanNote.COOKING]: 'cuisine',
+  [PlanNote.MIGRATING]: 'migration',
+  [PlanNote.TRADING]: 'caravane',
 };
 
 /**
@@ -139,7 +141,12 @@ export function formatAgent(agent, names, time) {
       : agent.scribe
         ? 'scribe'
         : agent.role;
-  lines.push(`${lineage} · ${agent.children} réplique(s) · rôle : ${role}`);
+  const home = agent.colony > 0 ? ` · colonie n°${agent.colony}` : '';
+  lines.push(`${lineage} · ${agent.children} réplique(s) · rôle : ${role}${home}`);
+  if (agent.caravan) {
+    const leg = agent.caravan.back ? 'retour de' : 'en route vers';
+    lines.push(`Caravane : ${leg} la colonie n°${agent.caravan.to}`);
+  }
   if (eco) lines.push(...formatEconomy(eco, time));
   if (agent.task) lines.push(`Tâche : ${agent.task}`);
   if (agent.social.length > 0) {

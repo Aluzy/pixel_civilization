@@ -112,6 +112,8 @@ export const FILTERS = Object.freeze([
       EventType.HARVEST,
       EventType.FIRST_DISH,
       EventType.FIRST_JOB,
+      EventType.COLONY_FOUNDED,
+      EventType.FIRST_TRADE,
     ],
   },
   {
@@ -128,6 +130,9 @@ export const FILTERS = Object.freeze([
       EventType.IMITATED,
       EventType.MISTAKEN,
       EventType.FIRST_JOB,
+      EventType.EXPEDITION,
+      EventType.COLONY_FOUNDED,
+      EventType.FIRST_TRADE,
     ],
   },
   {
@@ -136,6 +141,7 @@ export const FILTERS = Object.freeze([
       EventType.FIRST_JOB,
       EventType.FIRST_SALE,
       EventType.FIRST_PURCHASE,
+      EventType.FIRST_TRADE,
       EventType.FIRST_DELIVERY,
       EventType.HARVEST,
       EventType.FIRST_DISH,
@@ -225,6 +231,14 @@ export function formatEvent(event, time, names) {
   } else if (event.type === EventType.FIRST_SALE) {
     const as = event.other >= 0 && job(event.other) ? ` (${job(event.other)})` : '';
     text = `Première vente ${ofName(good)} au comptoir, par ${who}${as}.`;
+  } else if (event.type === EventType.EXPEDITION) {
+    text = `${who} annonce une expédition pour fonder une colonie ${where}.`;
+  } else if (event.type === EventType.COLONY_FOUNDED) {
+    text = `${who} fonde la colonie n°${event.subject}, fille de la colonie n°${event.other}, ${where}.`;
+  } else if (event.type === EventType.FIRST_TRADE) {
+    text =
+      `Première caravane de la colonie n°${event.other} chez la colonie n°${event.subject}, ` +
+      `menée par ${who}.`;
   } else if (event.type === EventType.FIRST_PURCHASE) {
     const from = event.other >= 0 ? ` : il venait de l’individu #${event.other}` : '';
     text = `Premier achat ${ofName(good)} au comptoir, par ${who}${from}.`;
