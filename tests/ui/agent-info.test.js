@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import balance from '../../data/balance.json' with { type: 'json' };
 import jobData from '../../data/jobs.json' with { type: 'json' };
 import { EventType } from '../../src/sim/core/events.js';
+import { foundColony } from '../../src/sim/colony/migration.js';
 import { sell } from '../../src/sim/economy/market.js';
 import { CATALOG, JOBS, PROJECTS, Simulation, WORLD_TABLES } from '../../src/sim/simulation.js';
 import { bar, formatAgent } from '../../src/ui/agent-info.js';
@@ -205,5 +206,34 @@ describe('economy panels', () => {
       NAMES,
     );
     expect(buy).toContain('Premier achat d’argile au comptoir, par l’individu #4 : il venait');
+  });
+});
+
+describe('colonies panels', () => {
+  it('shows the colonies, the filiation and the relations, and tells founding and trade', () => {
+    const sim = new Simulation({ seed: 2, balance });
+    const a = sim.agents;
+    const mother = sim.state.colonies[0];
+    mother.hasCamp = true;
+    mother.campX = a.x[0];
+    mother.campY = a.y[0];
+    mother.expState = 2;
+    mother.expMembers[0] = 0;
+    foundColony(sim.state, sim.ctx, 0, ...[mother.expX, mother.expY]);
+    const colony = sim.describeColony(1);
+    const lines = formatColony(colony, sim.describeColonies());
+    expect(lines[0]).toBe('Colonies : n°1 (1)');
+    expect(lines).toContain(`Colonie n°1 : 1 individu(s) · 0 naissance(s) · 0 mort(s)`);
+    expect(lines).toContain('Fille de la colonie n°0, fondée le jour 1');
+    expect(lines.some((l) => l.startsWith('Colonie n°0 (mère) : camp '))).toBe(true);
+    const at = { tick: 0, x: 3, y: 4, agent: 7 };
+    expect(
+      formatEvent({ ...at, type: EventType.COLONY_FOUNDED, subject: 1, other: 0 }, balance.time),
+    ).toContain('L’individu #7 fonde la colonie n°1, fille de la colonie n°0, (3, 4).');
+    expect(
+      formatEvent({ ...at, type: EventType.FIRST_TRADE, subject: 1, other: 0 }, balance.time),
+    ).toContain(
+      'Première caravane de la colonie n°0 chez la colonie n°1, menée par l’individu #7.',
+    );
   });
 });
