@@ -168,7 +168,7 @@
     "taskInterval": 50,
     "foodPerMember": 4,
     "habitBonus": 1,
-    "maxPopulation": 600,
+    "maxPopulation": 500,
     "exploreLeash": 40,
     "homeRange": 80,
     "researchTicks": 7200,
@@ -177,6 +177,8 @@
     "inventorTicks": 14400,
     "inventorExplore": 0.3,
     "notebookSize": 2048,
+    "prospectFactor": 0.4,
+    "prospectDays": 2,
     "inventorSample": 3,
     "inventorFocus": 0.5
   },
@@ -332,6 +334,28 @@
     "apprenticeDays": 5,
     "birthShare": 0.3,
     "pleasureValue": 0.1,
-    "tradeSlots": 6
+    "tradeSlots": 6,
+    "ticksPerTile": 3,
+    "caravans": 2,
+    "tripOverhead": 300
+  },
+  "migration": {
+    "minMembers": 100,
+    "fullMembers": 250,
+    "scoutPressure": 0.3,
+    "joinPressure": 0.2,
+    "genePull": 0.5,
+    "minDistance": 56,
+    "maxDistance": 90,
+    "siteRadius": 10,
+    "minSize": 4,
+    "maxSize": 8,
+    "recruitTicks": 2400,
+    "travelDays": 8,
+    "everyDays": 15,
+    "provisionPortions": 6,
+    "scoutTicks": 24000,
+    "scoutLeg": [40, 70],
+    "arriveRadius": 3
   }
 }

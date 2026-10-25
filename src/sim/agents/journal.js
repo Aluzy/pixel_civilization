@@ -35,6 +35,8 @@ export const PlanNote = Object.freeze({
   HUNTING: 17, // Hunting a den or a predator.
   FARMING: 18, // A farm job: water, harvest, sow, make a plot.
   COOKING: 19, // A batch for the colony's kitchen.
+  MIGRATING: 20, // Scouting for a site, or on an expedition to found a colony.
+  TRADING: 21, // A caravan to another colony's counter.
 });
 
 /**

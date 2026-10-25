@@ -11,6 +11,9 @@ import { readBehaviour, writeBehaviour } from './scribe-work.js';
 import { guardBehaviour, hideBehaviour, huntBehaviour } from './guard-work.js';
 import { farmBehaviour } from './farm-work.js';
 import { cookBehaviour } from './cook-work.js';
+import { migrateBehaviour } from './migrate-work.js';
+import { tradeBehaviour } from './trade-work.js';
+import { Expedition } from '../colony/colony-store.js';
 import { take } from '../economy/market.js';
 import { canHarvest } from './actions.js';
 
@@ -97,7 +100,7 @@ function unusedMaterial(ctx, id) {
 }
 
 /**
- * At the camp, the inventor takes from the stock what a station it knows how to make but has not
+ * At the camp, the inventor takes from the stock (what no building project waits for) what a station it knows how to make but has not
  * seen built needs (the colony's materials, for the colony's station), and a few units of each
  * material it lacks: what it tries next is then at hand.
  * @param {import('../simulation.js').SimState} state
@@ -111,7 +114,7 @@ function takeSamples(state, ctx, colony, id) {
   const catalog = ctx.catalog;
   const room = () => Math.floor(ctx.capacity(id) - a.carriedTotal(id));
   const takeUpTo = (g, units) => {
-    const n = Math.min(units - a.carried(id, g), colony.stock[g], room());
+    const n = Math.min(units - a.carried(id, g), colony.freeStock(g), room());
     if (n <= 0) return;
     take(colony, g, n);
     a.addCarried(id, g, n, state.tick);
@@ -261,6 +264,12 @@ export function planGoal(state, ctx, id, goal, plan) {
     case 'invent':
       invent(state, ctx, id, plan);
       return;
+    case 'migrate':
+      migrateBehaviour(state, ctx, id, plan);
+      return;
+    case 'trade':
+      tradeBehaviour(state, ctx, id, plan);
+      return;
     case 'explore': {
       // The colony's inventor spends its curiosity trying new combinations instead.
       const colony = campOf(state, ctx, id);
@@ -367,8 +376,17 @@ function goToSleep(state, ctx, id, plan) {
     plan.note = PlanNote.SHELTER;
     return;
   }
-  // Home: the nearest shelter of its colony, which a member never forgets.
+  // Home: the nearest shelter of its colony, which a member never forgets (not on an expedition).
   const colony = campOf(state, ctx, id);
+  const away =
+    colony !== null &&
+    (colony.scout === id ||
+      agents.caravanTo[id] >= 0 ||
+      (colony.expState === Expedition.TRAVELLING && colony.inExpedition(id)));
+  if (away) {
+    startHere(ctx, id, Action.SLEEP);
+    return;
+  }
   if (colony && colony.shelterCount > 0 && goHome(ctx, colony, id, plan)) return;
   const memory = agents.memory[id];
   const i = memory.nearest(ctx.shelterSubjects, agents.x[id], agents.y[id]);

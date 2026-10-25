@@ -5,6 +5,7 @@ import { EventType } from '../core/events.js';
 import { ProjectKind } from './colony-store.js';
 import { stockPortions } from '../farming/food.js';
 import { sell, take } from '../economy/market.js';
+import { foundColony } from './migration.js';
 
 // Rules of collective work (docs/design/06-ia.md, couche 4): the blackboard is read and written
 // at the camp only; projects are split into tasks ("bring 10 wood"), reserved by members, and
@@ -124,6 +125,7 @@ export function shareBoard(state, ctx, colony, id) {
   a.farmSeen[id] = colony.farmOpen > 0 ? 1 : 0;
   a.pantryFalling[id] = colony.pantryFalling() ? 1 : 0;
   a.focusSeen[id] = colony.focus;
+  a.crowdSeen[id] = Math.min(65535, colony.members);
   // The counter's prices are posted beside the blackboard.
   a.priceSeen.set(colony.price, id * a.goodSlots);
   for (let i = 0; i < memory.count; i++) {
@@ -207,6 +209,7 @@ export function chooseTask(state, ctx, colony, id) {
   let bestGood = 0;
   let total = 0;
   for (let g = 1; g < a.goodSlots; g++) total += a.gathered[id * a.goodSlots + g];
+  const waited = cfg.prospectDays * ctx.balance.time.ticksPerDay;
   const job = a.job[id];
   const sells =
     job >= 0 && colony.members >= ctx.balance.economy.jobMembers ? ctx.jobs.jobs[job].sells : null;
@@ -217,8 +220,11 @@ export function chooseTask(state, ctx, colony, id) {
       if (remaining(colony, p, g, colony.members, cfg, food, portion) <= 0) continue;
       const tool = ctx.catalog.requiredTool[g];
       if (tool < 0 || (tool > 0 && a.carried(id, tool) === 0)) continue;
+      // A good it knows no place of is sought for a project that has waited for days (a new
+      // colony looking for stone), after what it knows where to find.
       const i = memory.nearest(ctx.subjectMasks[g], colony.campX, colony.campY);
-      if (i < 0 && a.carried(id, g) === 0) continue;
+      const unknown = i < 0 && a.carried(id, g) === 0;
+      if (unknown && state.tick - p.startTick < waited) continue;
       const d =
         i < 0
           ? 0
@@ -230,8 +236,11 @@ export function chooseTask(state, ctx, colony, id) {
       const learnt = a.costPerUnit[id * a.goodSlots + g] / ctx.balance.learning.costScale;
       // Goods of its job come first.
       const trade = sells !== null && sells.includes(g) ? 1 + ctx.balance.economy.taskBonus : 1;
+      const seek = unknown ? cfg.prospectFactor : 1;
       const score =
-        (trade * urgency * speed * (1 + cfg.habitBonus * habit)) / (1 + d / 32) / (1 + learnt);
+        (seek * trade * urgency * speed * (1 + cfg.habitBonus * habit)) /
+        (1 + d / 32) /
+        (1 + learnt);
       if (score > bestScore) {
         bestScore = score;
         bestSlot = s;
@@ -354,6 +363,11 @@ export function takeMaterials(colony, ctx, id) {
 export function onBuilt(state, ctx, id, code, x, y) {
   const c = ctx.agents.colony[id];
   if (c < 0) return;
+  // The first shelter of an expedition on its site founds a colony.
+  if (ctx.shelterCodes[code] === 1 && foundColony(state, ctx, id, x, y)) {
+    ctx.agents.builds[id]++;
+    return;
+  }
   const colony = state.colonies[c];
   if (ctx.shelterCodes[code] === 1) {
     colony.addShelter(x, y);

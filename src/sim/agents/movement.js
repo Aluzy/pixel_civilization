@@ -3,6 +3,7 @@ import { EventType } from '../core/events.js';
 import { Action } from './action-types.js';
 import { memoryEvent, recall } from './beliefs.js';
 import { PlanNote } from './journal.js';
+import { Expedition } from '../colony/colony-store.js';
 
 // Getting somewhere with only what the agent perceives and remembers: shared by all behaviours.
 
@@ -125,6 +126,9 @@ function leash(state, ctx, id, out) {
   const c = ctx.agents.colony[id];
   if (c < 0 || !state.colonies[c].hasCamp) return;
   const colony = state.colonies[c];
+  // The scout, an expedition on its way and a caravan go beyond the colony's range.
+  const away = colony.expState === Expedition.TRAVELLING && colony.inExpedition(id);
+  if (colony.scout === id || away || ctx.agents.caravanTo[id] >= 0) return;
   const dx = out[0] - colony.campX;
   const dy = out[1] - colony.campY;
   const d = Math.sqrt(dx * dx + dy * dy);

@@ -69,12 +69,22 @@ function sendFrame() {
     skip: skip?.kind ?? null,
     agents: sim.agentPositions(),
     threats: sim.threatPositions(),
-    colony: sim.describeColony(0),
+    // The colony of the selected individual, else the first; and a line for each colony.
+    colony: sim.describeColony(selectedColony()),
+    colonies: sim.describeColonies(),
     auto: auto.enabled,
     events,
     selected: selected >= 0 ? sim.describeAgent(selected, selectedWithMap) : null,
     history: historyRows(),
   });
+}
+
+/**
+ * @returns {number} Colony of the selected individual, else 0.
+ */
+function selectedColony() {
+  if (selected < 0 || sim.agents.alive[selected] !== 1) return 0;
+  return Math.max(0, sim.agents.colony[selected]);
 }
 
 /**

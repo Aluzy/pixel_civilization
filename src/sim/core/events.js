@@ -43,6 +43,9 @@ export const EventType = Object.freeze({
   FIRST_JOB: 'firstJob',
   FIRST_SALE: 'firstSale',
   FIRST_PURCHASE: 'firstPurchase',
+  EXPEDITION: 'expedition',
+  COLONY_FOUNDED: 'colonyFounded',
+  FIRST_TRADE: 'firstTrade',
 });
 
 /** Events kept in memory; older ones are dropped (the count keeps growing). */

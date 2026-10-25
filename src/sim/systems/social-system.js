@@ -172,6 +172,19 @@ function ask(state, ctx, id) {
 }
 
 /**
+ * Members of two colonies who talk: each colony counts the meeting on its relation sheet.
+ * @param {import('../simulation.js').SimState} state
+ * @param {number} c
+ * @param {number} d
+ * @returns {void}
+ */
+function meet(state, c, d) {
+  if (c < 0 || d < 0 || c === d) return;
+  state.colonies[c].relMeetings[d]++;
+  state.colonies[d].relMeetings[c]++;
+}
+
+/**
  * Word of mouth: every `talkInterval` ticks (staggered by id), an agent at rest next to another
  * agent at rest exchanges one piece of knowledge with it, each way, and they grow closer; an
  * agent in need on the move asks its way.
@@ -197,6 +210,7 @@ export function socialSystem(state, ctx) {
       tell(state, ctx, other, id);
       befriend(state, ctx, id, other);
       befriend(state, ctx, other, id);
+      meet(state, a.colony[id], a.colony[other]);
       break;
     }
   }

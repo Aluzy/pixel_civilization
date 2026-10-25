@@ -3,6 +3,7 @@ import { ProjectKind } from '../colony/colony-store.js';
 import { fieldResource, openField } from '../colony/field.js';
 import { Component } from '../colony/harmony.js';
 import { countFarmJobs } from '../farming/farm-jobs.js';
+import { updateExpedition } from '../colony/migration.js';
 
 /**
  * Task generators of each colony (docs/design/06-ia.md, couche 4), every `taskInterval` ticks:
@@ -26,6 +27,7 @@ export function colonySystem(state, ctx) {
   }
   for (const colony of state.colonies) {
     if (!colony.hasCamp || colony.members === 0) continue;
+    updateExpedition(state, ctx, colony);
     // Shelters: one at a time for a small colony, more at once as it grows (a large colony has
     // many hands to gather the materials).
     let building = 0;

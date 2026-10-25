@@ -88,6 +88,15 @@ export class AgentStore {
     this.saleGood = new Uint8Array(max);
     this.saleAmount = new Uint16Array(max);
     this.saleTick = new Int32Array(max);
+    /** Members of its colony when it last read the blackboard, and provisions taken to migrate. */
+    this.crowdSeen = new Uint16Array(max);
+    this.provisioned = new Uint8Array(max);
+    // A merchant's caravan: colony it goes to (-1 none), 1 going there, 2 coming back, the good it
+    // carries to sell, and the prices it saw at that colony's counter.
+    this.caravanTo = new Int8Array(max).fill(-1);
+    this.caravanLeg = new Uint8Array(max);
+    this.caravanGood = new Uint8Array(max);
+    this.caravanPrice = new Float64Array(max * goodCount);
     this.max = max;
     this.goodSlots = goodCount;
     this.recipeCount = recipeCount;
@@ -358,6 +367,12 @@ export class AgentStore {
     this.saleGood[id] = 0;
     this.saleAmount[id] = 0;
     this.saleTick[id] = 0;
+    this.crowdSeen[id] = 0;
+    this.provisioned[id] = 0;
+    this.caravanTo[id] = -1;
+    this.caravanLeg[id] = 0;
+    this.caravanGood[id] = 0;
+    this.caravanPrice.fill(0, id * this.goodSlots, (id + 1) * this.goodSlots);
     this.librarySeen[id] = 0;
     this.mapSeen[id] = -1;
     this.focusSeen[id] = -1;
@@ -524,7 +539,11 @@ export class AgentStore {
       h.typedArray(this.tradeTick.subarray(t0, t1)).typedArray(this.tradeGood.subarray(t0, t1));
       h.typedArray(this.tradeUnits.subarray(t0, t1)).typedArray(this.tradeCoins.subarray(t0, t1));
       h.uint32(this.tradeNext[id]).uint32(this.saleGood[id]).uint32(this.saleAmount[id]);
-      h.uint32(this.saleTick[id]);
+      h.uint32(this.saleTick[id]).uint32(this.crowdSeen[id]).uint32(this.provisioned[id]);
+      h.uint32(this.caravanTo[id] & 0xff)
+        .uint32(this.caravanLeg[id])
+        .uint32(this.caravanGood[id]);
+      h.typedArray(this.caravanPrice.subarray(g0, g0 + this.goodSlots));
       h.typedArray(this.path[id].subarray(0, this.pathLength[id] * 2));
       h.uint32(this.pathIndex[id]);
       h.typedArray(this.rng[id].s);
