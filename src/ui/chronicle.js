@@ -5,13 +5,15 @@ import { subjectLabel } from './names.js';
 /**
  * @param {number} subject - Memory subject: 0 = water, a resource id, or a structure.
  * @param {import('./names.js').Names} [names]
- * @returns {string} E.g. "un point d’eau", "un lieu de baies", "son abri".
+ * @returns {string} E.g. "un point d’eau", "un lieu de baies", "son abri", "sa bibliothèque".
  */
 export function placeName(subject, names) {
   if (subject === 0) return 'un point d’eau';
   if (!names || subject < 0) return 'un lieu';
   const label = subjectLabel(subject, names).toLowerCase();
-  return subject <= names.resources.length ? `un lieu de ${label}` : `son ${label}`;
+  const r = names.resources.length;
+  if (subject <= r) return `un lieu de ${label}`;
+  return `${names.feminine?.[subject - r - 1] ? 'sa' : 'son'} ${label}`;
 }
 
 /**
@@ -41,6 +43,10 @@ const MAKING_TEXT = {
   [EventType.CRAFTED]: (c) => `${c.who} fabrique : ${c.thing}.`,
   [EventType.BUILT]: (c) => `${c.who} bâtit : ${c.thing} ${c.where}.`,
   [EventType.PROJECT_DONE]: (c) => `${c.who} achève son projet « ${c.project} ».`,
+  [EventType.WRITTEN]: (c) => `${c.who} écrit dans un livre comment faire : ${c.thing}.`,
+  [EventType.READ]: (c) => `${c.who} apprend dans un livre comment faire : ${c.thing}.`,
+  [EventType.KNOWLEDGE_LOST]: (c) => `Savoir perdu : plus personne ne sait faire ${c.thing}.`,
+  [EventType.KNOWLEDGE_RECOVERED]: (c) => `Savoir retrouvé : on sait de nouveau faire ${c.thing}.`,
 };
 
 const TEXT = {
@@ -54,6 +60,14 @@ const TEXT = {
   [EventType.PREDATOR_KILLED]: (who) => `${who} tue un prédateur.`,
   [EventType.DEATH]: (who) => `Mort de ${who}.`,
   [EventType.FIRST_DELIVERY]: (who) => `Première contribution de ${who} à la réserve.`,
+};
+
+// Events about places, not individuals.
+const PLACE_TEXT = {
+  [EventType.FIRE]: (c) =>
+    `La bibliothèque ${c.where} brûle, et ${c.subject} document(s) avec elle.`,
+  [EventType.ABANDONED]: (c) =>
+    `La bibliothèque ${c.where} est abandonnée : ses livres sont hors de portée.`,
 };
 
 /**
@@ -74,6 +88,9 @@ export const FILTERS = Object.freeze([
       EventType.COLONY_PROJECT,
       EventType.ATTACKED,
       EventType.MISTAKEN,
+      EventType.FIRE,
+      EventType.KNOWLEDGE_LOST,
+      EventType.KNOWLEDGE_RECOVERED,
     ],
   },
   {
@@ -86,6 +103,22 @@ export const FILTERS = Object.freeze([
       EventType.TOLD,
       EventType.IMITATED,
       EventType.MISTAKEN,
+    ],
+  },
+  {
+    name: 'savoir',
+    types: [
+      EventType.DISCOVERED,
+      EventType.TOLD,
+      EventType.IMITATED,
+      EventType.MISTAKEN,
+      EventType.FORGOT_RECIPE,
+      EventType.WRITTEN,
+      EventType.READ,
+      EventType.FIRE,
+      EventType.ABANDONED,
+      EventType.KNOWLEDGE_LOST,
+      EventType.KNOWLEDGE_RECOVERED,
     ],
   },
 ]);
@@ -122,6 +155,7 @@ export function formatEvent(event, time, names) {
   const where = `(${event.x}, ${event.y})`;
   const memoryText = MEMORY_TEXT[event.type];
   const makingText = MAKING_TEXT[event.type];
+  const placeText = PLACE_TEXT[event.type];
   const context = {
     who,
     where,
@@ -129,14 +163,19 @@ export function formatEvent(event, time, names) {
     need: needName(event.subject),
     thing: names?.recipes?.[event.subject] ?? '?',
     project: names?.projects?.[event.subject] ?? '?',
+    subject: event.subject,
   };
   let text = TEXT[event.type]?.(who) ?? event.type;
   if (memoryText) text = memoryText(context);
   else if (makingText) text = makingText(context);
-  else if (event.type === EventType.BIRTH && event.subject >= 0) {
+  else if (placeText) text = placeText(context);
+  else if (event.type === EventType.DEATH && event.subject === 1) {
+    text = `Mort de ${who}, de vieillesse.`;
+  } else if (event.type === EventType.BIRTH && event.subject >= 0) {
     text = `Naissance de ${who}, réplique de l’individu #${event.subject}.`;
   } else if (event.type === EventType.COLONY_PROJECT) {
-    text = `La colonie bâtit un abri ${where}, œuvre de ${event.subject} individu(s).`;
+    const what = (event.subject & 15) === 3 ? 'une bibliothèque' : 'un abri';
+    text = `La colonie bâtit ${what} ${where}, œuvre de ${event.subject >> 4} individu(s).`;
   }
   return `${shortClock(event.tick, time)} · ${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }
