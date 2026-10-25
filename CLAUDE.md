@@ -107,6 +107,10 @@ Pour chaque tâche :
 | Déploiement GitHub Pages | `docs/design/10-deploiement.md` |
 | Jalons et critères de sortie | `docs/design/11-feuille-de-route.md` |
 | Risques et questions ouvertes | `docs/design/12-risques.md` |
+| Agriculture, cuisine (vision v2) | `docs/design/13-agriculture-cuisine.md` |
+| Économie, métiers, richesses (vision v2) | `docs/design/14-economie.md` |
+| Migration, colonies multiples (vision v2) | `docs/design/15-colonies-et-migration.md` |
+| Menaces, combattants, forteresses, conflits (vision v2) | `docs/design/16-guerre-et-forteresses.md` |
 | Glossaire | `docs/design/glossaire.md` |
 
 ## Ce qu'il ne faut pas faire

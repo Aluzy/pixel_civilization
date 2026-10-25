@@ -88,6 +88,8 @@ Les menaces donnent un sens à l'abri, aux armes, à l'attribut défense et à l
 
 État au J4 (`src/sim/threats/`, `src/sim/systems/threat-system.js`, `data/world.json` → `threats`, `data/balance.json` → `threats`) : seuls les prédateurs existent. À partir du jour 2, au crépuscule et la nuit, tous les 100 cycles, chaque individu hors abri a 20 % de chances d'en voir apparaître un, à 20–30 cases, en forêt ou en plaine, s'il n'y en a pas déjà un à moins de 48 cases. Un prédateur (24 PV, attaque 7, défense 1, 1,5 case/s) chasse l'individu hors abri le plus proche à moins de 32 cases, frappe quand il est adjacent, s'enfuit sous 25 % de ses PV, abandonne après 300 cycles de chasse sans toucher, et repart au lever du jour. Il ne peut pas atteindre un individu dans un abri. Les directions d'apparition viennent d'une table de 16 caps entiers, sans trigonométrie.
 
+Vision v2 (décision 0020) : meutes, tanières, abris forçables, gibier ([16-guerre-et-forteresses](16-guerre-et-forteresses.md)) ; nouvelles ressources : blé sauvage ([13-agriculture-cuisine](13-agriculture-cuisine.md)), or et pierres précieuses ([14-economie](14-economie.md)).
+
 ## Régions gelées
 
 Seuls les blocs à moins de 2 blocs d'un individu sont simulés en détail. Les autres sont **gelés** ; à leur réactivation, la régénération des ressources est rattrapée analytiquement à partir du nombre de cycles écoulés, sans simuler chaque cycle.

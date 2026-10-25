@@ -44,6 +44,17 @@
 | Champ | Sources d'une ressource renouvelable plantées ensemble près du camp | `field` |
 | Inventeur | Membre chargé d'essayer librement de nouvelles combinaisons (un à la fois) | `inventor` |
 | Fondateurs | Individus présents au départ : un seul en partie, plusieurs pour les mesures | `founders` |
+| Parcelle | Pixel de terre labourée qui porte un plant (vision v2) | `plot` |
+| Plant | Culture sur une parcelle, qui gagne un stade par jour arrosé (vision v2) | `crop` |
+| Plat | Aliment cuisiné, nourrit 1,3 fois ses ingrédients (vision v2) | `dish` |
+| Métier | Activité choisie par avantage comparatif, pour plusieurs jours (vision v2) | `job` |
+| Écu | Monnaie, fondue à partir de l'or (vision v2) | `coin` |
+| Comptoir | Acheteur et vendeur de la colonie au marché, à prix à coefficient (vision v2) | `counter` |
+| Trésor | Or, écus, pierres précieuses et objets rares gardés par la colonie (vision v2) | `treasury` |
+| Enceinte | Mur fermé avec porte autour du trésor et des abris (vision v2) | `wall` |
+| Meute | Groupe de prédateurs partis d'une même tanière (vision v2) | `pack` |
+| Expédition | Groupe qui quitte sa colonie pour en fonder une autre (vision v2) | `expedition` |
+| Raid | Troupe envoyée par une colonie piller une autre (vision v2) | `raid` |
 | Projet | But à long terme décomposé en sous-tâches (HTN) | `project` |
 | Simulation mentale | Évaluation de futurs possibles sur un modèle issu des croyances | `imagination` |
 | Fiche sociale | Ce qu'un individu croit savoir d'un autre | `socialModel` |

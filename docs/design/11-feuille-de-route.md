@@ -89,7 +89,7 @@ Réalisé : 9 graines sur 10 (test automatique), avec 22 à 40 individus au jour
 
 Réalisé : la graine 8 montre les deux (test automatique) : l'établi est lu dans la bibliothèque au jour 59 après la mort de son découvreur, puis perdu au jour 83 (plus personne ne le sait, aucun livre à portée) et redécouvert par l'essai au jour 119. Sur 30 graines et 150 jours : une bibliothèque est bâtie dans 22 colonies (vers les jours 13 à 30), une recette est sauvée par un livre dans 17 (8 sur les graines 1 à 10), un savoir est perdu dans 26 et retrouvé dans 9 ; 15 parties voient au moins un incendie. Ajouts : documents à contenu propre (livres, cartes), un scribe par colonie, lecture prioritaire des nouveaux nés, cartes dessinées tous les 10 jours, abandon et incendie des bibliothèques, journal du savoir collectif, vieillesse (54 à 66 jours), un chercheur par projet sans recette connue, demander son chemin, essais guidés par la famille de recette (décisions 0013 et 0014). Les critères des jalons précédents tiennent : J4 sur 9 graines sur 10, J5 sur 8 graines sur 10. Reporté : bibliothèque en gabarit de plusieurs pixels, cartes consultées hors de la bibliothèque, copies de livres, déclin avec l'âge.
 
-## J7 — Harmonie et finitions (`v1.0.0`)
+## J7 — Harmonie et finitions (`v0.8.0`)
 
 - Score d'harmonie et ses composantes, tâches qui ciblent la composante la plus faible, aménagement du territoire.
 - Tableau de bord avec courbes, calques complets, accessibilité.
@@ -106,6 +106,57 @@ Réalisé (en partie) :
 - **Ajouts** : score d'harmonie et ses cinq composantes, point faible au tableau noir et tâches qui le visent (champs, réserve, écrit), champs plantés près du camp, génome de 10 gènes hérité et muté, expérience apprise (danger des zones, coût réel des biens), inventeur, arbre technologique complet dans les données (four, brique, fonderie, lingots, outils et armes de cuivre et de fer), tableau de bord avec courbes (H, onglet Harmonie sur téléphone), outil de mesure (décisions 0016 à 0019).
 - **Reporté** : découverte effective du four et des métaux (jamais observée en 120 à 160 jours sur 8 graines), calques de colonie, taille de texte réglable, coopération sur un grand bâtiment et spécialisation par avantage comparatif, coût réel des actions pour le GOAP.
 
+## Vision v2 : danger, agriculture, économie, colonies, forteresses, conflits
+
+Chantier ouvert après le J7 (décision 0020) pour la vision suivante : des menaces qui comptent, des combattants, l'agriculture découverte par l'essai, la cuisine, une économie de métiers, des richesses (or, pierres précieuses), des migrations qui fondent de nouvelles colonies, des forteresses autour des trésors et des conflits entre colonies. Inspiration pour l'agriculture, la cuisine et le marché : [Aluzy/family_farm](https://github.com/Aluzy/family_farm). Conception : [13-agriculture-cuisine](13-agriculture-cuisine.md), [14-economie](14-economie.md), [15-colonies-et-migration](15-colonies-et-migration.md), [16-guerre-et-forteresses](16-guerre-et-forteresses.md).
+
+Avant le J8 : fusionner le J7 et trancher son point ouvert (500 individus dans une partie ordinaire, que l'agriculture du J9 rend atteignable ; proposition : déplacer ce point dans la sortie du J9).
+
+Ordre retenu : chaque jalon s'appuie sur le précédent et reste jouable seul.
+
+### J8 — Danger et combattants (`v0.9.0`)
+
+- Meutes et tanières, prédateurs qui reviennent, abris isolés qui peuvent être forcés, blessures lentes à guérir, gibier (viande, peau).
+- Jauge de sécurité dans la pyramide des besoins, nourrie par le danger perçu et appris.
+- Compétence de combat apprise, rôle de garde (veille de nuit, chasse aux tanières), bouclier et armure de peau, combat de groupe dans la simulation mentale.
+
+**Sortie** : sur 10 graines et 60 jours, des pixels meurent de prédateurs (au moins 1 par partie en moyenne) et tuent au moins 3 fois plus de prédateurs qu'au J7 ; un rôle de garde apparaît ; la part des décisions de sécurité double, sans extinction.
+
+### J9 — Agriculture et cuisine (`v0.10.0`)
+
+- Blé sauvage et graines, découverte de « semer » par l'essai aidée par l'observation de graines qui germent, parcelles, arrosage (jarre), stades de croissance, récolte, montée en graine, réserve de semences.
+- Feu de camp, meule, pressoir ; farine, huile ; plats dont la nutrition vaut 1,3 × leurs ingrédients ; plaisir des repas ; péremption par lots.
+
+**Sortie** : sur la majorité des graines, une colonie découvre l'agriculture avant le jour 60 ; au jour 100, plus de la moitié de sa nourriture vient de ses cultures et au moins un plat est mangé chaque jour ; une colonie ordinaire dépasse 300 individus.
+
+### J10 — Économie et métiers (`v0.11.0`)
+
+- Arbre technologique rendu atteignable (four, fonderie, pioche de cuivre dans une partie ordinaire).
+- Propriété et coffre personnel, troc, or et écus, marché de la colonie (offres, demandes, comptoir à coefficient), prix de référence.
+- Métiers choisis par avantage comparatif (revenu attendu appris), inertie, apprentissage auprès du parent.
+
+**Sortie** : au jour 100 d'une partie ordinaire, au moins 4 métiers coexistent ; la chaîne agriculteur → meunier ou boulanger → acheteur de pain est visible ; les prix de référence suivent la rareté.
+
+### J11 — Migration et colonies (`v0.12.0`)
+
+- Objectif Migrer, projet d'expédition, provisions et copie de livres, fondation d'une colonie, filiation.
+- Fiches de relation entre colonies, territoires, caravanes ; gel des blocs lointains ; tableau de bord par colonie, calque des territoires.
+
+**Sortie** : sur la majorité des graines, au moins deux colonies au jour 150, la seconde fondée par une expédition ; au moins un échange entre colonies.
+
+### J12 — Trésors et forteresses (`v0.13.0`)
+
+- Or et pierres précieuses, salle du trésor.
+- Murs infranchissables, portes, tours ; navigation avec obstacles ; projet d'enceinte émergent quand le danger ou la valeur du trésor le justifie.
+
+**Sortie** : sur la majorité des graines à 150 jours, une colonie bâtit une enceinte fermée autour de son trésor, que les prédateurs ne franchissent pas.
+
+### J13 — Conflits (`v1.0.0`)
+
+- Incidents et rancunes, raids décidés par simulation mentale (butin, chances, pertes), alerte et défense, bonus des murs, butin, paix, absorption.
+
+**Sortie** : sur un ensemble de graines à 200 jours, au moins un raid a lieu et au moins un échoue contre une enceinte, tandis que des colonies voisines restent en paix et commercent ; une partie de 100 jours avec 500 individus reste fluide à ×16.
+
 ## Après la v1 (pistes)
 
-Colonies multiples qui se rencontrent, vieillissement, saisons, agriculture, livres de conseils (évolution culturelle), son, sauvegarde et partage de parties.
+Saisons, livres de conseils (évolution culturelle), son, sauvegarde et partage de parties.
