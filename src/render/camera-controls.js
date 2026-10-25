@@ -9,7 +9,8 @@ const PINCH_STEP = 1.25; // Finger distance ratio that triggers one zoom step.
 /**
  * @typedef {object} CameraControlsOptions
  * @property {number[]} zoomSteps
- * @property {(x: number, y: number) => void} onClick - World coordinates of a click (not a drag).
+ * @property {(x: number, y: number, touch: boolean) => void} onClick - World coordinates of a
+ *   click (not a drag), and whether a finger made it.
  */
 
 export class CameraControls {
@@ -115,7 +116,7 @@ export class CameraControls {
     this.pinchDistance = 0;
     if (!wasClick) return;
     const world = this.camera.getWorldPoint(p.x, p.y);
-    this.onClick(world.x, world.y);
+    this.onClick(world.x, world.y, p.wasTouch === true);
   }
 
   /** @returns {boolean} */

@@ -17,6 +17,8 @@ const START_ZOOM = 8;
 const VIEWPORT_SYNC_MS = 100;
 /** A click this close to an individual (in tiles, from its centre) selects it. */
 const PICK_RADIUS = 1.2;
+/** A finger is less precise: it picks within this many screen pixels, whatever the zoom. */
+const TOUCH_PICK_PX = 24;
 
 // Darkness over the world by day phase: colour and opacity. Individuals stay visible above it.
 const PHASE_SHADE = {
@@ -63,6 +65,24 @@ export class WorldScene extends Phaser.Scene {
     this.selectedAgent = -1;
     this.following = false;
     this.memoryLayer = false;
+    /** @type {{ x: number, y: number } | null} Colony camp, else spawn: where to recentre. */
+    this.home = null;
+    /** @type {{ x: number, y: number } | null} */
+    this.spawn = null;
+    /** Screen pixels covered by the phone HUD at the top and bottom. */
+    this.insets = { top: 0, bottom: 0 };
+  }
+
+  /**
+   * Centres the camera on a tile, in the part of the screen the HUD leaves visible.
+   * @param {number} x
+   * @param {number} y
+   * @returns {void}
+   */
+  centerOnTile(x, y) {
+    const camera = this.cameras.main;
+    const shift = (this.insets.bottom - this.insets.top) / 2 / camera.zoom;
+    camera.centerOn(x + 0.5, y + 0.5 + shift);
   }
 
   create() {
@@ -97,21 +117,32 @@ export class WorldScene extends Phaser.Scene {
 
     this.controls = new CameraControls(this, {
       zoomSteps: ZOOM_STEPS,
-      onClick: (x, y) => this.pick(x, y),
+      onClick: (x, y, touch) => this.pick(x, y, touch),
     });
 
     const keyboard = this.input.keyboard;
     keyboard.on('keydown-F', () => this.setFollowing(!this.following));
     keyboard.on('keydown-ESC', () => this.clearSelection());
     keyboard.on('keydown-M', () => this.setMemoryLayer(!this.memoryLayer));
+    const onCommand = (type) => this.command(type);
+    this.game.events.on('hud-command', onCommand);
+    const onInsets = (top, bottom) => {
+      this.insets = { top, bottom };
+    };
+    this.game.events.on('view-insets', onInsets);
 
-    const offReady = sim.onReady(({ spawn }) => camera.centerOn(spawn.x + 0.5, spawn.y + 0.5));
+    const offReady = sim.onReady(({ spawn }) => {
+      this.spawn = spawn;
+      camera.centerOn(spawn.x + 0.5, spawn.y + 0.5);
+    });
     const offChunk = sim.onChunk((chunk) => this.chunks.add(chunk));
     const offFrame = sim.onFrame((frame) => this.applyFrame(frame));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       offReady();
       offChunk();
       offFrame();
+      this.game.events.off('hud-command', onCommand);
+      this.game.events.off('view-insets', onInsets);
     });
 
     this.scene.launch('ui');
@@ -125,7 +156,7 @@ export class WorldScene extends Phaser.Scene {
     this.controls.update(delta);
     if (this.following && this.selectedAgent >= 0) {
       const agent = this.agents.find((a) => a.id === this.selectedAgent);
-      if (agent) this.cameras.main.centerOn(agent.x + 0.5, agent.y + 0.5);
+      if (agent) this.centerOnTile(agent.x, agent.y);
     }
     const rect = visibleRect(this.controls.view());
     this.shade.setPosition(rect.x0, rect.y0).setScale(rect.x1 - rect.x0, rect.y1 - rect.y0);
@@ -187,6 +218,26 @@ export class WorldScene extends Phaser.Scene {
       else this.clearSelection();
     }
     this.drawMemory(frame);
+    if (frame.colony?.camp) this.home = frame.colony.camp;
+  }
+
+  /**
+   * Commands from the phone HUD (the keyboard does the same on a computer).
+   * @param {string} type - follow, memory, deselect, zoomIn, zoomOut or center.
+   * @returns {void}
+   */
+  command(type) {
+    const camera = this.cameras.main;
+    const middle = { x: camera.width / 2, y: camera.height / 2 };
+    if (type === 'follow') this.setFollowing(!this.following);
+    else if (type === 'memory') this.setMemoryLayer(!this.memoryLayer);
+    else if (type === 'deselect') this.clearSelection();
+    else if (type === 'zoomIn') this.controls.zoomStep(1, middle);
+    else if (type === 'zoomOut') this.controls.zoomStep(-1, middle);
+    else if (type === 'center') {
+      const at = this.home ?? this.spawn;
+      if (at) this.centerOnTile(at.x, at.y);
+    }
   }
 
   /**
@@ -256,11 +307,15 @@ export class WorldScene extends Phaser.Scene {
    * Selects the individual under a click, or inspects the tile.
    * @param {number} wx - World x of the click.
    * @param {number} wy
+   * @param {boolean} [touch=false] - Made with a finger.
    * @returns {void}
    */
-  pick(wx, wy) {
+  pick(wx, wy, touch = false) {
     let best = -1;
-    let bestD2 = PICK_RADIUS * PICK_RADIUS;
+    const radius = touch
+      ? Math.max(PICK_RADIUS, TOUCH_PICK_PX / this.cameras.main.zoom)
+      : PICK_RADIUS;
+    let bestD2 = radius * radius;
     for (const a of this.agents) {
       const dx = a.x + 0.5 - wx;
       const dy = a.y + 0.5 - wy;
