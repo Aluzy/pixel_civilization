@@ -26,5 +26,6 @@ jobs:
             echo "::error file=$f::Not formatted with Prettier (run npm run format)%0A$diff"
           done
           [ -z "$files" ]
-      - run: npm test
+      - name: Test
+        run: npx vitest run --reporter=default --reporter=json --outputFile=vitest-report.json || (node tools/ci/annotate-vitest.js vitest-report.json; exit 1)
       - run: npm run build
