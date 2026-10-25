@@ -102,6 +102,18 @@ Mesure : sur les graines 1 à 10, l'établi, la lance, un outil (presque toujour
 - **Chercher l'usage d'un bien** (cuisiniers) : seules les combinaisons qui le contiennent sont essayées ; −1 par autre ingrédient (seul d'abord), sans bonus de nouveauté ; les aliments n'entrent que dans ces essais-là.
 - **Station inconnue** : une station dont aucune recette connue ne se sert vaut +0,8 (ce qu'elle fait reste à trouver). Une station connue mais pas bâtie n'est plus bâtie « pour voir » quand l'individu cherche une construction (les constructions se font à mains nues).
 
+## État au jalon J10
+
+L'arbre du J7 devient atteignable (décision 0023, détail dans [14](14-economie.md)) :
+
+- **Carnet d'essais de la colonie** : les échecs de ses chercheurs, transmis d'un inventeur au suivant, sans oubli.
+- **Station de destination inconnue** : chaque matériau y est d'abord essayé seul.
+- **Usage d'un matériau nouveau** : seul, puis avec un autre, puis avec deux (−3 par ingrédient en plus, au lieu de −1, pour les cuisiniers aussi).
+- **Nouveauté** : en essai libre, +1,5 une seule fois pour une combinaison qui contient au moins un matériau nouveau (au lieu de +1,5 par matériau nouveau).
+- **Idées** : fabriquer un matériau nouveau, bâtir une station inconnue ou y essayer un matériau seul donne une fois sur deux, à un chercheur, l'idée d'un usage dont il peut réunir les ingrédients (+3 à cet essai, oubliée après 3 jours).
+- **Stations au camp** ; l'inventeur prend à la réserve les matériaux de la station qu'il sait faire et ceux de ses ingrédients.
+- **Mesures** (10 graines, 100 jours) : voir [11](11-feuille-de-route.md), J10.
+
 ## Imitation
 
 Un individu qui voit un autre individu réaliser une recette (dans son rayon de perception, pendant toute la durée de fabrication) a 50 % de chances de l'apprendre, à force 0,6.

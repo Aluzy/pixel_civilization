@@ -20,7 +20,7 @@
 | Tâche | Part d'un projet de colonie (« apporter 5 bois ») | `task` |
 | Réservation | Engagement d'un individu sur une tâche, libéré au bout de 2 jours | `reserved` |
 | Réplique | Individu né de la réplication d'un autre | `child` |
-| Rôle | Activité dominante d'un individu, déduite de ses habitudes | `role` |
+| Rôle | Activité dominante d'un individu : son métier, sinon déduite de ses habitudes | `role` |
 | Jauge | Niveau d'un besoin, de 0 (satisfait) à 100 (critique) | `need` |
 | Souvenir | Élément de mémoire typé, avec une force | `memory` |
 | Force (d'un souvenir) | Valeur de 0 à 1 qui décroît avec le temps | `strength` |
@@ -61,8 +61,16 @@
 | Parcelle | Construction où pousse un plant semé ; arrosée chaque jour, elle donne du blé (J9) | `plot` |
 | Graine | Bien trouvé en récoltant du blé, qui se sème (J9) | `seed` |
 | Portion | Unité de nourriture de la réserve : 12 de nutrition, quel que soit l'aliment (J9) | `portion` |
-| Cuisinier | Membre en poste qui transforme la réserve en farine et en plats (J9) | `cooks` |
+| Cuisinier | Membre en poste qui transforme la réserve en farine et en plats (J9) ; au J10, les postes cherchent ce qui se cuisine, meuniers et boulangers font les fournées | `cooks` |
 | Indice | Ce qu'un individu a deviné d'un bien (une graine se sème), qui oriente ses essais (J9) | `hint` |
+| Comptoir | Marché d'une colonie au camp : achète ce qu'on apporte à la réserve, vend ce qu'on y prend pour soi (J10) | `colony.price`, `market.js` |
+| Écu | Monnaie de compte d'une colonie, frappée par son comptoir pour garder 200 écus par membre (J10) | `coins` |
+| Prix de référence | Prix d'un bien au comptoir : sa valeur de base fois sa rareté, revu chaque matin (J10) | `price` |
+| Ration | Nourriture donnée par la colonie à un membre qui ne peut pas la payer (J10) | `rations` |
+| Métier | Activité choisie pour plusieurs jours par le revenu qu'on en attend (agriculteur, meunier, boulanger, cueilleur, bûcheron, mineur) ; garde, inventeur et scribe sont des postes (J10) | `job` |
+| Carnet d'essais | Essais ratés des chercheurs d'une colonie, transmis d'un inventeur à l'autre (J10) | `notebook` |
+| Idée | Usage deviné d'un bien qu'un chercheur vient de fabriquer, essayé en priorité (J10) | `ideaStation`, `ideaMask` |
+| Demande | Ressource qu'un chercheur demande au comptoir : son prix monte, les mineurs l'apportent (J10) | `demand` |
 | Expédition | Groupe qui quitte sa colonie pour en fonder une autre (vision v2) | `expedition` |
 | Raid | Troupe envoyée par une colonie piller une autre (vision v2) | `raid` |
 | Projet | But à long terme décomposé en sous-tâches (HTN) | `project` |

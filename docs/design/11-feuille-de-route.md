@@ -165,6 +165,41 @@ Réalisé :
 
 **Sortie** : au jour 100 d'une partie ordinaire, au moins 4 métiers coexistent ; la chaîne agriculteur → meunier ou boulanger → acheteur de pain est visible ; les prix de référence suivent la rareté.
 
+Réalisé :
+- **Sortie**, sur 10 graines et 100 jours :
+  - au jour 100, 4 à 6 métiers choisis coexistent sur les 10 graines (agriculteur, meunier, boulanger, cueilleur, mineur, parfois bûcheron), plus les postes de garde, d'inventeur et de scribe ;
+  - dans les 8 colonies qui cultivent avant le jour 30, la chaîne est dans les comptes du comptoir et dans la chronique : un agriculteur vend du blé, un meunier ou un boulanger en achète, la farine est vendue puis achetée par un boulanger, qui vend du pain, acheté par d'autres (« Premier achat de pain au comptoir, par l'individu #22 : il venait de l'individu #34 ») ;
+  - dans ces 8 colonies, le blé coûte plus cher les jours où son stock est au plus bas (14,6 à 18,1 écus en moyenne sur le tiers des jours au stock le plus faible) que ceux où il abonde (9,5 à 12,4) ;
+  - les 2 autres colonies, qui cultivent tard et restent petites (39 et 54 individus), ont 4 métiers sans meunier ni boulanger ;
+  - test automatique sur les graines 1, 5 et 10, avec les parties du J9.
+- **Arbre technologique**, sur les mêmes parties :
+  - four, brique et fonderie découverts sur les 10 graines (four aux jours 16 à 49, fonderie aux jours 18 à 74) ;
+  - lingot de cuivre sur 8 graines (jours 28 à 77) ;
+  - pioche de cuivre sur 4 graines (jours 35 à 89), hache ou lance de cuivre sur 6 ;
+  - le fer n'est jamais atteint en 100 jours.
+- **J9 tenu** :
+  - l'agriculture est découverte avant le jour 60 sur 9 graines (jours 12 à 44) ;
+  - plus de la moitié de la nourriture vient des cultures et un plat est mangé chaque jour dans les 8 colonies qui cultivent tôt ;
+  - 6 d'entre elles dépassent 300 individus (327 à 406), deux restent sous 300 (223 et 275) ;
+  - l'harmonie progresse toujours et le génome dérive (test du J7).
+- `npm run bench` (500 fondateurs, 100 jours) : 1,24 ms par cycle en moyenne, 2,26 ms le pire jour, sous les 6,25 ms de ×16.
+- **Ajouts** :
+  - comptoir de colonie (prix de base, prix de référence suivant la rareté, achat et vente, rations, caisse) ;
+  - écus frappés à 200 par membre ;
+  - héritage des écus ;
+  - métiers choisis par le revenu appris, avec inertie et apprentissage auprès du parent ;
+  - ventes libres des cueilleurs, bûcherons et mineurs ;
+  - postes payés (garde, inventeur, scribe) ;
+  - meuniers et boulangers qui achètent leurs ingrédients ;
+  - objectif Inventer ;
+  - carnet d'essais de la colonie ;
+  - stations bâties au camp ;
+  - idées des chercheurs ;
+  - demandes au comptoir ;
+  - inspecteur, bloc Colonie et chronique de l'économie (filtre « économie ») ;
+  - détail dans [14](14-economie.md) et la décision 0023.
+- **Reporté** : or et pierres précieuses (J12), coffre personnel et héritage des biens, troc et carnet d'offres et de demandes entre individus, prospérité dans l'harmonie, péremption, fer, courbes de prix au tableau de bord.
+
 ### J11 — Migration et colonies (`v0.12.0`)
 
 - Objectif Migrer, projet d'expédition, provisions et copie de livres, fondation d'une colonie, filiation.

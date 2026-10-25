@@ -147,3 +147,5 @@ Implémenté au J9 (décision 0022). Là où il s'écarte des sections précéde
 
 **Mesures** (10 graines, 100 jours) : voir la feuille de route ([11](11-feuille-de-route.md), J9).
 
+
+**Au J10** ([14](14-economie.md), décision 0023) : dans une colonie de 12 membres et plus, les fournées sont le métier des meuniers et des boulangers, qui achètent leurs ingrédients au comptoir et cuisinent ce qui rapporte. Les postes de cuisine ne servent plus qu'à chercher ce qui se cuisine. Le grain et les plats sont vendus au comptoir, et achetés par ceux qui ont faim.

@@ -1,6 +1,6 @@
 # 14 — Économie, métiers et richesses
 
-> Chantier préparé après le J7 (décision 0020). Rien n'est encore implémenté. Valeurs 🟡 à caler.
+> Chantier préparé après le J7 (décision 0020), implémenté en partie au J10 (décision 0023) : voir « Ce que fait le J10 » à la fin, qui prime sur les valeurs de départ 🟡 des sections précédentes.
 
 Aujourd'hui tout ce qui est rapporté au camp est commun (la réserve), et les rôles ne sont que des habitudes affichées. L'économie ajoute la **propriété**, l'**échange** et des **métiers** choisis par intérêt : un pixel peut être agriculteur pendant qu'un autre lui achète sa récolte pour la transformer en plats plus nourrissants.
 
@@ -59,3 +59,82 @@ Aujourd'hui tout ce qui est rapporté au camp est commun (la réserve), et les r
 ## Critère de sortie proposé (J10)
 
 Dans une partie ordinaire, au moins 4 métiers coexistent au jour 100 ; la chaîne agriculteur → meunier ou boulanger → acheteur de pain est observable dans la chronique et l'inspecteur ; le prix de référence d'un bien monte quand il se raréfie et baisse quand il abonde.
+
+## Ce que fait le J10
+
+Implémenté au J10 (décision 0023). Là où il s'écarte des sections précédentes, c'est ce qui suit qui vaut.
+
+**Arbre technologique rendu atteignable** (`src/sim/crafting/notebook.js`, `src/sim/agents/behaviors.js`, `work.js`) :
+
+- **Carnet d'essais de la colonie** : les essais ratés de ses chercheurs (l'inventeur, les cuisiniers), sans oubli, passent d'un inventeur au suivant (2 048 entrées, les plus anciennes chassées d'abord).
+- **Objectif Inventer** (savoir, 0,55, pesé par la curiosité) pour l'inventeur, qui ne cherche plus seulement quand il est curieux. Payé 20 écus par jour.
+- **Programme de l'inventeur**, après les outils qui ouvrent des matériaux :
+  1. chaque matériau seul à une station qu'il n'a jamais vue servir (il n'y connaît aucune recette et n'a vu personne en faire) ;
+  2. une fois sur deux, ce que l'on peut faire d'un matériau qu'aucune recette connue n'utilise, le plus facile à avoir d'abord : seul, puis avec un autre, puis avec deux (−3 par ingrédient en plus) ;
+  3. sinon, essai libre : une combinaison avec au moins un matériau nouveau vaut +1,5, une seule fois.
+- **Idées** : un chercheur qui fabrique un matériau nouveau pour lui (une brique), bâtit une station dont il ne sait rien (une fonderie) ou y essaie un matériau seul a une chance sur deux d'avoir l'idée d'un de leurs usages. L'idée ne porte que sur un usage dont il peut réunir les ingrédients ; elle vaut +3 à l'essai et s'oublie au bout de 3 jours ou une fois sue.
+- **Stations au camp** : un membre bâtit les stations au camp, où tous les voient (le four de l'inventeur n'est plus perdu au loin).
+- **La réserve fournit l'inventeur** : au camp, il prend ce que demande la station qu'il sait faire et n'a pas vue bâtie, et pour un ingrédient fabriqué que la réserve n'a pas, ce qu'il faut pour le faire (l'argile des briques). Il prend aussi 3 unités de chaque matériau qui lui manque.
+- **Demandes** : un chercheur à qui il manque une ressource la demande au comptoir (12 unités) ; le prix monte, les mineurs l'apportent, au besoin en cherchant un gisement.
+
+**Le comptoir** (`src/sim/economy/market.js`, `prices.js`) :
+
+- Ce qui est apporté à la réserve est acheté au prix d'achat, partie entière du prix de référence. Cela vaut pour une tâche, une récolte, une fournée ou une vente libre.
+- Ce qu'un membre prend pour lui est vendu au prix de vente : 1,2 × le prix de référence, arrondi au-dessus.
+- Ce qui sert à la colonie est pris sans payer : matériaux d'un bâtiment, graines des champs, échantillons d'essai.
+- **Prix de base** :
+  - nourriture : ½ écu par point de nutrition, plus 2 écus par point de plaisir ;
+  - ressource : 0,2 écu par cycle de récolte ;
+  - bien fabriqué : ses ingrédients plus 0,2 écu par cycle de fabrication, au moins sa valeur nourrissante ;
+  - sous-produit (graine, peau) : la valeur de sa source.
+
+  Exemples : blé 3, baies 6, bois 6, pierre 8, farine 15, pain 36.
+- **Prix de référence** :
+  - chaque matin, il fait 30 % du chemin vers base × rareté ;
+  - rareté = √((3 × usage quotidien + besoins des projets + demandes + 1) / (stock + 1)), entre 0,2 et 8 ;
+  - l'usage est la moyenne glissante (pas 0,3) de ce qui sort de la réserve chaque jour.
+- **Écus** : le comptoir ne paie qu'avec sa caisse. Chaque matin, il frappe ce qui manque pour que la colonie détienne 200 écus par membre. Le fondateur part avec 30 écus.
+- **Manger** :
+  - un membre affamé achète au comptoir la nourriture qui lui donne le plus pour ses écus : nutrition × (1 + 0,1 × plaisir) / prix ;
+  - ce qu'il ne peut pas payer, la colonie le lui donne, sous forme de la nourriture la moins chère pour ce qu'elle nourrit (une ration) ;
+  - les riches mangent du pain, les pauvres du grain.
+- **Propriété** :
+  - les écus d'un mort vont à ses enfants vivants (à parts égales), sinon au comptoir ;
+  - une réplique reçoit 30 % des écus de son parent.
+- **Chronique** : la première vente et le premier achat de chaque bien au comptoir sont des événements. L'achat nomme le dernier vendeur : « Premier achat de pain au comptoir, par l'individu #22 : il venait de l'individu #34 ».
+
+**Métiers** (`data/jobs.json`, `src/sim/economy/jobs.js`) :
+
+| Métier | Ce qu'il fait | Il faut savoir | Gène qui y pousse |
+| --- | --- | --- | --- |
+| Agriculteur | Cultiver (vend grain et graines) | semer | prévoyance |
+| Meunier | Cuisiner : farine | la farine | sociabilité |
+| Boulanger | Cuisiner : pain, tarte, viande grillée | un de ces plats | sociabilité |
+| Cueilleur | Tâches et ventes : baies, fibre | — | curiosité |
+| Bûcheron | Tâches et ventes : bois | — | — |
+| Mineur | Tâches et ventes : pierre, argile, charbon, cuivre, fer | — | — |
+| Garde, inventeur, scribe | postes donnés par la colonie (20 écus par jour) | — | — |
+
+- À partir de 12 membres, au camp, un membre choisit le métier qu'il sait faire et dont il attend le plus par jour :
+  - d'un métier exercé, ce qu'il y a gagné, net de ses achats d'ingrédients (moyenne glissante, pas 0,3) ;
+  - d'un autre, une estimation tirée des prix vus au comptoir et de son coût appris par unité. Pour la cuisine, la marge d'une tournée × 480 cycles de travail / (durée + 20).
+- Le revenu attendu est multiplié par 1 + 0,4 × (gène − 0,5).
+- **Inertie** : il garde son métier au moins 3 jours et n'en change que pour 20 % de plus, ou s'il ne sait plus le faire.
+- **Apprentissage** : une réplique fait le métier de son parent ses 5 premiers jours.
+- **Effets** :
+  - le métier multiplie l'objectif de son travail par 1,3 et ceux des autres métiers par 0,7 ;
+  - un poste de cuisine de recherche compte comme un métier ;
+  - le choix d'une tâche collective double le score des biens de son métier ;
+  - le meunier et le boulanger cuisinent sans poste, à la marge la plus grande qu'ils peuvent payer. S'ils ne gagnent rien, ils ne cuisinent pas ;
+  - les postes de cuisine ne servent plus qu'à chercher ce qui se cuisine ;
+  - sans tâche, un cueilleur, un bûcheron ou un mineur récolte le bien de son métier qui paie le mieux son travail et le vend au comptoir. Il fabrique d'abord la pioche qu'il sait faire.
+- **Inspecteur** :
+  - écus et métier ;
+  - revenu attendu de chaque métier (« vécu » s'il l'a exercé) ;
+  - derniers échanges ;
+  - au bloc Colonie : caisse du comptoir, écus frappés, rations, membres par métier, prix d'achat et de vente de chaque bien.
+- **Chronique** : le premier membre de chaque métier est un événement (filtres « important », « colonie » et nouveau filtre « économie »).
+
+**Mesures** (10 graines, 100 jours) : voir la feuille de route ([11](11-feuille-de-route.md), J10).
+
+**Reporté** : or et pierres précieuses (J12), coffre personnel et héritage des biens, troc et carnet d'offres et de demandes entre individus, prospérité dans l'harmonie, péremption, courbes de prix au tableau de bord.
