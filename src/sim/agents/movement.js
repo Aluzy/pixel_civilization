@@ -1,3 +1,4 @@
+import { avoids } from './experience.js';
 import { EventType } from '../core/events.js';
 import { Action } from './action-types.js';
 import { memoryEvent, recall } from './beliefs.js';
@@ -158,6 +159,8 @@ export function explore(state, ctx, id, plan, legRange = ctx.balance.ai.exploreL
       const map = agents.explored[id];
       map.frontier(agents.x[id], agents.y[id], leg, state.tick, ctx.staleTicks, rng, out);
       leash(state, ctx, id, out);
+      // It learnt to fear that zone: look elsewhere while it has other tries.
+      if (attempt < EXPLORE_ATTEMPTS && avoids(ctx, id, out[0], out[1])) continue;
       agents.exploreX[id] = out[0];
       agents.exploreY[id] = out[1];
       agents.exploring[id] = 1;

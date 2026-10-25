@@ -174,8 +174,10 @@ export function formatEvent(event, time, names) {
   } else if (event.type === EventType.BIRTH && event.subject >= 0) {
     text = `Naissance de ${who}, réplique de l’individu #${event.subject}.`;
   } else if (event.type === EventType.COLONY_PROJECT) {
-    const what = (event.subject & 15) === 3 ? 'une bibliothèque' : 'un abri';
-    text = `La colonie bâtit ${what} ${where}, œuvre de ${event.subject >> 4} individu(s).`;
+    const kind = event.subject & 15;
+    const what =
+      kind === 3 ? 'bâtit une bibliothèque' : kind === 4 ? 'plante un champ' : 'bâtit un abri';
+    text = `La colonie ${what} ${where}, œuvre de ${event.subject >> 4} individu(s).`;
   }
   return `${shortClock(event.tick, time)} · ${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }

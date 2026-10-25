@@ -99,6 +99,13 @@ Réalisé : la graine 8 montre les deux (test automatique) : l'établi est lu da
 
 **Sortie** : une partie de 100 jours avec 500 individus reste fluide à ×16 et produit une chronique lisible ; le score d'harmonie progresse sur la majorité des graines testées ; sur 100 jours, au moins un gène montre une dérive nette de sa moyenne dans la population.
 
+Réalisé (en partie) :
+- **Harmonie** : sur 10 graines et 100 jours, la moyenne des jours 91 à 100 dépasse celle des jours 11 à 20 sur 10 graines sur 10 (de 32 à 35 vers 38 à 69) ; test automatique sur 3 graines.
+- **Génome** : sur les 10 mêmes parties, le gène qui a le plus dérivé s'écarte de 5,6 à 12,3 % de sa plage depuis le fondateur ; test automatique (au moins 5 %).
+- **500 individus** : `npm run bench` fait vivre 500 fondateurs dans un monde aux baies abondantes (`data/bench.json`) pendant 100 jours ; un cycle coûte en moyenne 0,92 ms (pire jour 1,26 ms), loin des 6,25 ms qu'exige ×16 dans un navigateur ; la population reste à 484 jusqu'au jour 50, puis tombe vers 300 quand les fondateurs, nés le même jour, meurent de vieillesse. Une colonie née d'un seul pixel n'atteint pas 500 en 100 jours : elle compte 60 à 125 individus au jour 100, limitée par la réserve de nourriture d'avance qu'exige chaque naissance (décision 0011). Ce point du critère n'est donc vérifié que par la mesure, pas dans une partie ordinaire.
+- **Ajouts** : score d'harmonie et ses cinq composantes, point faible au tableau noir et tâches qui le visent (champs, réserve, écrit), champs plantés près du camp, génome de 10 gènes hérité et muté, expérience apprise (danger des zones, coût réel des biens), inventeur, arbre technologique complet dans les données (four, brique, fonderie, lingots, outils et armes de cuivre et de fer), tableau de bord avec courbes (H, onglet Harmonie sur téléphone), outil de mesure (décisions 0016 à 0019).
+- **Reporté** : découverte effective du four et des métaux (jamais observée en 120 à 160 jours sur 8 graines), calques de colonie, taille de texte réglable, coopération sur un grand bâtiment et spécialisation par avantage comparatif, coût réel des actions pour le GOAP.
+
 ## Après la v1 (pistes)
 
 Colonies multiples qui se rencontrent, vieillissement, saisons, agriculture, livres de conseils (évolution culturelle), son, sauvegarde et partage de parties.

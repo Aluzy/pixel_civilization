@@ -7,6 +7,9 @@ import { fillBeliefs } from '../agents/work.js';
 import { PlanStatus, Step } from '../ai/planner.js';
 import { imagineFight } from '../ai/imagination.js';
 import { INPUT, scoreGoals } from '../ai/utility.js';
+import { goalWeights } from '../genome/genome.js';
+import { notePass } from '../agents/experience.js';
+import { Component } from '../colony/harmony.js';
 import { atCamp, campOf, shareBoard } from '../colony/colony-logic.js';
 import { roomToReplicate } from '../colony/replication.js';
 import { carriesWriting, wantsMap } from '../knowledge/writing.js';
@@ -140,11 +143,43 @@ function senseInputs(state, ctx, id) {
     home.scribe = -1;
   }
   input[INPUT.unwritten] = scribe ? 1 : 0;
+  // One inventor at a time, once the colony is large enough to spare one: the first member at the
+  // camp claims it, for a while (it remembers its failed trials).
+  if (
+    home !== null &&
+    home.members >= ctx.balance.colony.inventorMembers &&
+    atCamp(ctx, home, id) &&
+    opensMaterials(ctx, id)
+  ) {
+    const current = home.inventor >= 0 && a.alive[home.inventor] === 1 ? home.inventor : -1;
+    if (current < 0 || state.tick - home.inventorTick > ctx.balance.colony.inventorTicks) {
+      home.inventor = id;
+      home.inventorTick = state.tick;
+    }
+  }
   const young =
     state.tick - a.bornTick[id] < ctx.balance.writing.youngDays * ctx.balance.time.ticksPerDay;
   const unread =
     a.libraryVisited[id] === 0 || (a.librarySeen[id] & ~a.recipes[id].knownMask()) !== 0;
   input[INPUT.unread] = library && unread ? (young ? 1 : 0.7) : 0;
+}
+
+/**
+ * True if the agent knows how to make a tool that opens a material (a pickaxe for coal, copper):
+ * only such a member can become the colony's inventor.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @returns {boolean}
+ */
+function opensMaterials(ctx, id) {
+  const catalog = ctx.catalog;
+  for (let g = 1; g <= catalog.resourceCount; g++) {
+    const tool = catalog.requiredTool[g];
+    if (tool <= 0) continue;
+    const r = catalog.recipeForGood[tool];
+    if (r >= 0 && ctx.agents.recipes[id].knows(r)) return true;
+  }
+  return false;
 }
 
 /**
@@ -176,10 +211,19 @@ export function decisionSystem(state, ctx) {
     const colony = campOf(state, ctx, id);
     const boardDue = state.tick - a.boardTick[id] >= ctx.balance.colony.boardInterval;
     if (colony && boardDue && atCamp(ctx, colony, id)) shareBoard(state, ctx, colony, id);
+    notePass(ctx, id);
     senseInputs(state, ctx, id);
     const favoured = projectGoal(state, ctx, id);
     const current = a.goal[id];
-    let goal = scoreGoals(ctx.goals, input, current, scores, a.rng[id], favoured, bonus);
+    goalWeights(ctx.genes, a.genes, id, ctx.goalWeights);
+    const weights = ctx.goalWeights;
+    // The colony lacks knowledge most (as read on the blackboard): writing and reading matter more.
+    if (a.focusSeen[id] === Component.KNOWLEDGE) {
+      const boost = 1 + ctx.balance.harmony.focusKnowledge;
+      weights[ctx.goalIndex.write] *= boost;
+      weights[ctx.goalIndex.read] *= boost;
+    }
+    let goal = scoreGoals(ctx.goals, input, current, scores, a.rng[id], favoured, bonus, weights);
     // Exhaustion overrides choice: the body falls asleep.
     if (a.fatigue[id] >= critical) goal = ctx.goalIndex.sleep;
 

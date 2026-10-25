@@ -49,7 +49,8 @@ export function shortSpeed({ speed }) {
 /**
  * The top bar: day and time, speed (with the effective one when behind), population.
  * @param {{ time: { day: number, hour: number, minute: number }, speed: number | 'max',
- *   effectiveSpeed: number, paused: boolean, auto?: boolean, agents: unknown[] }} frame
+ *   effectiveSpeed: number, paused: boolean, auto?: boolean, agents: unknown[],
+ *   colony?: { harmony?: { score: number, focus: number } } | null }} frame
  * @returns {string}
  */
 export function topLine(frame) {
@@ -61,7 +62,9 @@ export function topLine(frame) {
     paused: frame.paused,
   });
   const auto = frame.auto ? ' auto' : '';
-  return `${clock} · ${speed}${auto} · ${frame.agents.length} ind.`;
+  const h = frame.colony?.harmony;
+  const harmony = h && h.focus >= 0 ? ` · H ${Math.round(h.score)}` : '';
+  return `${clock} · ${speed}${auto} · ${frame.agents.length} ind.${harmony}`;
 }
 
 /**
@@ -81,6 +84,7 @@ export const PHONE_COMMANDS = Object.freeze([
   { where: 'Colonie', what: 'population, abris, réserve, projets, bibliothèques, savoir' },
   { where: 'Chronique', what: 'événements ; les filtres choisissent aussi ce qui coupe l’Auto' },
   { where: 'Fiche', what: 'l’individu ou la case touchés ; Suivre, Mémoire, Lâcher' },
+  { where: 'Harmonie', what: 'courbes de l’harmonie, de la population et des gènes' },
   { where: 'Bandeau', what: 'un événement important ; le toucher ouvre la chronique' },
   { where: 'Plus', what: 'zoom, recentrer, nouvelle graine, cette aide' },
 ]);

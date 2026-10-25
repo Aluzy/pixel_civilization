@@ -6,6 +6,7 @@ import { lifecycleSystem } from './lifecycle-system.js';
 import { memorySystem } from './memory-system.js';
 import { needsSystem } from './needs-system.js';
 import { socialSystem } from './social-system.js';
+import { harmonySystem } from './harmony-system.js';
 import { threatSystem } from './threat-system.js';
 import { timeSystem } from './time-system.js';
 import { worldSystem } from './world-system.js';
@@ -30,4 +31,5 @@ export const SYSTEMS = Object.freeze([
   lifecycleSystem,
   colonySystem,
   knowledgeSystem,
+  harmonySystem,
 ]);

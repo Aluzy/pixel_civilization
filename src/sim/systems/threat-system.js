@@ -1,3 +1,4 @@
+import { noteAttack } from '../agents/experience.js';
 import { Action } from '../agents/action-types.js';
 import { attackMultiplier, inShelter } from '../agents/equipment.js';
 import { EventType } from '../core/events.js';
@@ -138,6 +139,7 @@ function fight(state, ctx, p, id) {
     state.events.push(state.tick, EventType.ATTACKED, id, a.x[id], a.y[id]);
   }
   a.attackedTick[id] = state.tick;
+  noteAttack(ctx, id);
   if (a.asleep[id] === 1) {
     a.asleep[id] = 0;
     a.action[id] = Action.NONE;

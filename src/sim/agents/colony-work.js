@@ -1,4 +1,6 @@
 import { atCamp, campOf, chooseTask, readyToBuild, releaseTask } from '../colony/colony-logic.js';
+import { ProjectKind } from '../colony/colony-store.js';
+import { chooseFieldSite } from '../colony/field.js';
 import { fedEnough, missingCost, unhurt } from '../colony/replication.js';
 import { Action } from './action-types.js';
 import { PlanNote } from './journal.js';
@@ -67,6 +69,10 @@ export function colonyWork(state, ctx, id, plan) {
     }
   }
   const project = colony.projects[a.taskProject[id]];
+  if (a.taskBuild[id] === 1 && project.kind === ProjectKind.FIELD) {
+    plantField(state, ctx, colony, project, id, plan);
+    return;
+  }
   if (a.taskBuild[id] === 1) {
     const r = project.recipe;
     // It found out it had the recipe wrong (or forgot it): someone else will build.
@@ -104,6 +110,47 @@ export function colonyWork(state, ctx, id, plan) {
 }
 
 /**
+ * The planter of a field takes its units at the camp, walks to the best site near the camp it
+ * can see, and plants them there.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} colony
+ * @param {import('../colony/colony-store.js').Project} project
+ * @param {number} id
+ * @param {import('./movement.js').Plan} plan
+ * @returns {void}
+ */
+function plantField(state, ctx, colony, project, id, plan) {
+  const a = ctx.agents;
+  let holds = true;
+  for (let g = 1; g < project.needs.length; g++) {
+    if (project.needs[g] > 0 && a.carried(id, g) < ctx.balance.harmony.plantCost) holds = false;
+  }
+  if (!holds) {
+    if (!goToCamp(ctx, colony, id, Action.DEPOSIT, plan)) explore(state, ctx, id, plan);
+    return;
+  }
+  if (!atCamp(ctx, colony, id)) {
+    if (!goToCamp(ctx, colony, id, Action.NONE, plan)) explore(state, ctx, id, plan);
+    return;
+  }
+  const cell = chooseFieldSite(state, ctx, colony, id);
+  if (cell === ctx.nav.center) {
+    startHere(ctx, id, Action.PLANT);
+    plan.action = Action.PLANT;
+    return;
+  }
+  if (cell < 0 || !moveTo(ctx, id, cell, Action.PLANT)) {
+    releaseTask(state, ctx, id);
+    startHere(ctx, id, Action.IDLE);
+    return;
+  }
+  plan.action = Action.MOVE;
+  plan.x = ctx.recallTarget[0];
+  plan.y = ctx.recallTarget[1];
+}
+
+/**
  * Whether this agent is (or becomes) the one researching how to build a project whose materials
  * are ready and that it does not know how to build.
  * @param {import('../simulation.js').SimState} state
@@ -117,7 +164,7 @@ function research(state, ctx, colony, id) {
   const book = a.recipes[id];
   const limit = ctx.balance.colony.researchTicks;
   for (const p of colony.projects) {
-    if (!readyToBuild(colony, p) || book.knows(p.recipe)) continue;
+    if (p.kind === ProjectKind.FIELD || !readyToBuild(colony, p) || book.knows(p.recipe)) continue;
     if (p.researcher === id) return true;
     const free = p.researcher < 0 || a.alive[p.researcher] !== 1;
     // A researcher keeps the task for a while: it remembers what it already tried.

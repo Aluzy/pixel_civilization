@@ -9,6 +9,14 @@
       "color": "#8a5a3a",
       "kind": "library",
       "feminine": true
+    },
+    { "id": "oven", "name": "Four", "color": "#a8432f", "kind": "station" },
+    {
+      "id": "foundry",
+      "name": "Fonderie",
+      "color": "#e8722a",
+      "kind": "station",
+      "feminine": true
     }
   ],
   "items": [
@@ -23,7 +31,20 @@
     { "id": "paper", "name": "Papier", "kind": "material" },
     { "id": "ink", "name": "Encre", "kind": "material" },
     { "id": "book", "name": "Livre", "kind": "book" },
-    { "id": "map", "name": "Carte", "kind": "map" }
+    { "id": "map", "name": "Carte", "kind": "map" },
+    { "id": "brick", "name": "Brique", "kind": "material" },
+    { "id": "copper_ingot", "name": "Lingot de cuivre", "kind": "material" },
+    { "id": "iron_ingot", "name": "Lingot de fer", "kind": "material" },
+    {
+      "id": "copper_pickaxe",
+      "name": "Pioche de cuivre",
+      "kind": "tool",
+      "harvest": { "stone": 4, "copper": 2, "coal": 2 }
+    },
+    { "id": "copper_axe", "name": "Hache de cuivre", "kind": "tool", "harvest": { "wood": 3 } },
+    { "id": "copper_spear", "name": "Lance de cuivre", "kind": "weapon", "attack": 3 },
+    { "id": "iron_axe", "name": "Hache de fer", "kind": "tool", "harvest": { "wood": 4 } },
+    { "id": "iron_spear", "name": "Lance de fer", "kind": "weapon", "attack": 4 }
   ],
   "recipes": [
     {
@@ -102,6 +123,76 @@
       "inputs": { "paper": 1, "ink": 1, "fiber": 1 },
       "durationTicks": 30,
       "output": { "item": "map" }
+    },
+    {
+      "id": "oven",
+      "station": null,
+      "inputs": { "clay": 5, "stone": 5, "coal": 2 },
+      "durationTicks": 120,
+      "output": { "structure": "oven" }
+    },
+    {
+      "id": "brick",
+      "station": "oven",
+      "inputs": { "clay": 2 },
+      "durationTicks": 30,
+      "output": { "item": "brick" }
+    },
+    {
+      "id": "foundry",
+      "station": null,
+      "inputs": { "brick": 8, "coal": 4 },
+      "durationTicks": 160,
+      "output": { "structure": "foundry" }
+    },
+    {
+      "id": "copper_ingot",
+      "station": "foundry",
+      "inputs": { "copper": 2, "coal": 1 },
+      "durationTicks": 40,
+      "output": { "item": "copper_ingot" }
+    },
+    {
+      "id": "iron_ingot",
+      "station": "foundry",
+      "inputs": { "iron": 2, "coal": 1 },
+      "durationTicks": 50,
+      "output": { "item": "iron_ingot" }
+    },
+    {
+      "id": "copper_pickaxe",
+      "station": "workbench",
+      "inputs": { "copper_ingot": 2, "wood": 1 },
+      "durationTicks": 40,
+      "output": { "item": "copper_pickaxe" }
+    },
+    {
+      "id": "copper_axe",
+      "station": "workbench",
+      "inputs": { "copper_ingot": 2, "wood": 1, "fiber": 1 },
+      "durationTicks": 40,
+      "output": { "item": "copper_axe" }
+    },
+    {
+      "id": "copper_spear",
+      "station": "workbench",
+      "inputs": { "copper_ingot": 1, "fiber": 2 },
+      "durationTicks": 30,
+      "output": { "item": "copper_spear" }
+    },
+    {
+      "id": "iron_axe",
+      "station": "workbench",
+      "inputs": { "iron_ingot": 2, "wood": 1 },
+      "durationTicks": 40,
+      "output": { "item": "iron_axe" }
+    },
+    {
+      "id": "iron_spear",
+      "station": "workbench",
+      "inputs": { "iron_ingot": 1, "fiber": 2 },
+      "durationTicks": 30,
+      "output": { "item": "iron_spear" }
     }
   ]
 }

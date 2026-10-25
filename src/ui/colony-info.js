@@ -1,3 +1,6 @@
+/** Harmony components, in the order of the simulation. */
+const COMPONENTS = ['stabilité', 'durabilité', 'ordre spatial', 'savoir', 'bien-être'];
+
 /**
  * Lines of the colony panel (from Simulation#describeColony): population, beds, stock, the
  * projects in progress with what they still need and who worked on them, the libraries and the
@@ -10,8 +13,15 @@ export function formatColony(colony) {
   const lines = [
     `Colonie : ${colony.members} individu(s) · ${colony.births} naissance(s) · ` +
       `${colony.deaths} mort(s)`,
-    `${colony.shelters} abri(s), ${colony.beds} lit(s)`,
+    `${colony.shelters} abri(s), ${colony.beds} lit(s)` +
+      (colony.fields ? ` · ${colony.fields} champ(s), ${colony.planted} plant(s)` : ''),
   ];
+  const h = colony.harmony;
+  if (h && h.focus >= 0) {
+    const parts = COMPONENTS.map((name, k) => `${name} ${h.components[k].toFixed(2)}`);
+    lines.push(`Harmonie ${Math.round(h.score)} : ${parts.join(' · ')}`);
+    lines.push(`Point faible visé : ${COMPONENTS[h.focus]}`);
+  }
   if (colony.stock.length > 0) {
     lines.push(`Réserve : ${colony.stock.map((g) => `${g.name} ${g.count}`).join(', ')}`);
   }
@@ -35,6 +45,7 @@ export function formatColony(colony) {
     );
   }
   if (colony.scribe >= 0) lines.push(`Scribe : #${colony.scribe}`);
+  if (colony.inventor >= 0) lines.push(`Inventeur : #${colony.inventor}`);
   const k = colony.knowledge;
   if (k && k.known.length + k.written.length + k.lost.length > 0) {
     lines.push(`Savoir : ${k.known.length} recette(s) connue(s), ${k.written.length} écrite(s)`);

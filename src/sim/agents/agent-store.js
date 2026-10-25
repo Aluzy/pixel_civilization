@@ -25,6 +25,8 @@ export class AgentStore {
    * @param {number} [options.sheets=4] - Social sheets per agent.
    * @param {number} options.journalSize
    * @param {{ capacity: number, cellSize: number }} options.exploration
+   * @param {Float64Array} [options.geneStart] - Founder value of each gene of the genome.
+   * @param {number} [options.dangerSlots=8] - Zones whose danger an agent keeps in mind.
    */
   constructor({
     max,
@@ -34,8 +36,25 @@ export class AgentStore {
     journalSize,
     exploration,
     sheets = 4,
+    geneStart = new Float64Array(0),
+    dangerSlots = 8,
   }) {
     this.sheets = sheets;
+    this.geneStart = geneStart;
+    this.geneCount = geneStart.length;
+    /** Decision genome, `geneCount` per agent (docs/design/06-ia.md, couche 8). */
+    this.genes = new Float64Array(max * geneStart.length);
+    // Experience (docs/design/06-ia.md, couche 7): danger of zones where it was attacked
+    // (attacks and passes), current zone, and learnt ticks per unit delivered of each good.
+    this.dangerSlots = dangerSlots;
+    this.dangerX = new Int32Array(max * dangerSlots);
+    this.dangerY = new Int32Array(max * dangerSlots);
+    this.dangerAttacks = new Uint16Array(max * dangerSlots);
+    this.dangerPasses = new Uint16Array(max * dangerSlots);
+    this.dangerCount = new Uint8Array(max);
+    this.zoneX = new Int32Array(max);
+    this.zoneY = new Int32Array(max);
+    this.costPerUnit = new Float64Array(max * goodCount);
     this.max = max;
     this.goodSlots = goodCount;
     this.recipeCount = recipeCount;
@@ -135,6 +154,8 @@ export class AgentStore {
     this.lifespan = new Int32Array(max);
     /** What it saw written in its colony's library (bit set of recipes), and whether it went. */
     this.librarySeen = i32();
+    /** Weakest harmony component of its colony, as read on the blackboard (-1: none). */
+    this.focusSeen = new Int8Array(max);
     /** Tick the newest map seen in the library was made, -1 if none. */
     this.mapSeen = i32();
     this.libraryVisited = u8();
@@ -256,8 +277,14 @@ export class AgentStore {
     this.delivers[id] = 0;
     this.social[id] = new SocialModel(this.sheets);
     this.lifespan[id] = lifespan;
+    this.genes.set(this.geneStart, id * this.geneCount);
+    this.dangerCount[id] = 0;
+    this.zoneX[id] = 0x7fffffff;
+    this.zoneY[id] = 0x7fffffff;
+    this.costPerUnit.fill(0, id * this.goodSlots, (id + 1) * this.goodSlots);
     this.librarySeen[id] = 0;
     this.mapSeen[id] = -1;
+    this.focusSeen[id] = -1;
     this.libraryVisited[id] = 0;
     if (!this.path[id]) this.path[id] = new Int32Array(PATH_MAX * 2);
     this.pathLength[id] = 0;
@@ -389,7 +416,16 @@ export class AgentStore {
       h.uint32(this.builds[id]).uint32(this.delivers[id]);
       this.social[id].hashInto(h);
       h.uint32(this.lifespan[id]).uint32(this.librarySeen[id]).uint32(this.libraryVisited[id]);
-      h.uint32(this.mapSeen[id]);
+      h.uint32(this.mapSeen[id]).uint32(this.focusSeen[id] & 0xff);
+      h.typedArray(this.genes.subarray(id * this.geneCount, (id + 1) * this.geneCount));
+      const d0 = id * this.dangerSlots;
+      const d1 = d0 + this.dangerCount[id];
+      h.uint32(this.dangerCount[id]).uint32(this.zoneX[id]).uint32(this.zoneY[id]);
+      h.typedArray(this.dangerX.subarray(d0, d1)).typedArray(this.dangerY.subarray(d0, d1));
+      h.typedArray(this.dangerAttacks.subarray(d0, d1)).typedArray(
+        this.dangerPasses.subarray(d0, d1),
+      );
+      h.typedArray(this.costPerUnit.subarray(g0, g0 + this.goodSlots));
       h.typedArray(this.path[id].subarray(0, this.pathLength[id] * 2));
       h.uint32(this.pathIndex[id]);
       h.typedArray(this.rng[id].s);

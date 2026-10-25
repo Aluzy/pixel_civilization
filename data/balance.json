@@ -24,7 +24,8 @@
     },
     "startNeeds": 30,
     "carryPerForce": 3,
-    "lifespanDays": [54, 66]
+    "lifespanDays": [54, 66],
+    "founderSpread": 20
   },
   "needs": {
     "hungerPerDay": 50,
@@ -98,7 +99,8 @@
       "similarBonus": 1,
       "familiarBonus": 0.3,
       "jitter": 0.05,
-      "materialStationBonus": 0.8
+      "materialStationBonus": 0.8,
+      "noveltyBonus": 1.5
     }
   },
   "threats": {
@@ -128,25 +130,29 @@
     "cost": { "berries": 6, "fiber": 3 },
     "mutation": 0.05,
     "eatAbove": 15,
-    "pantryPerMember": 1
+    "pantryPerMember": 1,
+    "geneMutation": 0.05
   },
   "colony": {
     "campRadius": 6,
     "boardCapacity": 128,
     "boardInterval": 200,
     "boardMaxAgeDays": 6,
-    "projectSlots": 4,
+    "projectSlots": 5,
     "bedsPerShelter": 2,
     "reservationTicks": 2400,
     "taskChunk": 5,
     "taskInterval": 50,
     "foodPerMember": 4,
     "habitBonus": 1,
-    "maxPopulation": 120,
+    "maxPopulation": 600,
     "exploreLeash": 40,
     "homeRange": 80,
     "researchTicks": 7200,
-    "equipmentInColony": 0.5
+    "equipmentInColony": 0.5,
+    "inventorMembers": 8,
+    "inventorTicks": 14400,
+    "inventorExplore": 0.3
   },
   "social": {
     "talkInterval": 40,
@@ -182,5 +188,41 @@
     "abandonRadius": 12,
     "knowledgeInterval": 100,
     "scribeTicks": 7200
+  },
+  "harmony": {
+    "weights": {
+      "stability": 0.25,
+      "durability": 0.25,
+      "spatial": 0.2,
+      "knowledge": 0.15,
+      "wellbeing": 0.15
+    },
+    "territoryRadius": 24,
+    "stabilityDays": 10,
+    "durabilityDays": 5,
+    "famineDays": 3,
+    "zoneCell": 4,
+    "nearScale": 10,
+    "historyDays": 1000,
+    "focusPantry": 0.5,
+    "focusKnowledge": 0.5,
+    "fieldMembers": 4,
+    "plantCost": 2,
+    "plantQuantity": 6,
+    "fieldRadius": 6,
+    "fieldBiomes": ["plain", "forest", "marsh", "shore"],
+    "fieldUnits": 6,
+    "fieldEveryDays": 1
+  },
+  "learning": {
+    "zoneSize": 16,
+    "dangerSlots": 8,
+    "priorDanger": 0.1,
+    "priorMin": 1,
+    "priorMax": 6,
+    "dangerAvoid": 0.3,
+    "stepMin": 0.1,
+    "stepMax": 0.5,
+    "costScale": 100
   }
 }

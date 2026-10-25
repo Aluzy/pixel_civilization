@@ -1,0 +1,8 @@
+{
+  "founders": 500,
+  "days": 100,
+  "speed": 16,
+  "maxEntities": 1024,
+  "resources": { "berries": { "quantity": [12, 30], "regrowTicks": 600 } },
+  "balance": { "colony": { "maxPopulation": 1000 } }
+}

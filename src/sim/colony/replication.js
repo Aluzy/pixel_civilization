@@ -1,5 +1,6 @@
 import { MAX_RADIUS } from '../agents/navigation.js';
 import { EventType } from '../core/events.js';
+import { inherit } from '../genome/genome.js';
 import { PACK } from '../world/chunk-store.js';
 
 const DX = Int8Array.from([1, -1, 0, 0, 1, 1, -1, -1]);
@@ -131,6 +132,7 @@ export function replicate(state, ctx, id) {
     generation: a.generation[id] + 1,
     lifespan: lifespanOf(ctx.balance, rng),
   });
+  inherit(ctx.genes, a.genes, id, child, r.geneMutation, state.rng.genome);
   a.lastReplication[id] = state.tick;
   a.children[id]++;
   const colony = state.colonies[a.colony[id]];

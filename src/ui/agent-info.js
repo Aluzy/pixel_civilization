@@ -103,6 +103,20 @@ export function formatAgent(agent, names, time) {
         : `Carte : ${doc.places} lieu(x)`,
     );
   }
+  if (agent.genes) {
+    const shown = agent.genes.map(
+      (g) => `${g.name.replace(/^Poids (de la |du )/, '')} ${g.value.toFixed(2)}`,
+    );
+    lines.push(`Génome : ${shown.join(' · ')}`);
+  }
+  const learnt = agent.experience;
+  if (learnt && learnt.costs.length + learnt.zones.length > 0) {
+    const costs = learnt.costs.map((c) => `${c.name} ${c.ticks} cycles/unité`);
+    const zones = learnt.zones.map(
+      (z) => `zone (${z.x}, ${z.y}) : ${z.attacks} attaque(s) en ${z.passes} passage(s)`,
+    );
+    lines.push(`Appris : ${[...costs, ...zones].join(' · ')}`);
+  }
   const risk = Math.round(agent.fightRisk * 100);
   lines.push(`Arme ×${agent.weapon} · prédateurs tués ${agent.kills} · risque imaginé ${risk} %`);
   const lineage = agent.parent >= 0 ? `réplique de #${agent.parent}` : 'fondateur';

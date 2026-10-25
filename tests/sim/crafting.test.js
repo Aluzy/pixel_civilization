@@ -123,7 +123,8 @@ describe('crafting', () => {
     const copper = good('copper');
     expect(CATALOG.requiredTool[copper]).toBe(good('stone_pickaxe'));
     expect(CATALOG.requiredTool[good('wood')]).toBe(0);
-    expect(CATALOG.requiredTool[good('iron')]).toBe(-1);
+    // Iron needs a copper pickaxe, made from copper ingots at the foundry (J7).
+    expect(CATALOG.requiredTool[good('iron')]).toBe(good('copper_pickaxe'));
   });
 
   // J4 exit: alone, the pixel discovers the workbench, a weapon, a tool and builds a shelter
