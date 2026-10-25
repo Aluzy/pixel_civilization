@@ -9,6 +9,7 @@ import { imagineFight } from '../ai/imagination.js';
 import { INPUT, scoreGoals } from '../ai/utility.js';
 import { atCamp, campOf, shareBoard } from '../colony/colony-logic.js';
 import { roomToReplicate } from '../colony/replication.js';
+import { carriesWriting, wantsMap } from '../knowledge/writing.js';
 import { EventType } from '../core/events.js';
 
 /**
@@ -93,8 +94,10 @@ function senseInputs(state, ctx, id) {
   const home = campOf(state, ctx, id);
   const sheltered = home !== null || memory.nearest(ctx.shelterSubjects, 0, 0) >= 0;
   input[INPUT.needShelter] = sheltered ? 0 : 1;
-  input[INPUT.needWeapon] = carriesKind(ctx, id, 'weapon') ? 0 : 1;
-  input[INPUT.needTool] = carriesKind(ctx, id, 'tool') ? 0 : 1;
+  // In a colony of several, personal equipment is less pressing than the common work.
+  const crowd = home !== null && home.members >= 2 ? ctx.balance.colony.equipmentInColony : 1;
+  input[INPUT.needWeapon] = carriesKind(ctx, id, 'weapon') ? 0 : crowd;
+  input[INPUT.needTool] = carriesKind(ctx, id, 'tool') ? 0 : crowd;
   // Danger: the nearest predator in sight, unless the agent is safe in its shelter.
   const radius = perceptionRadius(ctx, id, ctx.dark);
   const p = state.threats.nearest(a.x[id], a.y[id], radius);
@@ -114,9 +117,34 @@ function senseInputs(state, ctx, id) {
     input[INPUT.vulnerability] = 0;
   }
   // Colony: a task in hand, or open tasks seen on the blackboard; room for a replica.
-  const hasTask = a.taskProject[id] >= 0;
+  const researching = home !== null && home.projects.some((p) => p.researcher === id);
+  const hasTask = a.taskProject[id] >= 0 || researching;
   input[INPUT.colonyTask] = hasTask ? 1 : a.tasksSeen[id] === 1 ? 0.8 : 0;
   input[INPUT.canReplicate] = roomToReplicate(state, ctx, id) ? 1 : 0;
+  // Writing and reading: only with a library at home, and from what the agent saw there.
+  const library = home !== null && home.librariesStanding() > 0;
+  const unwritten = (a.recipes[id].knownMask() & ~a.librarySeen[id]) !== 0;
+  // One scribe at a time: the first member at the camp with something to write takes the task.
+  let scribe = false;
+  if (library && (unwritten || carriesWriting(state, id) || wantsMap(state, ctx, id))) {
+    const expired = state.tick - home.scribeTick > ctx.balance.writing.scribeTicks;
+    // The scribe keeps the pen for a while: it remembers what it already tried.
+    const current = home.scribe >= 0 && a.alive[home.scribe] === 1 ? home.scribe : -1;
+    if (home.scribe === id) scribe = true;
+    else if ((current < 0 || expired) && atCamp(ctx, home, id)) {
+      home.scribe = id;
+      home.scribeTick = state.tick;
+      scribe = true;
+    }
+  } else if (home !== null && home.scribe === id) {
+    home.scribe = -1;
+  }
+  input[INPUT.unwritten] = scribe ? 1 : 0;
+  const young =
+    state.tick - a.bornTick[id] < ctx.balance.writing.youngDays * ctx.balance.time.ticksPerDay;
+  const unread =
+    a.libraryVisited[id] === 0 || (a.librarySeen[id] & ~a.recipes[id].knownMask()) !== 0;
+  input[INPUT.unread] = library && unread ? (young ? 1 : 0.7) : 0;
 }
 
 /**

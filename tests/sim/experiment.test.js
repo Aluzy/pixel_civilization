@@ -86,7 +86,12 @@ describe('experiments', () => {
     book.learn(0, 0, 1000); // workbench: wood + fiber, bare hands.
     const stations = new Uint8Array(catalog.structures.length + 1);
     stations[1] = 1;
-    const [station, mask] = choose(book, fetchCosts({ wood: 0, fiber: 0 }), stations, 'item');
+    const [station, mask] = choose(
+      book,
+      fetchCosts({ wood: 0, fiber: 0 }),
+      stations,
+      'item:weapon',
+    );
     expect(station).toBe(1);
     expect(mask).toBe((1 << good('wood')) | (1 << good('fiber')));
   });

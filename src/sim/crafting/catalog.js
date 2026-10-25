@@ -14,7 +14,7 @@ export const BARE_HANDS = 0;
  * @property {number} good - Good id.
  * @property {string} id
  * @property {string} name
- * @property {string} kind - "weapon" or "tool".
+ * @property {string} kind - "weapon", "tool", "material" (paper, ink), "book" or "map".
  * @property {number} attack - Attack multiplier (weapons), 1 otherwise.
  * @property {Float64Array} harvest - Harvest speed multiplier per resource id (tools).
  */
@@ -25,8 +25,9 @@ export const BARE_HANDS = 0;
  * @property {string} id
  * @property {string} name
  * @property {string} color
- * @property {string} kind - "station" or "shelter".
+ * @property {string} kind - "station", "shelter" or "library".
  * @property {number} sleepRecovery - Fatigue recovery multiplier while sleeping inside.
+ * @property {boolean} feminine - Grammatical gender of its French name, for the chronicle.
  */
 
 /**
@@ -39,6 +40,8 @@ export const BARE_HANDS = 0;
  * @property {number} mask - Bit set of input goods (identifies the recipe with the station).
  * @property {number} duration - Ticks.
  * @property {'item' | 'structure'} outputKind
+ * @property {string} family - "structure", or "item:" + the item kind ("item:weapon"…): what the
+ *   trial heuristic compares (all structures are alike; items are alike within a kind).
  * @property {number} output - Good id (item) or structure code.
  */
 
@@ -108,6 +111,7 @@ export function buildCatalog(data, tables) {
     color: s.color,
     kind: s.kind,
     sleepRecovery: s.sleepRecovery ?? 1,
+    feminine: s.feminine === true,
   }));
   const structureCode = new Map(structures.map((s) => [s.id, s.code]));
 
@@ -140,6 +144,7 @@ export function buildCatalog(data, tables) {
       mask,
       duration: r.durationTicks,
       outputKind: isItem ? 'item' : 'structure',
+      family: isItem ? `item:${items[output - resourceCount - 1].kind}` : 'structure',
       output,
     };
   });
@@ -152,6 +157,8 @@ export function buildCatalog(data, tables) {
     if (r.tool) requiredTool[i + 1] = goodIds.get(r.tool) ?? -1;
   });
 
+  // Crafted materials (paper, ink) can be combined in trials too.
+  for (const item of items) if (item.kind === 'material') material[item.good] = 1;
   return {
     resourceCount,
     goodCount,

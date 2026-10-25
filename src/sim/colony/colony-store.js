@@ -3,7 +3,11 @@ export const ProjectKind = Object.freeze({
   NONE: 0,
   SHELTER: 1, // Gather the materials of a shelter in the stock, then build it at the camp.
   PANTRY: 2, // Keep a stock of food at the camp (never finished).
+  LIBRARY: 3, // Gather the materials of a library, then build it at the camp.
 });
+
+/** Most libraries a colony keeps track of. */
+export const MAX_LIBRARIES = 8;
 
 /** Most contributors remembered per project. */
 export const MAX_CONTRIBUTORS = 8;
@@ -24,12 +28,15 @@ export class Project {
     this.number = 0;
     this.startTick = 0;
     this.needs = new Int32Array(goods);
-    /** Units brought by members (history: the stock itself tells what is still needed). */
+    /** Units brought by members for this project and not used yet (kept in the stock). */
     this.delivered = new Int32Array(goods);
     this.reserved = new Int32Array(goods);
     this.contributors = new Int32Array(MAX_CONTRIBUTORS).fill(-1);
     /** Agent who took the materials to build, -1 if none yet. */
     this.builder = -1;
+    /** Member trying to find out how to build it when nobody knows, and since when. */
+    this.researcher = -1;
+    this.researcherTick = 0;
   }
 
   /** @returns {void} */
@@ -41,6 +48,7 @@ export class Project {
     this.reserved.fill(0);
     this.contributors.fill(-1);
     this.builder = -1;
+    this.researcher = -1;
   }
 
   /**
@@ -67,6 +75,7 @@ export class Project {
       .uint32(this.number);
     h.typedArray(this.needs).typedArray(this.delivered).typedArray(this.reserved);
     h.typedArray(this.contributors).uint32(this.builder);
+    h.uint32(this.researcher).uint32(this.researcherTick);
   }
 }
 
@@ -103,6 +112,16 @@ export class Colony {
     this.boardY = new Int32Array(n);
     this.boardTick = new Int32Array(n);
     this.boardCount = 0;
+    // Libraries: position, still standing, abandoned (nobody near for days), last visit.
+    this.libraryX = new Int32Array(MAX_LIBRARIES);
+    this.libraryY = new Int32Array(MAX_LIBRARIES);
+    this.libraryStanding = new Uint8Array(MAX_LIBRARIES);
+    this.libraryAbandoned = new Uint8Array(MAX_LIBRARIES);
+    this.libraryVisit = new Int32Array(MAX_LIBRARIES);
+    this.libraryCount = 0;
+    /** Member who took the task of writing (one scribe at a time), and since when. */
+    this.scribe = -1;
+    this.scribeTick = 0;
     /** Contributors of the last project completed (-1 = unused), for the inspector. */
     this.lastProject = new Int32Array(MAX_CONTRIBUTORS).fill(-1);
     /** Open tasks at the last count of the colony system. */
@@ -135,6 +154,50 @@ export class Colony {
       this.campX = x;
       this.campY = y;
     }
+  }
+
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @param {number} tick
+   * @returns {number} Library index, -1 if the colony has too many.
+   */
+  addLibrary(x, y, tick) {
+    if (this.libraryCount >= MAX_LIBRARIES) return -1;
+    const i = this.libraryCount++;
+    this.libraryX[i] = x;
+    this.libraryY[i] = y;
+    this.libraryStanding[i] = 1;
+    this.libraryAbandoned[i] = 0;
+    this.libraryVisit[i] = tick;
+    return i;
+  }
+
+  /**
+   * Nearest standing library to (x, y), or -1.
+   * @param {number} x
+   * @param {number} y
+   * @returns {number}
+   */
+  nearestLibrary(x, y) {
+    let best = -1;
+    let bestD = Infinity;
+    for (let i = 0; i < this.libraryCount; i++) {
+      if (this.libraryStanding[i] !== 1) continue;
+      const d = Math.max(Math.abs(this.libraryX[i] - x), Math.abs(this.libraryY[i] - y));
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+    }
+    return best;
+  }
+
+  /** @returns {number} Libraries still standing. */
+  librariesStanding() {
+    let n = 0;
+    for (let i = 0; i < this.libraryCount; i++) n += this.libraryStanding[i];
+    return n;
   }
 
   /**
@@ -224,6 +287,12 @@ export class Colony {
       .typedArray(this.boardSubject.subarray(0, n))
       .typedArray(this.boardTick.subarray(0, n));
     h.typedArray(this.boardX.subarray(0, n)).typedArray(this.boardY.subarray(0, n));
+    h.uint32(this.scribe).uint32(this.scribeTick);
+    const L = this.libraryCount;
+    h.uint32(L).typedArray(this.libraryX.subarray(0, L)).typedArray(this.libraryY.subarray(0, L));
+    h.typedArray(this.libraryStanding.subarray(0, L));
+    h.typedArray(this.libraryAbandoned.subarray(0, L));
+    h.typedArray(this.libraryVisit.subarray(0, L));
     for (const p of this.projects) p.hashInto(h);
   }
 }

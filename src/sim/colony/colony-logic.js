@@ -49,8 +49,9 @@ export function remaining(colony, project, good, members, cfg) {
       ? Math.max(0, target - colony.stock[good] - project.reserved[good])
       : 0;
   }
-  // The stock is the truth: materials lost (a builder mistaken, a builder dead) are needed again.
-  return Math.max(0, project.needs[good] - colony.stock[good] - project.reserved[good]);
+  // What was brought for this project and is still in the stock (projects do not share).
+  const held = Math.min(project.delivered[good], colony.stock[good]);
+  return Math.max(0, project.needs[good] - held - project.reserved[good]);
 }
 
 /**
@@ -60,9 +61,10 @@ export function remaining(colony, project, good, members, cfg) {
  * @returns {boolean}
  */
 export function readyToBuild(colony, project) {
-  if (project.kind !== ProjectKind.SHELTER || project.builder >= 0) return false;
+  if (project.recipe < 0 || project.builder >= 0) return false;
   for (let g = 1; g < project.needs.length; g++) {
-    if (colony.stock[g] < project.needs[g]) return false;
+    const held = Math.min(project.delivered[g], colony.stock[g]);
+    if (held < project.needs[g]) return false;
   }
   return true;
 }
@@ -177,7 +179,7 @@ export function chooseTask(state, ctx, colony, id) {
           : Math.max(Math.abs(memory.x[i] - colony.campX), Math.abs(memory.y[i] - colony.campY));
       const speed = (1 + a.force[id] / ctx.harvestForceScale) * harvestMultiplier(ctx, id, g);
       const habit = total > 0 ? a.gathered[id * a.goodSlots + g] / total : 0;
-      const urgency = p.kind === ProjectKind.SHELTER ? 1.2 : 1;
+      const urgency = p.kind === ProjectKind.PANTRY ? 1 : 1.2;
       const score = (urgency * speed * (1 + cfg.habitBonus * habit)) / (1 + d / 32);
       if (score > bestScore) {
         bestScore = score;
@@ -257,7 +259,7 @@ export function deposit(state, ctx, colony, id) {
   if (units > 0) {
     a.addCarried(id, g, -units);
     colony.stock[g] += units;
-    if (p.kind === ProjectKind.SHELTER) p.delivered[g] += units;
+    if (p.kind !== ProjectKind.PANTRY) p.delivered[g] += units;
     p.addContributor(id);
     a.delivers[id]++;
   }
@@ -279,6 +281,8 @@ export function takeMaterials(colony, ctx, id) {
   for (let g = 1; g < p.needs.length; g++) {
     if (p.needs[g] === 0) continue;
     colony.stock[g] -= p.needs[g];
+    // Taken: if the building fails, these materials will have to be brought again.
+    p.delivered[g] = Math.max(0, p.delivered[g] - p.needs[g]);
     a.addCarried(id, g, p.needs[g]);
   }
   return true;
@@ -297,14 +301,19 @@ export function takeMaterials(colony, ctx, id) {
  */
 export function onBuilt(state, ctx, id, code, x, y) {
   const c = ctx.agents.colony[id];
-  if (c < 0 || ctx.shelterCodes[code] !== 1) return;
+  if (c < 0) return;
   const colony = state.colonies[c];
-  colony.addShelter(x, y);
-  colony.sheltersBuilt++;
+  if (ctx.shelterCodes[code] === 1) {
+    colony.addShelter(x, y);
+    colony.sheltersBuilt++;
+  } else if (ctx.catalog.structures[code - 1].kind === 'library') {
+    colony.addLibrary(x, y, state.tick);
+  }
   const a = ctx.agents;
   const slot = a.taskProject[id];
   if (slot < 0 || a.taskBuild[id] !== 1) return;
   const p = colony.projects[slot];
+  if (p.recipe < 0 || ctx.catalog.recipes[p.recipe].output !== code) return;
   p.addContributor(id);
   let helpers = 0;
   for (const other of p.contributors) {
@@ -319,7 +328,8 @@ export function onBuilt(state, ctx, id, code, x, y) {
       a.social[other].affinity[sheet] += ctx.balance.social.sharedAffinity;
     }
   }
-  state.events.push(state.tick, EventType.COLONY_PROJECT, id, x, y, helpers);
+  // Subject: helpers × 16 + project kind, so the chronicle can name what was built.
+  state.events.push(state.tick, EventType.COLONY_PROJECT, id, x, y, helpers * 16 + p.kind);
   colony.lastProject.set(p.contributors);
   releaseTask(state, ctx, id);
   p.clear();

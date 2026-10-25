@@ -15,6 +15,15 @@ import {
   takeMaterials,
 } from '../colony/colony-logic.js';
 import { replicate } from '../colony/replication.js';
+import { DocKind } from '../knowledge/document-store.js';
+import {
+  libraryBeside,
+  lookAtLibrary,
+  nextToWrite,
+  readOne,
+  storeDocuments,
+  writeOne,
+} from '../knowledge/writing.js';
 
 /** Bits of AgentStore.flags: first experiences, reported once each in the chronicle. */
 export const Flag = Object.freeze({
@@ -250,6 +259,37 @@ export function stepAction(state, ctx, id) {
       finish(ctx, id);
       return;
     }
+    case Action.WRITE:
+    case Action.READ: {
+      // One recipe (or map entry) at a time, at the library.
+      const li = libraryBeside(state, ctx, id);
+      if (li < 0) {
+        finish(ctx, id);
+        return;
+      }
+      const w = ctx.balance.writing;
+      const writing = agents.action[id] === Action.WRITE;
+      const docs = state.documents;
+      const book = docs.carried(id, DocKind.BOOK, w.bookRecipes);
+      const onMap = writing && (book < 0 || nextToWrite(state, ctx, id, book) < 0);
+      const need = writing ? (onMap ? w.writeEntryTicks : w.writeRecipeTicks) : w.readRecipeTicks;
+      agents.actionProgress[id] += 1;
+      if (agents.actionProgress[id] < need) return;
+      agents.actionProgress[id] = 0;
+      const more = writing ? writeOne(state, ctx, id) : readOne(state, ctx, id, li);
+      if (!more) {
+        if (writing) storeDocuments(state, ctx, id, li);
+        else lookAtLibrary(state, ctx, id, li);
+        finish(ctx, id);
+      }
+      return;
+    }
+    case Action.STORE: {
+      const li = libraryBeside(state, ctx, id);
+      if (li >= 0) storeDocuments(state, ctx, id, li);
+      finish(ctx, id);
+      return;
+    }
     case Action.REPLICATE:
       agents.actionProgress[id] += 1;
       if (agents.actionProgress[id] >= ctx.balance.replication.durationTicks) {
@@ -353,6 +393,8 @@ function craft(state, ctx, id) {
     }
   }
   const book = agents.recipes[id];
+  // One makes only what one believes one knows (it may have just turned out wrong).
+  if (!book.knows(r)) return;
   if (book.wrong[r] === 1) {
     // A recipe heard with an error: half the ingredients are wasted, the belief is dropped and
     // the attempt is remembered as a failure.
@@ -375,6 +417,11 @@ function craft(state, ctx, id) {
     onBuilt(state, ctx, id, recipe.output, x, y);
   } else {
     agents.addCarried(id, recipe.output, 1, state.tick);
+    // A book or a map is an object with its own (blank) content.
+    if (recipe.output === ctx.docGood[DocKind.BOOK])
+      state.documents.create(DocKind.BOOK, id, state.tick);
+    if (recipe.output === ctx.docGood[DocKind.MAP])
+      state.documents.create(DocKind.MAP, id, state.tick);
     state.events.push(state.tick, EventType.CRAFTED, id, x, y, r);
   }
   imitate(state, ctx, id, r);
@@ -428,6 +475,7 @@ function experiment(state, ctx, id) {
   if (r >= 0) {
     if (book.learn(r, state.tick, ctx.recipeTau)) {
       state.events.push(state.tick, EventType.DISCOVERED, id, agents.x[id], agents.y[id], r);
+      state.knowledge.noteDiscovery(r, id, state.tick);
     }
     return;
   }

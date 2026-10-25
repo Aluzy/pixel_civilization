@@ -5,6 +5,16 @@ import { PACK } from '../world/chunk-store.js';
 const DX = Int8Array.from([1, -1, 0, 0, 1, 1, -1, -1]);
 const DY = Int8Array.from([0, 0, 1, -1, 1, -1, 1, -1]);
 
+/**
+ * @param {object} balance
+ * @param {import('../core/rng.js').Rng} rng
+ * @returns {number} Lifespan in ticks, drawn in the configured range of days.
+ */
+export function lifespanOf(balance, rng) {
+  const [min, max] = balance.agent.lifespanDays;
+  return Math.round((min + rng.next() * (max - min)) * balance.time.ticksPerDay);
+}
+
 // Replication (docs/design/03-individu.md): a decision, not an automatism. The agent replicates
 // when fed for a while, unhurt for days, carrying the cost, and when its colony has a free bed.
 
@@ -119,6 +129,7 @@ export function replicate(state, ctx, id) {
     colony: a.colony[id],
     parent: id,
     generation: a.generation[id] + 1,
+    lifespan: lifespanOf(ctx.balance, rng),
   });
   a.lastReplication[id] = state.tick;
   a.children[id]++;

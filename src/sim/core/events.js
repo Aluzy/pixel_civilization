@@ -28,6 +28,12 @@ export const EventType = Object.freeze({
   MISTAKEN: 'mistaken',
   COLONY_PROJECT: 'colonyProject',
   FIRST_DELIVERY: 'firstDelivery',
+  WRITTEN: 'written',
+  READ: 'read',
+  FIRE: 'fire',
+  ABANDONED: 'abandoned',
+  KNOWLEDGE_LOST: 'knowledgeLost',
+  KNOWLEDGE_RECOVERED: 'knowledgeRecovered',
 });
 
 /** Events kept in memory; older ones are dropped (the count keeps growing). */

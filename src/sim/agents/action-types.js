@@ -13,6 +13,9 @@ export const Action = Object.freeze({
   DEPOSIT: 10,
   TAKE: 11,
   REPLICATE: 12,
+  WRITE: 13,
+  READ: 14,
+  STORE: 15,
 });
 
 /** Display names for the inspector, indexed by {@link Action}. */
@@ -30,6 +33,9 @@ export const ACTION_NAMES = Object.freeze([
   'dépose à la réserve',
   'prend à la réserve',
   'se réplique',
+  'écrit',
+  'lit',
+  'range à la bibliothèque',
 ]);
 
 /**
@@ -43,6 +49,8 @@ export function isFocused(action) {
     action === Action.HARVEST ||
     action === Action.CRAFT ||
     action === Action.EXPERIMENT ||
-    action === Action.REPLICATE
+    action === Action.REPLICATE ||
+    action === Action.WRITE ||
+    action === Action.READ
   );
 }

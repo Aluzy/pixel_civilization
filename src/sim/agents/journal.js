@@ -28,6 +28,8 @@ export const PlanNote = Object.freeze({
   COLONY: 10, // Working on a colony task.
   REPLICATION: 11, // Preparing or doing a replication.
   PANTRY: 12, // Taking food from the colony's stock.
+  WRITING: 13, // Writing a book or a map, or storing it.
+  READING: 14, // Reading in the library.
 });
 
 /**

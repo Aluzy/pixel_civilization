@@ -124,7 +124,10 @@ describe('colony work', () => {
     project.builder = 0;
     onBuilt(sim.state, sim.ctx, 0, shelterCode, a.x[0] + 3, a.y[0]);
     expect(colony.shelterCount).toBe(2);
-    expect(sim.events.events.at(-1)).toMatchObject({ type: EventType.COLONY_PROJECT, subject: 2 });
+    expect(sim.events.events.at(-1)).toMatchObject({
+      type: EventType.COLONY_PROJECT,
+      subject: 2 * 16 + ProjectKind.SHELTER,
+    });
     expect(a.social[0].shared[a.social[0].find(1)]).toBe(1);
     expect(project.kind).toBe(ProjectKind.NONE);
   });
@@ -217,7 +220,7 @@ describe('colony (J5 exit)', () => {
       const n = sim.agents.aliveCount;
       if (!extinct && n >= 20 && n <= balance.colony.maxPopulation) ok++;
       const together = sim.events.events.some(
-        (e) => e.type === EventType.COLONY_PROJECT && e.subject >= 2,
+        (e) => e.type === EventType.COLONY_PROJECT && e.subject >> 4 >= 2,
       );
       if (together) cooperative++;
     }

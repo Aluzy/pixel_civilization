@@ -28,7 +28,16 @@ export function colonySystem(state, ctx) {
       colony.findProject(ProjectKind.SHELTER) < 0
     ) {
       const slot = colony.freeSlot();
-      if (slot >= 0) openShelterProject(state, ctx, colony, slot);
+      if (slot >= 0) openBuildProject(state, ctx, colony, slot, ProjectKind.SHELTER, 'shelter');
+    }
+    // A library once the colony is large enough to have knowledge worth keeping.
+    if (
+      colony.members >= ctx.balance.writing.libraryMembers &&
+      colony.librariesStanding() === 0 &&
+      colony.findProject(ProjectKind.LIBRARY) < 0
+    ) {
+      const slot = colony.freeSlot();
+      if (slot >= 0) openBuildProject(state, ctx, colony, slot, ProjectKind.LIBRARY, 'library');
     }
     if (colony.findProject(ProjectKind.PANTRY) < 0) {
       const slot = colony.freeSlot();
@@ -46,21 +55,25 @@ export function colonySystem(state, ctx) {
 }
 
 /**
+ * Opens a project to build a structure of the given catalogue kind at the camp.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
  * @param {import('../colony/colony-store.js').Colony} colony
  * @param {number} slot
+ * @param {number} kind - {@link ProjectKind}.
+ * @param {string} structureKind - "shelter" or "library".
  * @returns {void}
  */
-function openShelterProject(state, ctx, colony, slot) {
-  const code = ctx.shelterCodes.indexOf(1);
-  const r = ctx.catalog.recipeForStructure[code];
+function openBuildProject(state, ctx, colony, slot, kind, structureKind) {
+  const structure = ctx.catalog.structures.find((st) => st.kind === structureKind);
+  if (!structure) return;
+  const r = ctx.catalog.recipeForStructure[structure.code];
   if (r < 0) return;
   const p = colony.projects[slot];
   p.clear();
-  p.kind = ProjectKind.SHELTER;
+  p.kind = kind;
   p.recipe = r;
-  p.number = colony.sheltersBuilt + 1;
+  p.number = kind === ProjectKind.SHELTER ? colony.sheltersBuilt + 1 : colony.libraryCount + 1;
   p.startTick = state.tick;
   for (const input of ctx.catalog.recipes[r].inputs) p.needs[input.good] = input.count;
 }

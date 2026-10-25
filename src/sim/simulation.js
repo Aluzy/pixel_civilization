@@ -16,7 +16,10 @@ import { EventLog, EventType } from './core/events.js';
 import { createHasher, hashCoords } from './core/hash.js';
 import { createRng, seedToKey } from './core/rng.js';
 import { Colony } from './colony/colony-store.js';
+import { lifespanOf } from './colony/replication.js';
 import { buildCatalog } from './crafting/catalog.js';
+import { DocKind, DocumentStore } from './knowledge/document-store.js';
+import { KnowledgeLog } from './knowledge/knowledge-log.js';
 import { SYSTEMS } from './systems/index.js';
 import { ThreatStore } from './threats/threat-store.js';
 import { ChunkStore, findSpawn } from './world/chunk-store.js';
@@ -59,6 +62,8 @@ export const RNG_STREAMS = Object.freeze(['world', 'threats', 'ai', 'social', 'l
  * @property {AgentStore} agents
  * @property {ThreatStore} threats - Predators.
  * @property {Colony[]} colonies - Index = colony id.
+ * @property {DocumentStore} documents - Books and maps.
+ * @property {KnowledgeLog} knowledge - Collective knowledge over time (observation only).
  * @property {EventLog} events
  * @property {Regrowth[]} regrowth - Sorted by tick.
  */
@@ -151,6 +156,30 @@ function goodVector(catalog, tables, counts) {
     v[r + 1] = n;
   }
   return v;
+}
+
+/**
+ * @param {import('./crafting/catalog.js').Catalog} catalog
+ * @returns {Int32Array} Good id per {@link DocKind}.
+ */
+function docGoods(catalog) {
+  const out = new Int32Array(3);
+  out[DocKind.BOOK] = catalog.items.find((i) => i.kind === 'book')?.good ?? 0;
+  out[DocKind.MAP] = catalog.items.find((i) => i.kind === 'map')?.good ?? 0;
+  return out;
+}
+
+/**
+ * Planning target "have an item of this kind".
+ * @param {import('./crafting/catalog.js').Catalog} catalog
+ * @param {string} kind
+ * @param {number} id
+ * @returns {import('./ai/planner.js').PlanTarget}
+ */
+function itemTarget(catalog, kind, id) {
+  const goods = new Uint8Array(catalog.goodCount);
+  for (const item of catalog.items) if (item.kind === kind) goods[item.good] = 1;
+  return { id, goods, structures: new Uint8Array(catalog.structures.length + 1) };
 }
 
 /**
@@ -284,6 +313,17 @@ function buildContext(balance, tables, agents, seedKey) {
     replicationCost: goodVector(catalog, tables, balance.replication.cost),
     costOut: new Int32Array(2),
     imagined: { hp: 0, maxHp: 0, attack: 0, defense: 0 },
+    contentOut: new Int32Array(3),
+    /** Good id of each document kind. */
+    docGood: docGoods(catalog),
+    bookTarget: itemTarget(catalog, 'book', 70),
+    mapTarget: itemTarget(catalog, 'map', 71),
+    /** One planning target per good ("have one"), for crafted trial ingredients. */
+    goodTargets: Array.from({ length: catalog.goodCount }, (_, g) => {
+      const goods = new Uint8Array(catalog.goodCount);
+      goods[g] = 1;
+      return { id: 96 + g, goods, structures: new Uint8Array(catalog.structures.length + 1) };
+    }),
     trialAgent: 0,
     acquired: null,
     structureTargets: buildStructureTargets(catalog),
@@ -348,14 +388,16 @@ function describeProject(ctx, colony, p, cfg) {
     const need = pantry ? (colony.members + 1) * cfg.foodPerMember : p.needs[g];
     goods.push({
       name: ctx.catalog.goodName(g),
-      have: Math.min(need, colony.stock[g]),
+      have: Math.min(need, pantry ? colony.stock[g] : Math.min(p.delivered[g], colony.stock[g])),
       need,
       reserved: p.reserved[g],
     });
   }
   return {
-    kind: pantry ? 'pantry' : 'shelter',
-    name: pantry ? 'Réserve de nourriture' : `Abri n°${p.number}`,
+    kind: pantry ? 'pantry' : p.kind === 3 ? 'library' : 'shelter',
+    name: pantry
+      ? 'Réserve de nourriture'
+      : `${p.kind === 3 ? 'Bibliothèque' : 'Abri'} n°${p.number}`,
     goods,
     contributors: [...p.contributors].filter((id) => id >= 0),
     builder: p.builder,
@@ -375,7 +417,8 @@ function describeTask(ctx, state, a, id) {
   if (slot < 0 || a.colony[id] < 0) return null;
   const colony = state.colonies[a.colony[id]];
   const p = colony.projects[slot];
-  const name = p.kind === 2 ? 'la réserve de nourriture' : `« Abri n°${p.number} »`;
+  const label = p.kind === 3 ? 'Bibliothèque' : 'Abri';
+  const name = p.kind === 2 ? 'la réserve de nourriture' : `« ${label} n°${p.number} »`;
   if (a.taskBuild[id] === 1) return `bâtir ${name}`;
   return `apporter ${a.taskAmount[id]} ${ctx.catalog.goodName(a.taskGood[id])} pour ${name}`;
 }
@@ -466,6 +509,8 @@ export class Simulation {
       agents,
       threats: new ThreatStore(balance.threats.maxPredators),
       colonies: [new Colony(0, CATALOG.goodCount, balance.colony)],
+      documents: new DocumentStore(balance.writing.maxDocuments, balance.writing.mapEntries),
+      knowledge: new KnowledgeLog(CATALOG.recipes.length),
       events: new EventLog(),
       regrowth: [],
     };
@@ -481,6 +526,7 @@ export class Simulation {
       needs: balance.agent.startNeeds,
       rng: rng.ai.fork('agent-0-0'),
       colony: 0,
+      lifespan: lifespanOf(balance, rng.lifecycle),
     });
     this.state.colonies[0].members = 1;
     this.state.events.push(0, EventType.BIRTH, first, spawn.x, spawn.y);
@@ -580,7 +626,87 @@ export class Simulation {
       stock,
       projects,
       lastProject: [...colony.lastProject].filter((id) => id >= 0),
+      libraries: this.describeLibraries(c),
+      scribe: colony.scribe,
+      knowledge: this.describeKnowledge(),
     };
+  }
+
+  /**
+   * Books and maps an agent carries, with what is written in them.
+   * @param {number} id
+   * @returns {{ kind: 'book' | 'map', recipes: string[], places: number }[]}
+   */
+  describeDocuments(id) {
+    const docs = this.state.documents;
+    const out = [];
+    for (let d = 0; d < docs.max; d++) {
+      if (docs.kind[d] === DocKind.NONE || docs.holder[d] !== id) continue;
+      out.push({
+        kind: docs.kind[d] === DocKind.BOOK ? 'book' : 'map',
+        recipes: this.recipeNames(docs.recipes[d]),
+        places: docs.entryCount[d],
+      });
+    }
+    return /** @type {{ kind: 'book' | 'map', recipes: string[], places: number }[]} */ (out);
+  }
+
+  /**
+   * Libraries of a colony, with what is written there.
+   * @param {number} c
+   * @returns {{ x: number, y: number, abandoned: boolean, documents: number, recipes: string[] }[]}
+   */
+  describeLibraries(c) {
+    const colony = this.state.colonies[c];
+    const out = [];
+    const content = new Int32Array(3);
+    for (let li = 0; li < colony.libraryCount; li++) {
+      if (colony.libraryStanding[li] !== 1) continue;
+      const documents = this.state.documents.libraryContent(c, li, content);
+      out.push({
+        x: colony.libraryX[li],
+        y: colony.libraryY[li],
+        abandoned: colony.libraryAbandoned[li] === 1,
+        documents,
+        recipes: this.recipeNames(content[0]),
+      });
+    }
+    return out;
+  }
+
+  /**
+   * Collective knowledge (docs/design/05-savoir.md): recipes known by the living, written within
+   * reach, lost, saved by a book, found again.
+   * @returns {{ known: string[], written: string[], lost: string[], saved: string[],
+   *   recovered: string[] }}
+   */
+  describeKnowledge() {
+    const k = this.state.knowledge;
+    const pick = (/** @type {Int32Array} */ ticks) => {
+      let m = 0;
+      for (let r = 0; r < ticks.length; r++) if (ticks[r] >= 0) m |= 1 << r;
+      return this.recipeNames(m);
+    };
+    return {
+      known: this.recipeNames(k.known),
+      written: this.recipeNames(k.written),
+      lost: this.recipeNames(k.lostMask),
+      saved: pick(k.savedByBook),
+      recovered: pick(k.recovered),
+    };
+  }
+
+  /**
+   * @param {number} mask - Bit set of recipes.
+   * @returns {string[]} Names of what they make.
+   */
+  recipeNames(mask) {
+    const catalog = this.ctx.catalog;
+    const out = [];
+    for (let r = 0; r < catalog.recipes.length; r++) {
+      if ((mask & (1 << r)) !== 0) out.push(catalog.recipes[r].name);
+    }
+    return out;
   }
 
   /**
@@ -662,6 +788,9 @@ export class Simulation {
       kills: a.kills[id],
       fightRisk: a.fightRisk[id],
       generation: a.generation[id],
+      lifespan: a.lifespan[id],
+      documents: this.describeDocuments(id),
+      scribe: a.colony[id] >= 0 && this.state.colonies[a.colony[id]].scribe === id,
       parent: a.parent[id],
       children: a.children[id],
       role: roleOf(this.ctx, a, id),
@@ -713,6 +842,8 @@ export class Simulation {
     s.agents.hashInto(h);
     s.threats.hashInto(h);
     for (const colony of s.colonies) colony.hashInto(h);
+    s.documents.hashInto(h);
+    s.knowledge.hashInto(h);
     h.uint32(s.events.count);
     for (const e of s.events.events) h.uint32(e.tick).string(e.type).uint32(e.agent);
     for (const g of s.regrowth) h.uint32(g.tick).uint32(g.x).uint32(g.y).uint32(g.resource);
