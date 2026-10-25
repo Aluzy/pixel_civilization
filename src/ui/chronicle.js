@@ -60,12 +60,16 @@ const TEXT = {
   [EventType.PREDATOR_KILLED]: (who) => `${who} tue un prédateur.`,
   [EventType.DEATH]: (who) => `Mort de ${who}.`,
   [EventType.FIRST_DELIVERY]: (who) => `Première contribution de ${who} à la réserve.`,
+  [EventType.GUARD]: (who) => `${who} prend la garde du camp.`,
+  [EventType.SHELTER_FORCED]: (who) => `Une meute force l’abri isolé de ${who} !`,
 };
 
 // Events about places, not individuals.
 const PLACE_TEXT = {
   [EventType.FIRE]: (c) =>
     `La bibliothèque ${c.where} brûle, et ${c.subject} document(s) avec elle.`,
+  [EventType.DEN_DESTROYED]: (c) =>
+    `${c.who} détruit une tanière ${c.where} : la meute se disperse.`,
   [EventType.ABANDONED]: (c) =>
     `La bibliothèque ${c.where} est abandonnée : ses livres sont hors de portée.`,
 };
@@ -91,6 +95,8 @@ export const FILTERS = Object.freeze([
       EventType.FIRE,
       EventType.KNOWLEDGE_LOST,
       EventType.KNOWLEDGE_RECOVERED,
+      EventType.DEN_DESTROYED,
+      EventType.SHELTER_FORCED,
     ],
   },
   {
@@ -119,6 +125,18 @@ export const FILTERS = Object.freeze([
       EventType.ABANDONED,
       EventType.KNOWLEDGE_LOST,
       EventType.KNOWLEDGE_RECOVERED,
+    ],
+  },
+  {
+    name: 'danger',
+    types: [
+      EventType.ATTACKED,
+      EventType.PREDATOR_KILLED,
+      EventType.DEATH,
+      EventType.HEALTH_CRITICAL,
+      EventType.DEN_DESTROYED,
+      EventType.SHELTER_FORCED,
+      EventType.GUARD,
     ],
   },
 ]);
@@ -171,6 +189,8 @@ export function formatEvent(event, time, names) {
   else if (placeText) text = placeText(context);
   else if (event.type === EventType.DEATH && event.subject === 1) {
     text = `Mort de ${who}, de vieillesse.`;
+  } else if (event.type === EventType.DEATH && event.subject === 2) {
+    text = `Mort de ${who}, tué par un prédateur.`;
   } else if (event.type === EventType.BIRTH && event.subject >= 0) {
     text = `Naissance de ${who}, réplique de l’individu #${event.subject}.`;
   } else if (event.type === EventType.COLONY_PROJECT) {

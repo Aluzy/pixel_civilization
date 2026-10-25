@@ -8,6 +8,7 @@ import { discover, pursue } from './work.js';
 import { atCamp, campOf, shareBoard } from '../colony/colony-logic.js';
 import { colonyWork, goToCamp, prepareReplication } from './colony-work.js';
 import { readBehaviour, writeBehaviour } from './scribe-work.js';
+import { guardBehaviour, hideBehaviour, huntBehaviour } from './guard-work.js';
 
 // Turns a chosen goal into a concrete action, using only what the agent perceives and remembers.
 // Survival goals are hand-written; crafting goals follow the GOAP planner (work.js).
@@ -115,6 +116,15 @@ export function planGoal(state, ctx, id, goal, plan) {
       return;
     case 'read':
       readBehaviour(state, ctx, id, plan);
+      return;
+    case 'hide':
+      hideBehaviour(state, ctx, id, plan);
+      return;
+    case 'guard':
+      guardBehaviour(state, ctx, id, plan);
+      return;
+    case 'hunt':
+      huntBehaviour(state, ctx, id, plan);
       return;
     case 'explore': {
       // The colony's inventor spends its curiosity trying new combinations instead.

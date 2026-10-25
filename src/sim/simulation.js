@@ -7,12 +7,12 @@ import worldData from '../../data/world.json' with { type: 'json' };
 import { ACTION_NAMES, Action } from './agents/action-types.js';
 import { AgentStore } from './agents/agent-store.js';
 import { describeExperience } from './agents/experience.js';
-import { attackMultiplier } from './agents/equipment.js';
+import { attackMultiplier, defenseBonus } from './agents/equipment.js';
 import { MAX_RADIUS, Navigator } from './agents/navigation.js';
 import { WATER_SUBJECT } from './agents/memory.js';
 import { Planner, Step } from './ai/planner.js';
 import { buildProjects } from './ai/projects.js';
-import { buildGoalTable } from './ai/utility.js';
+import { INPUT, buildGoalTable } from './ai/utility.js';
 import { describeTick, phaseIndexAt } from './core/clock.js';
 import { EventLog, EventType } from './core/events.js';
 import { createHasher, hashCoords } from './core/hash.js';
@@ -100,6 +100,11 @@ export const RNG_STREAMS = Object.freeze([
  * @property {Int32Array} zoneCounts - Scratch for the specialisation of zones.
  * @property {Int32Array} regrowTicks - Per resource id, 0 if not renewable.
  * @property {Uint8Array} plantBiome - 1 per biome where a field can be planted.
+ * @property {Uint8Array} denBiomes - 1 per biome where a den can be.
+ * @property {number} denCode - Structure code of a den.
+ * @property {number} carcass - Resource id of a carcass (0 if none).
+ * @property {number} carcassUnits - Units of meat in a carcass.
+ * @property {number} hideGood - Good id of a hide (0 if none).
  * @property {AgentStore} agents
  * @property {Navigator} nav
  * @property {Float64Array} biomeSpeed
@@ -259,6 +264,7 @@ function buildContext(balance, tables, agents, seedKey) {
   const shelterCodes = new Uint8Array(catalog.structures.length + 1);
   for (const st of catalog.structures) if (st.kind === 'shelter') shelterCodes[st.code] = 1;
   const predator = worldData.threats.predator;
+  const den = worldData.threats.den;
   const days = (d) => d * time.ticksPerDay;
   const darknessByPhase = Float64Array.from(phases.map((p) => worldData.darkness[p] ?? 0));
   const phase0 = phaseIndexAt(0, time);
@@ -304,7 +310,7 @@ function buildContext(balance, tables, agents, seedKey) {
     nightPhase: phases.indexOf('night'),
     darkness: darknessByPhase[phase0],
     dark: phases.indexOf('night') === phase0,
-    inputs: new Float64Array(16),
+    inputs: new Float64Array(Object.keys(INPUT).length),
     scores: new Float64Array(GOAL_TABLE.goals.length),
     plan: { action: 0, x: 0, y: 0, note: 0 },
     capacity: (id) => agents.force[id] * balance.agent.carryPerForce,
@@ -336,6 +342,11 @@ function buildContext(balance, tables, agents, seedKey) {
     shelterCodes,
     predatorBiomes: Uint8Array.from(tables.biomes, (b) => (predator.biomes.includes(b.id) ? 1 : 0)),
     predatorPhases: Uint8Array.from(phases, (p) => (predator.phases.includes(p) ? 1 : 0)),
+    denBiomes: Uint8Array.from(tables.biomes, (b) => (den.biomes.includes(b.id) ? 1 : 0)),
+    denCode: catalog.structures.find((st) => st.kind === 'den')?.code ?? 0,
+    carcass: tables.resources.findIndex((r) => r.id === 'carcass') + 1,
+    carcassUnits: tables.resources.find((r) => r.id === 'carcass')?.quantity[0] ?? 0,
+    hideGood: catalog.items.find((i) => i.id === 'hide')?.good ?? 0,
     phase: phase0,
     structureTau: days(balance.memory.structureTauDays),
     dangerTau: days(balance.memory.dangerTauDays),
@@ -354,6 +365,8 @@ function buildContext(balance, tables, agents, seedKey) {
     docGood: docGoods(catalog),
     bookTarget: itemTarget(catalog, 'book', 70),
     mapTarget: itemTarget(catalog, 'map', 71),
+    weaponTarget: itemTarget(catalog, 'weapon', 72),
+    armorTarget: itemTarget(catalog, 'armor', 73),
     /** One planning target per good ("have one"), for crafted trial ingredients. */
     goodTargets: Array.from({ length: catalog.goodCount }, (_, g) => {
       const goods = new Uint8Array(catalog.goodCount);
@@ -703,6 +716,8 @@ export class Simulation {
         focus: colony.focus,
       },
       planted: colony.planted,
+      guards: [...colony.guards].filter((g) => g >= 0 && this.state.agents.alive[g] === 1),
+      lastThreat: colony.lastThreat,
       fields: colony.fields,
       inventor: colony.inventor,
       scribe: colony.scribe,
@@ -867,6 +882,10 @@ export class Simulation {
       fightRisk: a.fightRisk[id],
       generation: a.generation[id],
       lifespan: a.lifespan[id],
+      fear: a.fear[id],
+      combatSkill: a.combatSkill[id],
+      armor: defenseBonus(this.ctx, id),
+      guard: a.colony[id] >= 0 && this.state.colonies[a.colony[id]].guards.includes(id),
       genes: GENE_TABLE.genes.map((g, k) => ({
         id: g.id,
         name: g.name,

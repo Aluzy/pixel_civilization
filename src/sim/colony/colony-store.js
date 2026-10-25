@@ -10,6 +10,9 @@ export const ProjectKind = Object.freeze({
 /** Most libraries a colony keeps track of. */
 export const MAX_LIBRARIES = 8;
 
+/** Most guards a colony keeps at once. */
+export const MAX_GUARDS = 12;
+
 /** Most contributors remembered per project. */
 export const MAX_CONTRIBUTORS = 8;
 
@@ -124,6 +127,12 @@ export class Colony {
     /** Member who took the task of writing (one scribe at a time), and since when. */
     this.scribe = -1;
     this.scribeTick = 0;
+    /** Guards (docs/design/16-guerre-et-forteresses.md): -1 for a free post, and since when. */
+    this.guards = new Int32Array(MAX_GUARDS).fill(-1);
+    this.guardTick = new Int32Array(MAX_GUARDS);
+    /** Last tick a member was attacked near the camp; no new den before `denQuietUntil`. */
+    this.lastThreat = -0x40000000;
+    this.denQuietUntil = 0;
     /** Member who experiments freely when curious (one at a time), and since when. */
     this.inventor = -1;
     this.inventorTick = 0;
@@ -310,6 +319,8 @@ export class Colony {
       .typedArray(this.boardTick.subarray(0, n));
     h.typedArray(this.boardX.subarray(0, n)).typedArray(this.boardY.subarray(0, n));
     h.uint32(this.scribe).uint32(this.scribeTick).uint32(this.inventor).uint32(this.inventorTick);
+    h.typedArray(this.guards).typedArray(this.guardTick);
+    h.uint32(this.lastThreat).uint32(this.denQuietUntil);
     const L = this.libraryCount;
     h.uint32(L).typedArray(this.libraryX.subarray(0, L)).typedArray(this.libraryY.subarray(0, L));
     h.typedArray(this.libraryStanding.subarray(0, L));

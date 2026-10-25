@@ -9,6 +9,9 @@ export const Mood = Object.freeze({
  * Predators (docs/design/02-monde.md, « Menaces »), as typed arrays indexed by id like agents.
  * They are part of the world, not agents: no memory and no planning, just simple rules.
  */
+/** Most dens in the world at once. */
+export const MAX_DENS = 32;
+
 export class ThreatStore {
   /**
    * @param {number} max
@@ -28,6 +31,15 @@ export class ThreatStore {
     this.cooldown = new Int32Array(max);
     /** Ticks hunting without landing a blow: a predator that cannot catch its prey gives up. */
     this.chase = new Int32Array(max);
+    /** Den the predator belongs to (pack), or -1 for a lone prowler. */
+    this.den = new Int16Array(max).fill(-1);
+    // Dens (docs/design/16-guerre-et-forteresses.md): position, health, alive, colony nearby.
+    this.denX = new Int32Array(MAX_DENS);
+    this.denY = new Int32Array(MAX_DENS);
+    this.denHp = new Float64Array(MAX_DENS);
+    this.denAlive = new Uint8Array(MAX_DENS);
+    this.denColony = new Int16Array(MAX_DENS).fill(-1);
+    this.denCount = 0;
     /** Distance found by the last {@link ThreatStore#nearest} call. */
     this.lastDistance = Infinity;
   }
@@ -54,6 +66,7 @@ export class ThreatStore {
     this.moveProgress[id] = 0;
     this.cooldown[id] = 0;
     this.chase[id] = 0;
+    this.den[id] = -1;
     return id;
   }
 
@@ -109,14 +122,64 @@ export class ThreatStore {
    * @param {import('../core/hash.js').Hasher} h
    * @returns {void}
    */
+  /**
+   * A new den, or -1 if there are too many.
+   * @param {number} x
+   * @param {number} y
+   * @param {number} hp
+   * @param {number} colony - Colony whose camp it threatens.
+   * @returns {number}
+   */
+  addDen(x, y, hp, colony) {
+    let d = 0;
+    while (d < this.denCount && this.denAlive[d] === 1) d++;
+    if (d >= MAX_DENS) return -1;
+    if (d === this.denCount) this.denCount++;
+    this.denX[d] = x;
+    this.denY[d] = y;
+    this.denHp[d] = hp;
+    this.denAlive[d] = 1;
+    this.denColony[d] = colony;
+    return d;
+  }
+
+  /**
+   * Predators of a den still alive.
+   * @param {number} d
+   * @returns {number}
+   */
+  packSize(d) {
+    let n = 0;
+    for (let i = 0; i < this.highWater; i++) if (this.alive[i] === 1 && this.den[i] === d) n++;
+    return n;
+  }
+
+  /**
+   * Den on or next to (x, y), or -1.
+   * @param {number} x
+   * @param {number} y
+   * @returns {number}
+   */
+  denAt(x, y) {
+    for (let d = 0; d < this.denCount; d++) {
+      if (this.denAlive[d] !== 1) continue;
+      if (Math.abs(this.denX[d] - x) <= 1 && Math.abs(this.denY[d] - y) <= 1) return d;
+    }
+    return -1;
+  }
+
   hashInto(h) {
     h.uint32(this.aliveCount).uint32(this.highWater);
+    const D = this.denCount;
+    h.uint32(D).typedArray(this.denX.subarray(0, D)).typedArray(this.denY.subarray(0, D));
+    h.typedArray(this.denHp.subarray(0, D)).typedArray(this.denAlive.subarray(0, D));
+    h.typedArray(this.denColony.subarray(0, D));
     const one = new Float64Array(2);
     for (let i = 0; i < this.highWater; i++) {
       if (this.alive[i] !== 1) continue;
       h.uint32(i).uint32(this.x[i]).uint32(this.y[i]);
       h.uint32(this.mood[i]).uint32(this.target[i]).uint32(this.cooldown[i]);
-      h.uint32(this.chase[i]);
+      h.uint32(this.chase[i]).uint32(this.den[i] & 0xffff);
       one[0] = this.hp[i];
       one[1] = this.moveProgress[i];
       h.typedArray(one);

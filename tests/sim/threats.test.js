@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import balance from '../../data/balance.json' with { type: 'json' };
 import { CATALOG, Simulation } from '../../src/sim/simulation.js';
+import { skillFactor } from '../../src/sim/agents/combat.js';
 import { threatSystem } from '../../src/sim/systems/threat-system.js';
 import { Mood } from '../../src/sim/threats/threat-store.js';
 
@@ -58,18 +59,32 @@ describe('predators', () => {
     expect(a.asleep[0]).toBe(0);
     expect(sim.state.threats.hp[p]).toBe(cfg.hp);
     runThreats(sim, cfg.attackInterval);
-    expect(sim.state.threats.hp[p]).toBe(cfg.hp - Math.max(1, a.attack[0] - cfg.defense));
+    // The blows it took already taught it a little (combat skill): its own blow is a bit stronger
+    // than its bare attack, and no stronger than its skill now.
+    const bare = Math.max(1, a.attack[0] - cfg.defense);
+    const skilled = Math.max(1, a.attack[0] * skillFactor(sim.ctx, 0) - cfg.defense);
+    expect(sim.state.threats.hp[p]).toBeLessThan(cfg.hp - bare);
+    expect(sim.state.threats.hp[p]).toBeGreaterThanOrEqual(cfg.hp - skilled);
+    expect(a.combatSkill[0]).toBeGreaterThan(0);
   });
 
-  it('die against an armed agent', () => {
+  it('lose against an armed agent: they flee or die, and a dead one leaves a carcass', () => {
     const sim = night(5);
     const a = sim.agents;
+    const t = sim.state.threats;
     a.addCarried(0, spear, 1);
-    const p = sim.state.threats.spawn(a.x[0] + 1, a.y[0], cfg.hp);
-    runThreats(sim, cfg.attackInterval * 6);
-    expect(sim.state.threats.alive[p]).toBe(0);
-    expect(a.kills[0]).toBe(1);
+    const p = t.spawn(a.x[0] + 1, a.y[0], cfg.hp);
+    runThreats(sim, cfg.attackInterval * 3);
+    expect(t.alive[p] === 0 || t.mood[p] === Mood.FLEE).toBe(true);
+    // A weak one dies at the first blow.
+    const q = t.spawn(a.x[0], a.y[0] + 1, 1);
+    const [qx, qy] = [t.x[q], t.y[q]];
+    sim.world.setResource(qx, qy, 0, 0);
+    runThreats(sim, cfg.attackInterval * 2);
+    expect(t.alive[q]).toBe(0);
+    expect(a.kills[0]).toBeGreaterThanOrEqual(1);
     expect(sim.events.events.some((e) => e.type === 'predatorKilled')).toBe(true);
+    expect(sim.world.tileAt(qx, qy).resource).toBe(sim.ctx.carcass);
   });
 
   it('cannot reach an agent inside a shelter', () => {

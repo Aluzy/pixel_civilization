@@ -26,7 +26,7 @@
       "name": "Poids de la sécurité",
       "range": [0.5, 1.5],
       "start": 1,
-      "goals": ["shelter"]
+      "goals": ["shelter", "hide"]
     },
     { "id": "curiosity", "name": "Curiosité", "range": [0, 1], "start": 0.5, "goals": ["explore"] },
     {
@@ -34,7 +34,7 @@
       "name": "Aversion au risque",
       "range": [0, 1],
       "start": 0.5,
-      "goals": ["flee", "equip"]
+      "goals": ["flee", "equip", "hide"]
     },
     {
       "id": "sociability",

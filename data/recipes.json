@@ -17,7 +17,8 @@
       "color": "#e8722a",
       "kind": "station",
       "feminine": true
-    }
+    },
+    { "id": "den", "name": "Tanière", "color": "#3e0a0a", "kind": "den", "feminine": true }
   ],
   "items": [
     { "id": "spear", "name": "Lance", "kind": "weapon", "attack": 2 },
@@ -44,7 +45,16 @@
     { "id": "copper_axe", "name": "Hache de cuivre", "kind": "tool", "harvest": { "wood": 3 } },
     { "id": "copper_spear", "name": "Lance de cuivre", "kind": "weapon", "attack": 3 },
     { "id": "iron_axe", "name": "Hache de fer", "kind": "tool", "harvest": { "wood": 4 } },
-    { "id": "iron_spear", "name": "Lance de fer", "kind": "weapon", "attack": 4 }
+    { "id": "iron_spear", "name": "Lance de fer", "kind": "weapon", "attack": 4 },
+    { "id": "hide", "name": "Peau", "kind": "material", "feminine": true },
+    { "id": "shield", "name": "Bouclier", "kind": "armor", "defense": 2 },
+    {
+      "id": "hide_armor",
+      "name": "Armure de peau",
+      "kind": "armor",
+      "defense": 3,
+      "feminine": true
+    }
   ],
   "recipes": [
     {
@@ -193,6 +203,20 @@
       "inputs": { "iron_ingot": 1, "fiber": 2 },
       "durationTicks": 30,
       "output": { "item": "iron_spear" }
+    },
+    {
+      "id": "shield",
+      "station": "workbench",
+      "inputs": { "wood": 3, "hide": 1 },
+      "durationTicks": 40,
+      "output": { "item": "shield" }
+    },
+    {
+      "id": "hide_armor",
+      "station": "workbench",
+      "inputs": { "hide": 2, "fiber": 2 },
+      "durationTicks": 60,
+      "output": { "item": "hide_armor" }
     }
   ]
 }

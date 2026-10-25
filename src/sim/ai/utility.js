@@ -20,6 +20,9 @@ export const INPUT = Object.freeze({
   canReplicate: 12,
   unwritten: 13,
   unread: 14,
+  fear: 15,
+  guardDuty: 16,
+  huntDuty: 17,
 });
 
 const INPUT_COUNT = Object.keys(INPUT).length;

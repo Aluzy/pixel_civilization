@@ -88,6 +88,8 @@ Les menaces donnent un sens à l'abri, aux armes, à l'attribut défense et à l
 
 État au J4 (`src/sim/threats/`, `src/sim/systems/threat-system.js`, `data/world.json` → `threats`, `data/balance.json` → `threats`) : seuls les prédateurs existent. À partir du jour 2, au crépuscule et la nuit, tous les 100 cycles, chaque individu hors abri a 20 % de chances d'en voir apparaître un, à 20–30 cases, en forêt ou en plaine, s'il n'y en a pas déjà un à moins de 48 cases. Un prédateur (24 PV, attaque 7, défense 1, 1,5 case/s) chasse l'individu hors abri le plus proche à moins de 32 cases, frappe quand il est adjacent, s'enfuit sous 25 % de ses PV, abandonne après 300 cycles de chasse sans toucher, et repart au lever du jour. Il ne peut pas atteindre un individu dans un abri. Les directions d'apparition viennent d'une table de 16 caps entiers, sans trigonométrie.
 
+Au J8, les rôdeurs solitaires restent, mais une colonie d'au moins 6 membres attire des **tanières** (pixel rouge très sombre `#3e0a0a`, 80 PV, en forêt ou en plaine, à 28–40 cases du camp) et leurs **meutes** de 2 à 4 prédateurs, qui rôdent la nuit vers le camp, encerclent, rentrent guérir à la tanière et peuvent frapper dans un abri isolé. Un prédateur tué laisse une **carcasse** (`#5a2a1e`, 4 unités, nutrition 30) qui pourrit en 2 jours et donne une peau. Les attaques passent à 8. Détail dans [16](16-guerre-et-forteresses.md).
+
 Vision v2 (décision 0020) : meutes, tanières, abris forçables, gibier ([16-guerre-et-forteresses](16-guerre-et-forteresses.md)) ; nouvelles ressources : blé sauvage ([13-agriculture-cuisine](13-agriculture-cuisine.md)), or et pierres précieuses ([14-economie](14-economie.md)).
 
 ## Régions gelées

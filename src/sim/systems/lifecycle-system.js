@@ -2,6 +2,25 @@ import { releaseTask } from '../colony/colony-logic.js';
 import { EventType } from '../core/events.js';
 
 /**
+ * A member killed by a predator frightens those who were near enough to see or hear it, and
+ * marks a threat for its colony.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @returns {void}
+ */
+function frighten(state, ctx, id) {
+  const a = ctx.agents;
+  const s = ctx.balance.safety;
+  if (a.colony[id] >= 0) state.colonies[a.colony[id]].lastThreat = state.tick;
+  for (let other = 0; other < a.highWater; other++) {
+    if (other === id || a.alive[other] !== 1) continue;
+    const d = Math.max(Math.abs(a.x[other] - a.x[id]), Math.abs(a.y[other] - a.y[id]));
+    if (d <= s.deathRadius) a.fear[other] = Math.min(100, a.fear[other] + s.fearDeath);
+  }
+}
+
+/**
  * Removes agents whose health reached zero or who reached their lifespan (old age): their task is
  * freed, their colony counts the loss, what they carried is lost, and the others forget them.
  * @param {import('../simulation.js').SimState} state
@@ -14,15 +33,11 @@ export function lifecycleSystem(state, ctx) {
     if (a.alive[id] !== 1) continue;
     const old = state.tick - a.bornTick[id] >= a.lifespan[id];
     if (a.hp[id] > 0 && !old) continue;
-    // Subject 1: died of old age.
-    state.events.push(
-      state.tick,
-      EventType.DEATH,
-      id,
-      a.x[id],
-      a.y[id],
-      old && a.hp[id] > 0 ? 1 : 0,
-    );
+    // Subject 1: died of old age; 2: killed by a predator (struck this very tick).
+    const killed = a.hp[id] <= 0 && state.tick - a.attackedTick[id] <= 1;
+    const cause = old && a.hp[id] > 0 ? 1 : killed ? 2 : 0;
+    state.events.push(state.tick, EventType.DEATH, id, a.x[id], a.y[id], cause);
+    if (killed) frighten(state, ctx, id);
     state.knowledge.noteDeath(id, state.tick);
     // A death of hunger or thirst is a famine for the colony's stability.
     const critical = ctx.balance.needs.critical;

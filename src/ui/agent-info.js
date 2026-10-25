@@ -20,6 +20,9 @@ const NOTE_TEXT = {
   [PlanNote.PANTRY]: 'réserve',
   [PlanNote.WRITING]: 'écrit',
   [PlanNote.READING]: 'lit',
+  [PlanNote.HIDING]: 'à couvert',
+  [PlanNote.GUARDING]: 'garde',
+  [PlanNote.HUNTING]: 'chasse',
 };
 
 /**
@@ -86,6 +89,7 @@ export function formatAgent(agent, names, time) {
     need('Soif', agent.needs.thirst),
     need('Fatigue', agent.needs.fatigue),
     need('Curiosité', agent.needs.curiosity),
+    need('Peur', agent.fear ?? 0),
     `Objectif : ${agent.goal} (${doing})`,
     planLine(agent.plan),
     `Porte : ${carried}`,
@@ -118,9 +122,14 @@ export function formatAgent(agent, names, time) {
     lines.push(`Appris : ${[...costs, ...zones].join(' · ')}`);
   }
   const risk = Math.round(agent.fightRisk * 100);
-  lines.push(`Arme ×${agent.weapon} · prédateurs tués ${agent.kills} · risque imaginé ${risk} %`);
+  const skill = Math.round((agent.combatSkill ?? 0) * 100);
+  const armor = agent.armor ? ` · armure +${agent.armor}` : '';
+  lines.push(
+    `Arme ×${agent.weapon}${armor} · combat ${skill} % · prédateurs tués ${agent.kills} · ` +
+      `risque imaginé ${risk} %`,
+  );
   const lineage = agent.parent >= 0 ? `réplique de #${agent.parent}` : 'fondateur';
-  const role = agent.scribe ? 'scribe' : agent.role;
+  const role = agent.guard ? 'garde' : agent.scribe ? 'scribe' : agent.role;
   lines.push(`${lineage} · ${agent.children} réplique(s) · rôle : ${role}`);
   if (agent.task) lines.push(`Tâche : ${agent.task}`);
   if (agent.social.length > 0) {

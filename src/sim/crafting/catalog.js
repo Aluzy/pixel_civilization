@@ -14,8 +14,10 @@ export const BARE_HANDS = 0;
  * @property {number} good - Good id.
  * @property {string} id
  * @property {string} name
- * @property {string} kind - "weapon", "tool", "material" (paper, ink), "book" or "map".
+ * @property {string} kind - "weapon", "tool", "armor", "material" (paper, ink, hide), "book" or
+ *   "map".
  * @property {number} attack - Attack multiplier (weapons), 1 otherwise.
+ * @property {number} defense - Defense added while carried (armour, shields), 0 otherwise.
  * @property {Float64Array} harvest - Harvest speed multiplier per resource id (tools).
  */
 
@@ -99,6 +101,7 @@ export function buildCatalog(data, tables) {
       name: item.name,
       kind: item.kind,
       attack: item.attack ?? 1,
+      defense: item.defense ?? 0,
       harvest,
     };
   });

@@ -1,6 +1,6 @@
 # 16 — Menaces, combattants, conflits et forteresses
 
-> Chantier préparé après le J7 (décision 0020). Rien n'est encore implémenté. Valeurs 🟡 à caler.
+> Chantier préparé après le J7 (décision 0020). Les sections 1 et 2 sont implémentées au J8 (décision 0021, voir « Ce que fait le J8 ») ; les sections 3 et 4 restent à faire. Valeurs 🟡 à caler.
 
 ## Le constat (J7)
 
@@ -31,6 +31,32 @@ Raisons : au plus un prédateur par individu et seulement hors abri, un prédate
 - **Équipement** : armes de l'arbre (lance, cuivre, fer), **bouclier** (bois puis métal, défense), **armure de peau**.
 - **Combat de groupe** : l'IA connaît le nombre (simulation mentale du J5 étendue à plusieurs combattants de chaque côté) et attend des renforts plutôt que d'attaquer seule.
 
+## Ce que fait le J8
+
+Ce qui est implémenté, et où cela s'écarte des sections 1 et 2 (décision 0021) :
+
+- **Tanières** (`threats.densPerColony`, 2 au plus par colonie) : posées hors de vue du camp (28 à 40 cases) en forêt ou en plaine, dès que la colonie compte 6 membres (puis une de plus tous les 30). Une tanière a 80 PV et se soigne lentement ; détruite, elle disperse sa meute et la région reste calme 8 jours.
+- **Meutes** : chaque tanière nourrit une meute de 2 à 4 prédateurs (un de plus tous les 15 membres). Le jour, la meute garde sa tanière ; la nuit, elle rôde vers le camp et encercle sa proie (chaque prédateur vise une case différente autour d'elle). Un prédateur blessé rentre à sa tanière et y guérit ; une chasse est abandonnée après 900 cycles. Les rôdeurs solitaires du J4 restent.
+- **Abris forcés** : une meute peut frapper un individu dans un abri **isolé** (aucun autre abri à moins de 3 cases). Les abris groupés restent des sanctuaires en attendant les palissades (J12). Pas de PV d'abri pour l'instant.
+- **Blessures** : après un coup, la régénération tombe au quart pendant 1 jour. Le ralentissement des blessés graves est reporté.
+- **Gibier** : un prédateur tué laisse une **carcasse** (ressource de 4 unités, nutrition 30), qui pourrit en 2 jours ; la dernière unité récoltée donne une **peau**.
+- **Peur** : jauge de 0 à 100 dans l'individu. Elle monte quand il est frappé (+25), quand il voit un prédateur (+4 par décision) et à la mort d'un proche tué par un prédateur à moins de 16 cases (+30). Elle baisse vite au camp ou dans un abri, plus lentement ailleurs, et remonte la nuit hors du camp. Le nouvel objectif **Se cacher** (vers l'abri le plus proche de la colonie, sinon le camp) en dépend ; le gène de sécurité le pondère.
+- **Compétence de combat** : chaque coup porté (+0,02) ou reçu (+0,01) l'entraîne, au rythme du gène d'apprentissage ; elle multiplie attaque et défense jusqu'à ×1,5. Elle s'affiche dans l'inspecteur (« combat N % »).
+- **Équipement** : **bouclier** (établi : 3 bois + 1 peau, défense 2) et **armure de peau** (établi : 2 peaux + 2 fibres, défense 3), découverts par l'essai comme toute recette.
+- **Rôle de garde** (pas encore un métier payé, qui viendra avec l'économie du J10) : une colonie menacée (attaque dans les 3 derniers jours ou tanière connue) veut 1 garde par 10 membres. Un membre au camp prend la garde s'il est armé ou sait faire une arme, s'il n'est ni scribe ni inventeur et si son gène de goût du risque reste sous 0,6. Un poste dure 6 jours. La nuit, le garde veille : il attaque un prédateur vu à moins de 14 cases du camp, sinon fait des rondes juste hors du camp. Le jour, il s'équipe (arme puis armure). S'il connaît une tanière, si au moins 2 gardes sont en poste et s'il a 70 % de ses PV, il part la **chasser** et frappe la tanière jusqu'à la détruire. L'escorte attendra les expéditions (J11).
+- **Combat de groupe** : la simulation mentale du combat compte les alliés proches (moins de 4 cases) et les prédateurs de la meute ; un individu seul face à une meute fuit, un groupe tient.
+
+Mesures (10 graines, 60 jours) :
+
+| Mesure | J7 | J8 |
+| --- | --- | --- |
+| Pixels tués par un prédateur, par partie | 0,1 | 1,9 |
+| Prédateurs tués, par partie | 4,4 | 63,2 |
+| Tanières détruites (total) | — | 14 |
+| Gardes au plus fort | 0 | 5 à 11 |
+| Part des décisions de sécurité | 0,004 % | 9,0 % |
+| Population au jour 60 | 45 à 107 | 45 à 106 |
+
 ## 3. Trésors et forteresses (J12)
 
 - **Trésor** : construction « salle du trésor » (coffre de pierre) qui garde l'or, les écus, les pierres précieuses et les objets rares de la colonie ([14](14-economie.md)). Son contenu se voit dans l'inspecteur.
@@ -59,6 +85,6 @@ Raisons : au plus un prédateur par individu et seulement hors abri, un prédate
 
 ## Critères de sortie proposés
 
-- **J8 (danger)** : sur 10 graines et 60 jours, des pixels meurent de prédateurs (au moins 1 par partie en moyenne) et les pixels tuent au moins 3 fois plus de prédateurs qu'aujourd'hui ; un métier ou rôle de garde apparaît ; la part des décisions de sécurité (fuir, s'abriter, garder) double, sans extinction.
+- **J8 (danger)** : sur 10 graines et 60 jours, des pixels meurent de prédateurs (au moins 1 par partie en moyenne) et les pixels tuent au moins 3 fois plus de prédateurs qu'au J7 ; un rôle de garde apparaît ; les décisions de sécurité (fuir, se cacher, garder, chasser) prennent au moins 1 % du temps des pixels, sans extinction. (« Doubler » une part de 0,004 % ne voulait rien dire : le seuil est devenu absolu, décision 0021.) Atteint, voir ci-dessus.
 - **J12 (forteresses)** : sur la majorité des graines à 150 jours, une colonie bâtit une enceinte fermée autour de son trésor ; les prédateurs ne la franchissent pas.
 - **J13 (conflits)** : sur un ensemble de graines à 200 jours, au moins un raid a lieu ; au moins un raid échoue contre une enceinte ; des colonies voisines restent aussi en paix et commercent.

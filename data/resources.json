@@ -70,6 +70,15 @@
       "quantity": [10, 80],
       "harvestTicks": 70,
       "tool": "copper_pickaxe"
+    },
+    {
+      "id": "carcass",
+      "name": "Carcasse",
+      "color": "#5a2a1e",
+      "renewable": false,
+      "quantity": [4, 4],
+      "nutrition": 30,
+      "harvestTicks": 20
     }
   ],
   "placement": [

@@ -113,13 +113,26 @@
     "senseRadius": 32,
     "speed": 1.5,
     "hp": 24,
-    "attack": 7,
+    "attack": 8,
     "defense": 1,
     "attackInterval": 15,
     "fleeBelow": 0.25,
     "giveUpTicks": 300,
     "despawnDistance": 48,
-    "attackedEventCooldown": 300
+    "attackedEventCooldown": 300,
+    "isolationRadius": 3,
+    "denMembers": 6,
+    "denMembersStep": 30,
+    "densPerColony": 2,
+    "denDistance": [28, 40],
+    "denHp": 80,
+    "denHeal": 0.05,
+    "denGuardRadius": 6,
+    "denQuietDays": 8,
+    "packMin": 2,
+    "packMax": 4,
+    "packGrowth": 15,
+    "packGiveUpTicks": 900
   },
   "replication": {
     "fedTicks": 600,
@@ -224,5 +237,33 @@
     "stepMin": 0.1,
     "stepMax": 0.5,
     "costScale": 100
+  },
+  "combat": {
+    "skillBonus": 0.5,
+    "skillPerBlowGiven": 0.02,
+    "skillPerBlowTaken": 0.01,
+    "attackInterval": 15,
+    "carcassDays": 2
+  },
+  "safety": {
+    "fearHit": 25,
+    "fearSight": 4,
+    "fearDeath": 30,
+    "deathRadius": 16,
+    "fearDecayPerDay": 60,
+    "fearCalmPerDay": 200,
+    "fearNightPerDay": 40,
+    "woundDays": 1,
+    "woundRegen": 0.25,
+    "allyRadius": 4,
+    "threatDays": 3,
+    "membersPerGuard": 10,
+    "guardTicks": 7200,
+    "guardRiskMax": 0.6,
+    "watchDarkness": 0.3,
+    "huntGroup": 2,
+    "huntHealth": 0.7,
+    "guardRadius": 14,
+    "guardRing": 4
   }
 }

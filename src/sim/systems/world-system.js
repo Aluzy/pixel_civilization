@@ -15,7 +15,10 @@ export function worldSystem(state, ctx) {
     const g = queue[done];
     const p = state.world.packedAt(g.x, g.y);
     const resource = (p >> PACK.RESOURCE_SHIFT) & PACK.MASK;
-    if (resource === 0) {
+    if (g.quantity === 0) {
+      // A removal (a carcass that rots away), if it is still there.
+      if (resource === g.resource) state.world.setResource(g.x, g.y, 0, 0);
+    } else if (resource === 0) {
       state.world.setResource(g.x, g.y, g.resource, g.quantity);
       noteRegrowth(state, ctx, g.x, g.y, g.resource, g.quantity);
     }

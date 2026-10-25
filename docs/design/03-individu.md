@@ -50,6 +50,8 @@ Le premier individu commence avec toutes ses jauges à 30. En J2, il dort là o�
 
 Au J4, la fatigue baisse deux fois plus vite dans un abri (`sleepRecovery`), et un individu dans un abri est hors d'atteinte des prédateurs. L'inventaire contient aussi des objets (lance, hache, pioche) qui agissent tant qu'ils sont portés. La jauge d'insécurité n'est pas une jauge à part : le danger perçu et la vulnérabilité sont des entrées de l'objectif Fuir ([06-ia](06-ia.md)).
 
+Au J8, l'insécurité devient une jauge : la **peur** (0 à 100, `balance.safety`). Elle monte quand l'individu est frappé, voit un prédateur ou apprend la mort d'un proche tué par un prédateur ; elle baisse au camp et dans un abri, plus lentement ailleurs, et remonte la nuit hors du camp. Elle porte l'objectif Se cacher. Après un coup, la régénération des PV tombe au quart pendant 1 jour. L'individu porte aussi une **compétence de combat** (0 à 1) et peut porter une armure (bouclier, armure de peau). Détail dans [16](16-guerre-et-forteresses.md).
+
 ## Pyramide des besoins
 
 Un niveau ne compte pleinement que si les niveaux inférieurs sont satisfaits. Le moteur de décision ([06-ia](06-ia.md)) applique un facteur qui écrase les objectifs d'un niveau tant qu'un niveau inférieur est en souffrance.

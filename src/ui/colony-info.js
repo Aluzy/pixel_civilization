@@ -46,6 +46,7 @@ export function formatColony(colony) {
   }
   if (colony.scribe >= 0) lines.push(`Scribe : #${colony.scribe}`);
   if (colony.inventor >= 0) lines.push(`Inventeur : #${colony.inventor}`);
+  if (colony.guards?.length) lines.push(`Gardes : ${colony.guards.map((g) => `#${g}`).join(' ')}`);
   const k = colony.knowledge;
   if (k && k.known.length + k.written.length + k.lost.length > 0) {
     lines.push(`Savoir : ${k.known.length} recette(s) connue(s), ${k.written.length} écrite(s)`);

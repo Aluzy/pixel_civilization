@@ -58,6 +58,7 @@
       "color": "#7a1010",
       "biomes": ["forest", "plain"],
       "phases": ["dusk", "night"]
-    }
+    },
+    "den": { "name": "Tanière", "biomes": ["forest", "plain"] }
   }
 }
