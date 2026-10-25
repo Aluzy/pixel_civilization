@@ -206,13 +206,17 @@ describe('experience', () => {
 // (its population mean moves by 5 % of its range or more from the founder's value). The fluidity
 // with 500 individuals is measured by `npm run bench` (tools/bench.js).
 describe('harmony and evolution (J7 exit)', () => {
-  it('progresses on most seeds, and genes drift', () => {
+  it('progresses on most seeds, and genes drift', async () => {
     const seeds = [1, 2, 3];
     let progress = 0;
     let drifting = 0;
     for (const seed of seeds) {
       const sim = new Simulation({ seed, balance });
-      sim.step(100 * DAY);
+      for (let day = 0; day < 100; day++) {
+        sim.step(DAY);
+        // A long synchronous test starves Vitest's worker messages: let them through.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
       const rows = sim.state.history.rows();
       const mean = (a, b) => rows.slice(a, b).reduce((s, r) => s + r.harmony, 0) / (b - a);
       if (mean(90, 100) > mean(10, 20)) progress++;

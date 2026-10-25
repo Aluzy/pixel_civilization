@@ -269,12 +269,16 @@ describe('ageing', () => {
 // day 73; on day 80 several recipes are read in the library after their discoverers died.
 // (The seed changes when behaviour does: seed 8 told it until J7.)
 describe('written knowledge (J6 exit)', () => {
-  it('saves a recipe through a book, and loses then finds knowledge again (seed 32)', () => {
+  it('saves a recipe through a book, and loses then finds knowledge again (seed 32)', async () => {
     const sim = new Simulation({ seed: 32, balance });
     const k = sim.state.knowledge;
     const saved = () => k.savedByBook.some((t) => t >= 0);
     const found = () => k.recovered.some((t, r) => t >= 0 && k.lost[r] >= 0 && t > k.lost[r]);
-    for (let day = 0; day < 90 && !(saved() && found()); day++) sim.step(DAY);
+    for (let day = 0; day < 90 && !(saved() && found()); day++) {
+      sim.step(DAY);
+      // Let Vitest's worker messages through during this long test.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
     expect(saved()).toBe(true);
     const r = k.savedByBook.findIndex((t) => t >= 0);
     expect(k.discovererDied[r]).toBeGreaterThanOrEqual(0);

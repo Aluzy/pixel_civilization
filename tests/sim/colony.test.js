@@ -207,7 +207,7 @@ describe('mental simulation', () => {
 // J5 exit: a colony of at least 20 individuals, stable (no extinction, no explosion) over 30
 // days on at least 8 seeds out of 10, with shelters built together from a stock gathered ahead.
 describe('colony (J5 exit)', () => {
-  it('grows to at least 20 and stays stable for 30 days', () => {
+  it('grows to at least 20 and stays stable for 30 days', async () => {
     let ok = 0;
     let cooperative = 0;
     for (let seed = 1; seed <= 10; seed++) {
@@ -216,6 +216,8 @@ describe('colony (J5 exit)', () => {
       for (let d = 0; d < 30 && !extinct; d++) {
         sim.step(DAY);
         extinct = sim.agents.aliveCount === 0;
+        // Let Vitest's worker messages through during this long test.
+        await new Promise((resolve) => setTimeout(resolve, 0));
       }
       const n = sim.agents.aliveCount;
       if (!extinct && n >= 20 && n <= balance.colony.maxPopulation) ok++;
