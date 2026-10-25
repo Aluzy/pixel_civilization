@@ -75,7 +75,7 @@ describe('crafting in the panel and the chronicle', () => {
     const text = formatAgent(sim.describeAgent(0), NAMES, balance.time).join('\n');
     expect(text).toMatch(/Plan : /);
     expect(text).toMatch(/Recettes \(échecs retenus \d+\) : .*Établi/);
-    expect(text).toMatch(/Arme ×\d · prédateurs tués \d+/);
+    expect(text).toMatch(/Arme ×\d · combat \d+ % · prédateurs tués \d+/);
   });
 
   it('names structures and dangers among memories', () => {
