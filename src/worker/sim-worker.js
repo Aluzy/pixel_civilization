@@ -31,6 +31,8 @@ let running = false;
 let nextEventSeq = 0;
 /** @type {number} Agent shown in the inspector, or -1. */
 let selected = -1;
+/** Days of history already sent to the renderer. */
+let historySent = 0;
 /** Whether the inspector also wants the selected agent's exploration map. */
 let selectedWithMap = false;
 /**
@@ -71,7 +73,20 @@ function sendFrame() {
     auto: auto.enabled,
     events,
     selected: selected >= 0 ? sim.describeAgent(selected, selectedWithMap) : null,
+    history: historyRows(),
   });
+}
+
+/**
+ * Days of history recorded since the last frame, for the dashboard (the renderer keeps them).
+ * @returns {{ from: number, rows: object[] } | null}
+ */
+function historyRows() {
+  const h = sim.state.history;
+  if (h.count === historySent) return null;
+  const from = historySent;
+  historySent = h.count;
+  return { from, rows: h.rows(from) };
 }
 
 /**
@@ -179,6 +194,7 @@ self.onmessage = (event) => {
   switch (message.type) {
     case ToWorker.INIT:
       sim = new Simulation({ seed: message.seed, balance });
+      historySent = 0;
       scheduler = new TickScheduler({ ticksPerSecond: balance.time.ticksPerSecond });
       streamer = new ChunkStreamer(sim.world, {
         sendMargin: CHUNK_SEND_MARGIN,

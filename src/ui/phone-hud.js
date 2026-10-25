@@ -19,6 +19,7 @@ const STYLE = `
   padding: 6px 6px calc(env(safe-area-inset-bottom) + 6px); }
 .hud-row { display: flex; gap: 6px; }
 .hud-row + .hud-row { margin-top: 6px; }
+.hud-row.tabs button { font-size: 12px; padding: 0 2px; }
 .hud button { flex: 1; min-width: 0; min-height: 44px; border: 1px solid #4a4f48;
   border-radius: 8px; background: #2c302b; color: inherit; font: inherit; padding: 0 4px; }
 .hud button:active { background: #474d45; }
@@ -70,6 +71,7 @@ const CHRONICLE_LINES = 60;
  * @property {(event: object) => boolean} passes - True if the current filter shows it.
  * @property {(type: string) => void} command - World commands: follow, memory, deselect,
  *   zoomIn, zoomOut, center.
+ * @property {import('./dashboard.js').Dashboard} dashboard - Shown in the « Harmonie » tab.
  * @property {(top: number, bottom: number) => void} onInsets - CSS pixels of the screen covered
  *   at the top and at the bottom, so that the camera centres in what remains visible.
  */
@@ -144,6 +146,7 @@ export class PhoneHud {
       colony: button('Colonie', () => this.toggle('colony')),
       chronicle: button('Chronique', () => this.toggle('chronicle')),
       inspect: button('Fiche', () => this.toggle('inspect')),
+      harmony: button('Harmonie', () => this.toggle('harmony')),
       more: button('Plus', () => this.toggle('more')),
     };
     this.bottom = el('div', { className: 'hud-bottom hud-panel' }, [
@@ -156,7 +159,7 @@ export class PhoneHud {
         this.next,
         this.auto,
       ]),
-      el('div', { className: 'hud-row' }, Object.values(this.tabs)),
+      el('div', { className: 'hud-row tabs' }, Object.values(this.tabs)),
     ]);
 
     this.layer = el('div', { className: 'hud' }, [top, this.toast, this.sheet, this.bottom]);
@@ -336,7 +339,13 @@ export class PhoneHud {
    */
   drawSheet(controls) {
     if (this.tab === null) return;
-    const titles = { colony: 'Colonie', chronicle: 'Chronique', inspect: 'Fiche', more: 'Plus' };
+    const titles = {
+      colony: 'Colonie',
+      chronicle: 'Chronique',
+      inspect: 'Fiche',
+      harmony: 'Harmonie',
+      more: 'Plus',
+    };
     this.sheetTitle.textContent = titles[this.tab];
     if (this.tab === 'chronicle') {
       this.sheetTitle.textContent = `Chronique (${this.o.filters[this.o.getFilter()].name})`;
@@ -346,6 +355,16 @@ export class PhoneHud {
       if (this.lastBody !== 'more') this.drawMore();
       this.lastBody = 'more';
       this.place();
+      return;
+    }
+    if (this.tab === 'harmony') {
+      if (this.lastBody !== 'harmony') {
+        this.body.replaceChildren(this.o.dashboard.el);
+        this.o.dashboard.setOpen(true);
+        this.lastBody = 'harmony';
+        this.place();
+      }
+      this.o.dashboard.draw();
       return;
     }
     let text = '';

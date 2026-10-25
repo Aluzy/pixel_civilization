@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import aiGoals from '../../data/ai-goals.json' with { type: 'json' };
+import genomeData from '../../data/genome.json' with { type: 'json' };
 import projectData from '../../data/ai-projects.json' with { type: 'json' };
 import balance from '../../data/balance.json' with { type: 'json' };
 import recipeData from '../../data/recipes.json' with { type: 'json' };
@@ -8,11 +9,13 @@ import worldData from '../../data/world.json' with { type: 'json' };
 import { buildProjects } from '../sim/ai/projects.js';
 import { buildGoalTable } from '../sim/ai/utility.js';
 import { buildCatalog } from '../sim/crafting/catalog.js';
+import { buildGeneTable } from '../sim/genome/genome.js';
 import { SkipKind } from '../sim/protocol.js';
 import { buildWorldTables } from '../sim/world/world-data.js';
 import { formatAgent } from '../ui/agent-info.js';
 import { FILTERS, formatEvent, passes } from '../ui/chronicle.js';
 import { formatColony } from '../ui/colony-info.js';
+import { Dashboard } from '../ui/dashboard.js';
 import { formatClock, formatSpeed } from '../ui/format.js';
 import { chooseHud } from '../ui/hud-model.js';
 import { buildNames } from '../ui/names.js';
@@ -36,7 +39,7 @@ const HELP = [
   'Glisser / flèches : déplacer   Molette / + − : zoom   Clic : inspecter',
   'Espace : pause   1–5 : vitesse   6 : max   L : jusqu’à l’aube   N : prochain événement',
   'F : suivre l’individu   M : ce qu’il croit savoir   Échap : désélectionner',
-  'T : accélération automatique   C : filtre de la chronique',
+  'T : accélération automatique   C : filtre de la chronique   H : tableau de bord',
 ];
 
 const SKIP_LABEL = {
@@ -78,7 +81,20 @@ export class UiScene extends Phaser.Scene {
       .text(0, 12, '', { ...TEXT_STYLE, fontSize: '13px' })
       .setScrollFactor(0)
       .setVisible(false);
-    this.phone = this.createPhoneHud(sim, seed, version);
+    const mode = chooseHud({
+      search: window.location.search,
+      width: window.innerWidth,
+      coarse: window.matchMedia('(pointer: coarse)').matches,
+      fine: window.matchMedia('(pointer: fine)').matches,
+    });
+    const genes = buildGeneTable(genomeData, buildGoalTable(aiGoals)).genes;
+    this.dashboard = new Dashboard({
+      root: mode === 'phone' ? null : document.body,
+      genes,
+      ticksPerDay: balance.time.ticksPerDay,
+      desktop: mode !== 'phone',
+    });
+    this.phone = mode === 'phone' ? this.createPhoneHud(sim, seed, version) : null;
     this.layout();
     this.scale.on(Phaser.Scale.Events.RESIZE, () => this.layout());
 
@@ -122,23 +138,19 @@ export class UiScene extends Phaser.Scene {
     keyboard.on('keydown-N', () => sim.skip(SkipKind.EVENT));
     keyboard.on('keydown-C', () => this.setFilter((this.filter + 1) % FILTERS.length));
     keyboard.on('keydown-T', () => this.toggleAuto());
+    keyboard.on('keydown-H', () => {
+      if (!this.phone) this.dashboard.setOpen(!this.dashboard.open);
+    });
   }
 
   /**
-   * The phone HUD (a DOM layer) when the screen calls for it; the Phaser panels then hide.
+   * The phone HUD (a DOM layer); the Phaser panels then hide.
    * @param {import('../bridge/sim-client.js').SimClient} sim
    * @param {number} seed
    * @param {string} version
-   * @returns {PhoneHud | null}
+   * @returns {PhoneHud}
    */
   createPhoneHud(sim, seed, version) {
-    const hud = chooseHud({
-      search: window.location.search,
-      width: window.innerWidth,
-      coarse: window.matchMedia('(pointer: coarse)').matches,
-      fine: window.matchMedia('(pointer: fine)').matches,
-    });
-    if (hud !== 'phone') return null;
     for (const t of [this.status, this.footer, this.help, this.chronicleText, this.colonyText]) {
       t.setVisible(false);
     }
@@ -158,6 +170,7 @@ export class UiScene extends Phaser.Scene {
       passes: (e) => passes(e, FILTERS[this.filter]),
       describe: (e) => formatEvent(e, balance.time, this.names),
       command: (type) => this.game.events.emit('hud-command', type),
+      dashboard: this.dashboard,
       onInsets: (top, bottom) => this.game.events.emit('view-insets', top, bottom),
     });
   }
@@ -222,11 +235,15 @@ export class UiScene extends Phaser.Scene {
       effective: frame.effectiveSpeed,
       paused: frame.paused,
     });
+    this.dashboard.add(frame.history);
+    this.dashboard.draw();
+    const harmony = frame.colony?.harmony;
     const lines = [
       'Pixel Civilisation',
       formatClock(frame.time),
       `Vitesse ${speed}${frame.skip ? ` ${SKIP_LABEL[frame.skip]}` : ''}${frame.auto ? ' auto' : ''}`,
       `Individus ${frame.agents.length}`,
+      `Harmonie ${harmony && harmony.focus >= 0 ? Math.round(harmony.score) : '—'} (H)`,
       `${Math.round(this.game.loop.actualFps)} img/s`,
     ];
     this.status.setText(lines);
