@@ -4,6 +4,7 @@ export const ProjectKind = Object.freeze({
   SHELTER: 1, // Gather the materials of a shelter in the stock, then build it at the camp.
   PANTRY: 2, // Keep a stock of food at the camp (never finished).
   LIBRARY: 3, // Gather the materials of a library, then build it at the camp.
+  FIELD: 4, // Gather berries, then plant them as bushes near the camp.
 });
 
 /** Most libraries a colony keeps track of. */
@@ -89,8 +90,9 @@ export class Colony {
    * @param {number} id
    * @param {number} goods
    * @param {object} cfg - balance.colony.
+   * @param {{ stabilityDays: number, durabilityDays: number }} [harmonyCfg] - balance.harmony.
    */
-  constructor(id, goods, cfg) {
+  constructor(id, goods, cfg, harmonyCfg = { stabilityDays: 10, durabilityDays: 5 }) {
     this.id = id;
     this.hasCamp = false;
     this.campX = 0;
@@ -122,10 +124,30 @@ export class Colony {
     /** Member who took the task of writing (one scribe at a time), and since when. */
     this.scribe = -1;
     this.scribeTick = 0;
+    /** Member who experiments freely when curious (one at a time), and since when. */
+    this.inventor = -1;
+    this.inventorTick = 0;
     /** Contributors of the last project completed (-1 = unused), for the inspector. */
     this.lastProject = new Int32Array(MAX_CONTRIBUTORS).fill(-1);
     /** Open tasks at the last count of the colony system. */
     this.open = 0;
+    // Harmony (docs/design/07-harmonie.md): score then 5 components, weakest component, daily
+    // population, last death of hunger or thirst, harvests and regrowths of the last days.
+    this.harmony = new Float64Array(6);
+    /** Weakest component (index in COMPONENT_IDS), -1 before the first count. */
+    this.focus = -1;
+    this.popHistory = new Int32Array(harmonyCfg.stabilityDays);
+    this.popDays = 0;
+    this.lastStarvation = -0x40000000;
+    this.resourceSlots = goods;
+    this.harvested = new Int32Array(harmonyCfg.durabilityDays * goods);
+    this.regrown = new Int32Array(harmonyCfg.durabilityDays * goods);
+    /** Sources planted by the colony, fields planted, and when the last one was. */
+    this.planted = 0;
+    this.fields = 0;
+    this.lastField = -0x40000000;
+    /** Pantry target multiplier: higher when stability or well-being is the weakest point. */
+    this.pantryBoost = 1;
     /** @type {Project[]} */
     this.projects = [];
     for (let i = 0; i < cfg.projectSlots; i++) this.projects.push(new Project(goods));
@@ -287,12 +309,18 @@ export class Colony {
       .typedArray(this.boardSubject.subarray(0, n))
       .typedArray(this.boardTick.subarray(0, n));
     h.typedArray(this.boardX.subarray(0, n)).typedArray(this.boardY.subarray(0, n));
-    h.uint32(this.scribe).uint32(this.scribeTick);
+    h.uint32(this.scribe).uint32(this.scribeTick).uint32(this.inventor).uint32(this.inventorTick);
     const L = this.libraryCount;
     h.uint32(L).typedArray(this.libraryX.subarray(0, L)).typedArray(this.libraryY.subarray(0, L));
     h.typedArray(this.libraryStanding.subarray(0, L));
     h.typedArray(this.libraryAbandoned.subarray(0, L));
     h.typedArray(this.libraryVisit.subarray(0, L));
     for (const p of this.projects) p.hashInto(h);
+    h.typedArray(this.harmony).uint32(this.focus & 0xff);
+    h.typedArray(this.popHistory).uint32(this.popDays).uint32(this.lastStarvation);
+    h.typedArray(this.harvested).typedArray(this.regrown).uint32(this.planted);
+    h.uint32(Math.round(this.pantryBoost * 1000))
+      .uint32(this.fields)
+      .uint32(this.lastField);
   }
 }

@@ -14,6 +14,8 @@ import {
   releaseTask,
   takeMaterials,
 } from '../colony/colony-logic.js';
+import { plant } from '../colony/field.js';
+import { noteHarvest } from '../colony/harmony.js';
 import { replicate } from '../colony/replication.js';
 import { DocKind } from '../knowledge/document-store.js';
 import {
@@ -169,6 +171,7 @@ export function stepAction(state, ctx, id) {
         finish(ctx, id);
         return;
       }
+      noteHarvest(state, ctx, id, x, y, taken);
       if (state.world.lastTakeDepleted) {
         ctx.scheduleRegrowth(state, x, y, taken);
         forgetEmptied(ctx, id, taken, x, y);
@@ -290,6 +293,10 @@ export function stepAction(state, ctx, id) {
       finish(ctx, id);
       return;
     }
+    case Action.PLANT:
+      plant(state, ctx, id);
+      finish(ctx, id);
+      return;
     case Action.REPLICATE:
       agents.actionProgress[id] += 1;
       if (agents.actionProgress[id] >= ctx.balance.replication.durationTicks) {
@@ -331,6 +338,7 @@ function harvest(state, ctx, id) {
     finish(ctx, id);
     return;
   }
+  noteHarvest(state, ctx, id, x, y, taken);
   agents.addCarried(id, taken, 1, state.tick);
   const habit = id * agents.goodSlots + taken;
   if (agents.gathered[habit] < 65535) agents.gathered[habit]++;

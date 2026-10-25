@@ -16,6 +16,8 @@ import { BARE_HANDS } from './catalog.js';
  *   write on (writing is made of crafted materials).
  * @property {number} materialStationBonus - Raw materials at a station where a crafted material was
  *   made, when looking for something to write on (another material may be made there).
+ * @property {number} noveltyBonus - Per material of the set that no known recipe uses, when
+ *   trying freely (no kind sought).
  * @property {number} jitter - Random part, so that equal candidates are tried in varied order.
  */
 
@@ -136,12 +138,14 @@ export function scoreTrial(catalog, book, acquired, station, mask, tick, weights
   let kindKnown = false;
   let kindHere = false;
   let materialsHere = false;
+  let used = 0;
   for (let r = 0; r < catalog.recipes.length; r++) {
     if (!book.knows(r)) continue;
     const recipe = catalog.recipes[r];
     if (recipe.station === station && recipe.mask === mask) return -Infinity;
     const likeness = popcount(recipe.mask & mask) / popcount(recipe.mask | mask);
     familiar += likeness;
+    used |= recipe.mask;
     if (recipe.family === 'item:material' && recipe.station === station) materialsHere = true;
     const sameKind = wanted === null || recipe.family === wanted;
     if (!sameKind) continue;
@@ -165,6 +169,8 @@ export function scoreTrial(catalog, book, acquired, station, mask, tick, weights
     score += crafted * weights.craftedBonus;
     if (crafted === 0 && materialsHere) score += weights.materialStationBonus;
   }
+  // Free invention: materials no known recipe uses are the most promising.
+  if (wanted === null) score += popcount(mask & ~used) * weights.noveltyBonus;
   score -= count * weights.costPerType;
   if (kindHere) score += weights.kindStationBonus;
   // Things of this kind were made elsewhere: this station is a poor bet.

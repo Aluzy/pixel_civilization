@@ -1,5 +1,7 @@
-import { openTasks, releaseTask } from '../colony/colony-logic.js';
+import { claimFreeStock, openTasks, releaseTask } from '../colony/colony-logic.js';
 import { ProjectKind } from '../colony/colony-store.js';
+import { fieldResource, openField } from '../colony/field.js';
+import { Component } from '../colony/harmony.js';
 
 /**
  * Task generators of each colony (docs/design/06-ia.md, couche 4), every `taskInterval` ticks:
@@ -39,6 +41,25 @@ export function colonySystem(state, ctx) {
       const slot = colony.freeSlot();
       if (slot >= 0) openBuildProject(state, ctx, colony, slot, ProjectKind.LIBRARY, 'library');
     }
+    // Plant what is over-harvested near the camp when durability or spatial order is the weakest
+    // point, and berries when stability or well-being is (food to spare is what lets it grow).
+    const focus = colony.focus;
+    if (
+      focus >= 0 &&
+      focus !== Component.KNOWLEDGE &&
+      colony.members >= ctx.balance.harmony.fieldMembers &&
+      state.tick - colony.lastField >=
+        ctx.balance.harmony.fieldEveryDays * ctx.balance.time.ticksPerDay &&
+      colony.findProject(ProjectKind.FIELD) < 0
+    ) {
+      const slot = colony.freeSlot();
+      const hungry = focus === Component.STABILITY || focus === Component.WELLBEING;
+      const resource = fieldResource(ctx, colony, hungry);
+      if (slot >= 0 && resource > 0) {
+        openField(colony, slot, resource, ctx.balance.harmony.fieldUnits, state.tick);
+        claimFreeStock(colony, colony.projects[slot]);
+      }
+    }
     if (colony.findProject(ProjectKind.PANTRY) < 0) {
       const slot = colony.freeSlot();
       if (slot >= 0) {
@@ -76,4 +97,5 @@ function openBuildProject(state, ctx, colony, slot, kind, structureKind) {
   p.number = kind === ProjectKind.SHELTER ? colony.sheltersBuilt + 1 : colony.libraryCount + 1;
   p.startTick = state.tick;
   for (const input of ctx.catalog.recipes[r].inputs) p.needs[input.good] = input.count;
+  claimFreeStock(colony, p);
 }

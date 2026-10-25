@@ -103,9 +103,19 @@ export function buildGoalTable(data) {
  * @param {import('../core/rng.js').Rng} rng
  * @param {number} [favoured=-1] - Goal of the current project step, or -1.
  * @param {number} [bonus=0] - Its score is multiplied by 1 + bonus.
+ * @param {Float64Array | null} [weights=null] - Multiplier per goal (the agent's genome).
  * @returns {number}
  */
-export function scoreGoals(table, inputs, currentGoal, out, rng, favoured = -1, bonus = 0) {
+export function scoreGoals(
+  table,
+  inputs,
+  currentGoal,
+  out,
+  rng,
+  favoured = -1,
+  bonus = 0,
+  weights = null,
+) {
   if (inputs.length < INPUT_COUNT) throw new Error('Utility inputs buffer too short');
   const urgency = table.levelUrgency;
   urgency.fill(0);
@@ -125,6 +135,7 @@ export function scoreGoals(table, inputs, currentGoal, out, rng, favoured = -1, 
     const n = goal.considerations.length;
     if (n > 1) p += (1 - p) * (1 - 1 / n) * p;
     for (let l = 0; l < goal.level; l++) p *= 1 - urgency[l] * table.suppression;
+    if (weights !== null) p *= weights[g];
     if (g === currentGoal) p *= 1 + table.inertia;
     if (g === favoured) p *= 1 + bonus;
     out[g] = p;

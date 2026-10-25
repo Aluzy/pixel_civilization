@@ -4,13 +4,42 @@ import { WATER_SUBJECT } from './memory.js';
 import { inShelter } from './equipment.js';
 import { explore, goToRemembered, moveTo, search, startHere } from './movement.js';
 import { perceive } from './perception.js';
-import { pursue } from './work.js';
-import { campOf } from '../colony/colony-logic.js';
+import { discover, pursue } from './work.js';
+import { atCamp, campOf, shareBoard } from '../colony/colony-logic.js';
 import { colonyWork, goToCamp, prepareReplication } from './colony-work.js';
 import { readBehaviour, writeBehaviour } from './scribe-work.js';
 
 // Turns a chosen goal into a concrete action, using only what the agent perceives and remembers.
 // Survival goals are hand-written; crafting goals follow the GOAP planner (work.js).
+
+/**
+ * The inventor first makes the tools it knows how to make that open materials (a pickaxe for coal
+ * or copper); then it tries combinations freely.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {import('./movement.js').Plan} plan
+ * @returns {void}
+ */
+function invent(state, ctx, id, plan) {
+  const a = ctx.agents;
+  const catalog = ctx.catalog;
+  // At the camp, it looks on the blackboard for materials it knows no place of.
+  const colony = campOf(state, ctx, id);
+  if (colony && atCamp(ctx, colony, id)) shareBoard(state, ctx, colony, id);
+  for (let g = 1; g <= catalog.resourceCount; g++) {
+    const tool = catalog.requiredTool[g];
+    if (tool <= 0 || a.carried(id, tool) > 0) continue;
+    const r = catalog.recipeForGood[tool];
+    if (r < 0 || !a.recipes[id].knows(r)) continue;
+    pursue(state, ctx, id, ctx.goodTargets[tool], plan);
+    plan.note = PlanNote.TRIAL;
+    return;
+  }
+  // Part of the time it goes looking for materials it has never seen; the rest, it experiments.
+  if (a.rng[id].next() < ctx.balance.colony.inventorExplore) explore(state, ctx, id, plan);
+  else discover(state, ctx, id, null, plan);
+}
 
 /**
  * @param {import('../simulation.js').SimContext} ctx
@@ -87,9 +116,13 @@ export function planGoal(state, ctx, id, goal, plan) {
     case 'read':
       readBehaviour(state, ctx, id, plan);
       return;
-    case 'explore':
-      explore(state, ctx, id, plan);
+    case 'explore': {
+      // The colony's inventor spends its curiosity trying new combinations instead.
+      const colony = campOf(state, ctx, id);
+      if (colony && colony.inventor === id) invent(state, ctx, id, plan);
+      else explore(state, ctx, id, plan);
       return;
+    }
     default: {
       const target = ctx.targets[goal];
       if (target) pursue(state, ctx, id, target, plan);

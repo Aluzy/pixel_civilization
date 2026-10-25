@@ -1,0 +1,62 @@
+{
+  "genes": [
+    {
+      "id": "hunger",
+      "name": "Poids de la faim",
+      "range": [0.5, 1.5],
+      "start": 1,
+      "goals": ["eat"]
+    },
+    {
+      "id": "thirst",
+      "name": "Poids de la soif",
+      "range": [0.5, 1.5],
+      "start": 1,
+      "goals": ["drink"]
+    },
+    {
+      "id": "sleep",
+      "name": "Poids du sommeil",
+      "range": [0.5, 1.5],
+      "start": 1,
+      "goals": ["sleep", "rest"]
+    },
+    {
+      "id": "safety",
+      "name": "Poids de la sécurité",
+      "range": [0.5, 1.5],
+      "start": 1,
+      "goals": ["shelter"]
+    },
+    { "id": "curiosity", "name": "Curiosité", "range": [0, 1], "start": 0.5, "goals": ["explore"] },
+    {
+      "id": "risk",
+      "name": "Aversion au risque",
+      "range": [0, 1],
+      "start": 0.5,
+      "goals": ["flee", "equip"]
+    },
+    {
+      "id": "sociability",
+      "name": "Sociabilité",
+      "range": [0, 1],
+      "start": 0.5,
+      "goals": ["colony", "replicate"]
+    },
+    { "id": "foresight", "name": "Prévoyance", "range": [0, 1], "start": 0.5, "goals": ["tool"] },
+    {
+      "id": "learning",
+      "name": "Vitesse d'apprentissage",
+      "range": [0, 1],
+      "start": 0.5,
+      "goals": []
+    },
+    {
+      "id": "writing",
+      "name": "Goût de l'écrit",
+      "range": [0, 1],
+      "start": 0.5,
+      "goals": ["write", "read"]
+    }
+  ]
+}

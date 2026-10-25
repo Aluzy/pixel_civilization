@@ -1,5 +1,6 @@
 import { tauOf } from '../agents/beliefs.js';
 import { harvestMultiplier } from '../agents/equipment.js';
+import { noteDelivery } from '../agents/experience.js';
 import { EventType } from '../core/events.js';
 import { ProjectKind } from './colony-store.js';
 
@@ -44,7 +45,7 @@ export function atCamp(ctx, colony, id) {
 export function remaining(colony, project, good, members, cfg) {
   if (project.kind === ProjectKind.PANTRY) {
     // Enough for every member and for one more: food to spare is what allows a birth.
-    const target = (members + 1) * cfg.foodPerMember;
+    const target = Math.round((members + 1) * cfg.foodPerMember * colony.pantryBoost);
     return project.needs[good] > 0
       ? Math.max(0, target - colony.stock[good] - project.reserved[good])
       : 0;
@@ -55,13 +56,36 @@ export function remaining(colony, project, good, members, cfg) {
 }
 
 /**
+ * A new project takes for itself what lies in the stock unclaimed by the other projects (left
+ * over from finished ones), up to what it needs.
+ * @param {import('./colony-store.js').Colony} colony
+ * @param {import('./colony-store.js').Project} project
+ * @returns {void}
+ */
+export function claimFreeStock(colony, project) {
+  for (let g = 1; g < project.needs.length; g++) {
+    if (project.needs[g] === 0) continue;
+    let claimed = 0;
+    for (const p of colony.projects) {
+      if (p !== project && p.kind !== ProjectKind.NONE && p.kind !== ProjectKind.PANTRY) {
+        claimed += p.delivered[g];
+      }
+    }
+    const free = Math.max(0, colony.stock[g] - claimed);
+    project.delivered[g] = Math.min(project.needs[g], free);
+  }
+}
+
+/**
  * True if the stock holds all the materials of a shelter project and nobody builds it yet.
  * @param {import('./colony-store.js').Colony} colony
  * @param {import('./colony-store.js').Project} project
  * @returns {boolean}
  */
 export function readyToBuild(colony, project) {
-  if (project.recipe < 0 || project.builder >= 0) return false;
+  if ((project.recipe < 0 && project.kind !== ProjectKind.FIELD) || project.builder >= 0) {
+    return false;
+  }
   for (let g = 1; g < project.needs.length; g++) {
     const held = Math.min(project.delivered[g], colony.stock[g]);
     if (held < project.needs[g]) return false;
@@ -89,6 +113,7 @@ export function shareBoard(state, ctx, colony, id) {
   for (let r = 1; r < ctx.edible.length; r++) if (ctx.edible[r] === 1) food += colony.stock[r];
   a.pantrySeen[id] = Math.min(65535, food);
   a.tasksSeen[id] = colony.open > 0 ? 1 : 0;
+  a.focusSeen[id] = colony.focus;
   for (let i = 0; i < memory.count; i++) {
     if (memory.subject[i] === danger) continue;
     colony.post(memory.subject[i], memory.x[i], memory.y[i], memory.seen[i], m.sameRadius);
@@ -151,7 +176,9 @@ export function chooseTask(state, ctx, colony, id) {
   const book = a.recipes[id];
   for (let s = 0; s < colony.projects.length; s++) {
     const p = colony.projects[s];
-    if (!readyToBuild(colony, p) || !book.knows(p.recipe)) continue;
+    // Anyone can plant; only those who know the recipe build.
+    if (!readyToBuild(colony, p)) continue;
+    if (p.kind !== ProjectKind.FIELD && !book.knows(p.recipe)) continue;
     p.builder = id;
     reserve(state, a, id, s, 0, 0, true);
     return true;
@@ -180,7 +207,9 @@ export function chooseTask(state, ctx, colony, id) {
       const speed = (1 + a.force[id] / ctx.harvestForceScale) * harvestMultiplier(ctx, id, g);
       const habit = total > 0 ? a.gathered[id * a.goodSlots + g] / total : 0;
       const urgency = p.kind === ProjectKind.PANTRY ? 1 : 1.2;
-      const score = (urgency * speed * (1 + cfg.habitBonus * habit)) / (1 + d / 32);
+      // What it learnt a unit of this good really costs it, once it has brought some.
+      const learnt = a.costPerUnit[id * a.goodSlots + g] / ctx.balance.learning.costScale;
+      const score = (urgency * speed * (1 + cfg.habitBonus * habit)) / (1 + d / 32) / (1 + learnt);
       if (score > bestScore) {
         bestScore = score;
         bestSlot = s;
@@ -257,6 +286,7 @@ export function deposit(state, ctx, colony, id) {
   const g = a.taskGood[id];
   const units = Math.min(a.carried(id, g), a.taskAmount[id]);
   if (units > 0) {
+    noteDelivery(ctx, id, g, units, state.tick - a.taskTick[id]);
     a.addCarried(id, g, -units);
     colony.stock[g] += units;
     if (p.kind !== ProjectKind.PANTRY) p.delivered[g] += units;

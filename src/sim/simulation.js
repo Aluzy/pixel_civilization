@@ -1,10 +1,12 @@
 import aiGoals from '../../data/ai-goals.json' with { type: 'json' };
+import genomeData from '../../data/genome.json' with { type: 'json' };
 import projectData from '../../data/ai-projects.json' with { type: 'json' };
 import recipeData from '../../data/recipes.json' with { type: 'json' };
 import resourceData from '../../data/resources.json' with { type: 'json' };
 import worldData from '../../data/world.json' with { type: 'json' };
 import { ACTION_NAMES, Action } from './agents/action-types.js';
 import { AgentStore } from './agents/agent-store.js';
+import { describeExperience } from './agents/experience.js';
 import { attackMultiplier } from './agents/equipment.js';
 import { MAX_RADIUS, Navigator } from './agents/navigation.js';
 import { WATER_SUBJECT } from './agents/memory.js';
@@ -16,13 +18,15 @@ import { EventLog, EventType } from './core/events.js';
 import { createHasher, hashCoords } from './core/hash.js';
 import { createRng, seedToKey } from './core/rng.js';
 import { Colony } from './colony/colony-store.js';
+import { History } from './colony/history.js';
 import { lifespanOf } from './colony/replication.js';
 import { buildCatalog } from './crafting/catalog.js';
+import { buildGeneTable } from './genome/genome.js';
 import { DocKind, DocumentStore } from './knowledge/document-store.js';
 import { KnowledgeLog } from './knowledge/knowledge-log.js';
 import { SYSTEMS } from './systems/index.js';
 import { ThreatStore } from './threats/threat-store.js';
-import { ChunkStore, findSpawn } from './world/chunk-store.js';
+import { ChunkStore, PACK, findSpawn } from './world/chunk-store.js';
 import { WorldGenerator } from './world/generator.js';
 import { buildWorldTables } from './world/world-data.js';
 
@@ -31,6 +35,7 @@ export const WORLD_TABLES = buildWorldTables(worldData, resourceData);
 
 /** Compiled utility goals from data/ai-goals.json (read-only). */
 export const GOAL_TABLE = buildGoalTable(aiGoals);
+export const GENE_TABLE = buildGeneTable(genomeData, GOAL_TABLE);
 
 /** Goods, structures and recipes from data/recipes.json (read-only). */
 export const CATALOG = buildCatalog(recipeData, WORLD_TABLES);
@@ -39,7 +44,14 @@ export const CATALOG = buildCatalog(recipeData, WORLD_TABLES);
 export const PROJECTS = buildProjects(projectData, GOAL_TABLE);
 
 /** Independent random streams, one per subsystem, so that systems cannot disturb each other. */
-export const RNG_STREAMS = Object.freeze(['world', 'threats', 'ai', 'social', 'lifecycle']);
+export const RNG_STREAMS = Object.freeze([
+  'world',
+  'threats',
+  'ai',
+  'social',
+  'lifecycle',
+  'genome',
+]);
 
 /**
  * @typedef {object} Regrowth
@@ -66,6 +78,7 @@ export const RNG_STREAMS = Object.freeze(['world', 'threats', 'ai', 'social', 'l
  * @property {KnowledgeLog} knowledge - Collective knowledge over time (observation only).
  * @property {EventLog} events
  * @property {Regrowth[]} regrowth - Sorted by tick.
+ * @property {History} history - Daily record for the dashboard.
  */
 
 /**
@@ -77,6 +90,16 @@ export const RNG_STREAMS = Object.freeze(['world', 'threats', 'ai', 'social', 'l
  * @property {import('./ai/utility.js').GoalTable} goals
  * @property {string[]} goalKinds - Goal id per goal index.
  * @property {Record<string, number>} goalIndex - Goal index per goal id.
+ * @property {import('./genome/genome.js').GeneTable} genes - Decision genome.
+ * @property {Float64Array} goalWeights - Scratch: genome multiplier per goal.
+ * @property {Float64Array} geneMean - Scratch for the daily gene statistics.
+ * @property {Float64Array} geneSpread
+ * @property {Int32Array} hullX - Scratch for the compactness of buildings.
+ * @property {Int32Array} hullY
+ * @property {Int32Array} hullOrder
+ * @property {Int32Array} zoneCounts - Scratch for the specialisation of zones.
+ * @property {Int32Array} regrowTicks - Per resource id, 0 if not renewable.
+ * @property {Uint8Array} plantBiome - 1 per biome where a field can be planted.
  * @property {AgentStore} agents
  * @property {Navigator} nav
  * @property {Float64Array} biomeSpeed
@@ -214,6 +237,7 @@ function buildContext(balance, tables, agents, seedKey) {
   const nutrition = new Float64Array(resourceSlots);
   const harvestTicks = new Float64Array(resourceSlots);
   const regrowTicks = new Int32Array(resourceSlots);
+  const zoneSide = Math.ceil((2 * balance.harmony.territoryRadius + 1) / balance.harmony.zoneCell);
   tables.resources.forEach((r, i) => {
     const id = i + 1;
     if (r.nutrition > 0) {
@@ -243,6 +267,18 @@ function buildContext(balance, tables, agents, seedKey) {
     balance,
     tables,
     goals: GOAL_TABLE,
+    genes: GENE_TABLE,
+    goalWeights: new Float64Array(GOAL_TABLE.goals.length),
+    geneMean: new Float64Array(GENE_TABLE.genes.length),
+    geneSpread: new Float64Array(GENE_TABLE.genes.length),
+    hullX: new Int32Array(1024),
+    hullY: new Int32Array(1024),
+    hullOrder: new Int32Array(3 * 1024),
+    zoneCounts: new Int32Array(zoneSide * zoneSide * 4),
+    regrowTicks,
+    plantBiome: Uint8Array.from(tables.biomes, (b) =>
+      balance.harmony.fieldBiomes.includes(b.id) ? 1 : 0,
+    ),
     goalKinds,
     goalIndex,
     agents,
@@ -372,6 +408,10 @@ function describePlan(ctx, plan) {
   return { status: plan.status, cost: Math.round(plan.cost), nodes: plan.nodes, steps };
 }
 
+/** Project kinds and names for the inspector, indexed by ProjectKind. */
+const PROJECT_KINDS = ['none', 'shelter', 'pantry', 'library', 'field'];
+const PROJECT_NAMES = ['', 'Abri', 'Réserve', 'Bibliothèque', 'Champ'];
+
 /**
  * Readable colony project: what it still needs and who contributed.
  * @param {SimContext} ctx
@@ -385,7 +425,8 @@ function describeProject(ctx, colony, p, cfg) {
   const goods = [];
   for (let g = 1; g < p.needs.length; g++) {
     if (p.needs[g] === 0) continue;
-    const need = pantry ? (colony.members + 1) * cfg.foodPerMember : p.needs[g];
+    const target = (colony.members + 1) * cfg.foodPerMember * colony.pantryBoost;
+    const need = pantry ? Math.round(target) : p.needs[g];
     goods.push({
       name: ctx.catalog.goodName(g),
       have: Math.min(need, pantry ? colony.stock[g] : Math.min(p.delivered[g], colony.stock[g])),
@@ -394,10 +435,8 @@ function describeProject(ctx, colony, p, cfg) {
     });
   }
   return {
-    kind: pantry ? 'pantry' : p.kind === 3 ? 'library' : 'shelter',
-    name: pantry
-      ? 'Réserve de nourriture'
-      : `${p.kind === 3 ? 'Bibliothèque' : 'Abri'} n°${p.number}`,
+    kind: PROJECT_KINDS[p.kind],
+    name: pantry ? 'Réserve de nourriture' : `${PROJECT_NAMES[p.kind]} n°${p.number}`,
     goods,
     contributors: [...p.contributors].filter((id) => id >= 0),
     builder: p.builder,
@@ -479,8 +518,9 @@ export class Simulation {
    * @param {number | string} options.seed
    * @param {object} options.balance - Content of data/balance.json.
    * @param {import('./world/world-data.js').WorldTables} [options.tables]
+   * @param {number} [options.founders=1] - Individuals at the start (more only for benchmarks).
    */
-  constructor({ seed, balance, tables = WORLD_TABLES }) {
+  constructor({ seed, balance, tables = WORLD_TABLES, founders = 1 }) {
     const root = createRng(seed);
     /** @type {Record<string, import('./core/rng.js').Rng>} */
     const rng = {};
@@ -496,6 +536,8 @@ export class Simulation {
       sheets: balance.social.sheets,
       journalSize: balance.ai.journalSize,
       exploration: balance.exploration,
+      geneStart: Float64Array.from(GENE_TABLE.genes, (g) => g.start),
+      dangerSlots: balance.learning.dangerSlots,
     });
     const seedKey = seedToKey(seed);
     /** @type {SimState} */
@@ -508,7 +550,8 @@ export class Simulation {
       spawn,
       agents,
       threats: new ThreatStore(balance.threats.maxPredators),
-      colonies: [new Colony(0, CATALOG.goodCount, balance.colony)],
+      colonies: [new Colony(0, CATALOG.goodCount, balance.colony, balance.harmony)],
+      history: new History(balance.harmony.historyDays, GENE_TABLE.genes.length),
       documents: new DocumentStore(balance.writing.maxDocuments, balance.writing.mapEntries),
       knowledge: new KnowledgeLog(CATALOG.recipes.length),
       events: new EventLog(),
@@ -530,6 +573,33 @@ export class Simulation {
     });
     this.state.colonies[0].members = 1;
     this.state.events.push(0, EventType.BIRTH, first, spawn.x, spawn.y);
+    // Extra founders (benchmarks only, tools/bench.js): around the spawn, on passable tiles.
+    const spread = balance.agent.founderSpread;
+    for (let i = 1; i < founders; i++) {
+      let x = spawn.x;
+      let y = spawn.y;
+      for (let tries = 0; tries < 20; tries++) {
+        const tx = spawn.x + rng.lifecycle.int(-spread, spread);
+        const ty = spawn.y + rng.lifecycle.int(-spread, spread);
+        if (this.ctx.biomeSpeed[world.packedAt(tx, ty) & PACK.MASK] > 0) {
+          x = tx;
+          y = ty;
+          break;
+        }
+      }
+      const id = agents.create({
+        x,
+        y,
+        tick: 0,
+        attributes: balance.agent.start,
+        needs: balance.agent.startNeeds,
+        rng: rng.ai.fork(`agent-0-${i}`),
+        colony: 0,
+        lifespan: lifespanOf(balance, rng.lifecycle),
+      });
+      this.state.colonies[0].members++;
+      this.state.events.push(0, EventType.BIRTH, id, x, y);
+    }
   }
 
   /** @returns {ChunkStore} */
@@ -627,6 +697,14 @@ export class Simulation {
       projects,
       lastProject: [...colony.lastProject].filter((id) => id >= 0),
       libraries: this.describeLibraries(c),
+      harmony: {
+        score: colony.harmony[0],
+        components: Array.from(colony.harmony.subarray(1)),
+        focus: colony.focus,
+      },
+      planted: colony.planted,
+      fields: colony.fields,
+      inventor: colony.inventor,
       scribe: colony.scribe,
       knowledge: this.describeKnowledge(),
     };
@@ -789,6 +867,21 @@ export class Simulation {
       fightRisk: a.fightRisk[id],
       generation: a.generation[id],
       lifespan: a.lifespan[id],
+      genes: GENE_TABLE.genes.map((g, k) => ({
+        id: g.id,
+        name: g.name,
+        value: a.genes[id * a.geneCount + k],
+        start: g.start,
+        min: g.min,
+        max: g.max,
+      })),
+      experience: (() => {
+        const e = describeExperience(this.ctx, id);
+        return {
+          costs: e.costs.map((c) => ({ name: catalog.goodName(c.good), ticks: c.ticks })),
+          zones: e.zones,
+        };
+      })(),
       documents: this.describeDocuments(id),
       scribe: a.colony[id] >= 0 && this.state.colonies[a.colony[id]].scribe === id,
       parent: a.parent[id],
@@ -844,6 +937,7 @@ export class Simulation {
     for (const colony of s.colonies) colony.hashInto(h);
     s.documents.hashInto(h);
     s.knowledge.hashInto(h);
+    s.history.hashInto(h);
     h.uint32(s.events.count);
     for (const e of s.events.events) h.uint32(e.tick).string(e.type).uint32(e.agent);
     for (const g of s.regrowth) h.uint32(g.tick).uint32(g.x).uint32(g.y).uint32(g.resource);
