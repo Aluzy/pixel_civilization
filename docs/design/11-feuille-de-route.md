@@ -247,10 +247,10 @@ Réalisé :
   - aucune intrusion de prédateur dans une enceinte fermée ;
   - test automatique sur les graines 2 et 3 : enceinte fermée autour du trésor, anneau entièrement infranchissable, prédateurs venus jusqu'au mur et restés dehors pendant 10 jours.
 - **Tenu** :
-  - au jour 150, 198 à 450 individus, contre 48 à 500 au J11 sur les mêmes graines ;
-  - au moins deux colonies sur 6 graines sur 10 (8 au J11) : la sortie du J11 tient ;
-  - les sorties des J5 à J11 passent ;
-  - `npm run bench` : voir la décision 0025.
+  - au jour 150, 48 à 500 individus, comme au J11 sur les mêmes graines ;
+  - au moins deux colonies sur 7 graines sur 10 (8 au J11) : la sortie du J11 tient ;
+  - les sorties des J3 à J11 passent ; leurs graines de démonstration changent (J3 : 2 ; J6 : 6 et 1 ; J9 et J10 : 2, 4 et 14 ; J11 : 2 et 3), car l'or change les mondes ;
+  - `npm run bench` (500 fondateurs, 100 jours) : 1,30 ms par cycle en moyenne, 1,80 ms le pire jour, sous les 6,25 ms de ×16.
 - **Ajouts** :
   - or et pierres précieuses, salle du trésor, danger ressenti au camp ;
   - palissade, portes, tour ;

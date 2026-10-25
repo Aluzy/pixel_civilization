@@ -112,8 +112,8 @@ Mesures (10 graines, 150 jours) :
 | Enceinte fermée autour du trésor | 10 graines sur 10, du jour 24 au jour 71 |
 | Tour bâtie | 10 sur 10 |
 | Intrusions de prédateurs | 0 |
-| Population au jour 150 | 198 à 450 (48 à 500 au J11) |
-| Au moins deux colonies au jour 150 | 6 graines sur 10 (8 au J11) |
+| Population au jour 150 | 48 à 500 (de même au J11) |
+| Au moins deux colonies au jour 150 | 7 graines sur 10 (8 au J11) |
 
 **Ce qui reste à faire** : agrandir l'enceinte quand la colonie déborde ses murs (les abris bâtis après restent dehors), murs de pierre et de brique, points de vie des murs, ordre spatial et zone de défense dans l'harmonie.
 
