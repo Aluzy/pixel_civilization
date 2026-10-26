@@ -1,4 +1,4 @@
-import { popcount } from '../knowledge/document-store.js';
+import { and, popcount, withBit } from '../core/bits.js';
 import { PACK } from '../world/chunk-store.js';
 import { beauty, clearing } from './works.js';
 
@@ -362,9 +362,9 @@ function specialisation(zones, side) {
 function knowledge(state) {
   const k = state.knowledge;
   let discovered = 0;
-  for (let r = 0; r < k.recipes; r++) if (k.discovered[r] >= 0) discovered |= 1 << r;
+  for (let r = 0; r < k.recipes; r++) if (k.discovered[r] >= 0) discovered = withBit(discovered, r);
   const total = popcount(discovered);
-  return total === 0 ? 0 : popcount(k.written & discovered) / total;
+  return total === 0 ? 0 : popcount(and(k.written, discovered)) / total;
 }
 
 /**

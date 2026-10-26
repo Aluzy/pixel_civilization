@@ -1,3 +1,4 @@
+import { andNot, popcount } from '../core/bits.js';
 import { atCamp, campOf } from '../colony/colony-logic.js';
 import { Expedition } from '../colony/colony-store.js';
 import { findSite, openExpedition, postExpedition } from '../colony/migration.js';
@@ -70,8 +71,7 @@ function copyBook(state, ctx, colony, id) {
     if (docs.kind[d] !== DocKind.BOOK || docs.colony[d] !== colony.id || docs.library[d] < 0) {
       continue;
     }
-    let n = 0;
-    for (let m = docs.recipes[d] & ~docs.wrong[d]; m !== 0; m &= m - 1) n++;
+    const n = popcount(andNot(docs.recipes[d], docs.wrong[d]));
     if (n > bestCount) {
       bestCount = n;
       best = d;

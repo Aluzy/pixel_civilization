@@ -1,3 +1,4 @@
+import { has, withBit, withoutBit } from '../core/bits.js';
 import { EventType } from '../core/events.js';
 import { DocKind } from '../knowledge/document-store.js';
 import { collectiveKnowledge } from '../knowledge/writing.js';
@@ -51,15 +52,14 @@ export function knowledgeSystem(state, ctx) {
   k.written = ctx.contentOut[1];
   for (let r = 0; r < k.recipes; r++) {
     if (k.discovered[r] < 0) continue;
-    const bit = 1 << r;
-    const alive = ((k.known | k.written) & bit) !== 0;
-    if (!alive && (k.lostMask & bit) === 0) {
-      k.lostMask |= bit;
+    const alive = has(k.known, r) || has(k.written, r);
+    if (!alive && !has(k.lostMask, r)) {
+      k.lostMask = withBit(k.lostMask, r);
       k.lost[r] = state.tick;
       k.losses[r]++;
       state.events.push(state.tick, EventType.KNOWLEDGE_LOST, -1, 0, 0, r);
-    } else if (alive && (k.lostMask & bit) !== 0) {
-      k.lostMask &= ~bit;
+    } else if (alive && has(k.lostMask, r)) {
+      k.lostMask = withoutBit(k.lostMask, r);
       k.recovered[r] = state.tick;
       state.events.push(state.tick, EventType.KNOWLEDGE_RECOVERED, -1, 0, 0, r);
     }

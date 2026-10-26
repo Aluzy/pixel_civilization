@@ -7,6 +7,7 @@ import recipeData from '../../data/recipes.json' with { type: 'json' };
 import resourceData from '../../data/resources.json' with { type: 'json' };
 import worldData from '../../data/world.json' with { type: 'json' };
 import worksData from '../../data/works.json' with { type: 'json' };
+import { has, withBit } from './core/bits.js';
 import { ACTION_NAMES, Action } from './agents/action-types.js';
 import { AgentStore } from './agents/agent-store.js';
 import { describeExperience } from './agents/experience.js';
@@ -587,7 +588,7 @@ function buildContext(balance, tables, agents, seedKey) {
     replicationCost: goodVector(catalog, tables, balance.replication.cost),
     costOut: new Int32Array(2),
     imagined: { hp: 0, maxHp: 0, attack: 0, defense: 0 },
-    contentOut: new Int32Array(3),
+    contentOut: new Float64Array(3),
     /** Good id of each document kind. */
     docGood: docGoods(catalog),
     bookTarget: itemTarget(catalog, 'book', 70),
@@ -1229,7 +1230,7 @@ export class Simulation {
     const k = this.state.knowledge;
     const pick = (/** @type {Int32Array} */ ticks) => {
       let m = 0;
-      for (let r = 0; r < ticks.length; r++) if (ticks[r] >= 0) m |= 1 << r;
+      for (let r = 0; r < ticks.length; r++) if (ticks[r] >= 0) m = withBit(m, r);
       return this.recipeNames(m);
     };
     return {
@@ -1249,7 +1250,7 @@ export class Simulation {
     const catalog = this.ctx.catalog;
     const out = [];
     for (let r = 0; r < catalog.recipes.length; r++) {
-      if ((mask & (1 << r)) !== 0) out.push(catalog.recipes[r].name);
+      if (has(mask, r)) out.push(catalog.recipes[r].name);
     }
     return out;
   }

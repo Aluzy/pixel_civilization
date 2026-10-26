@@ -1,3 +1,4 @@
+import { andNot, bit, has, withBit } from '../core/bits.js';
 import { BARE_HANDS } from '../crafting/catalog.js';
 
 /** Kinds of plan steps, in execution order of a plan. */
@@ -88,8 +89,9 @@ export class Planner {
     this.capacity = cap;
     this.have = new Int16Array(cap * G);
     this.req = new Int16Array(cap * G);
-    this.stationNeed = new Int32Array(cap);
-    this.stationPlanned = new Int32Array(cap);
+    // Station sets: structure codes may pass 32 (decision 0029).
+    this.stationNeed = new Float64Array(cap);
+    this.stationPlanned = new Float64Array(cap);
     this.placeNeed = new Int32Array(cap);
     this.placeFound = new Int32Array(cap);
     this.cost = new Float64Array(cap);
@@ -159,12 +161,16 @@ export class Planner {
       b = Math.imul(b ^ (v & 0xffff), 0x5bd1e995) >>> 0;
       b = (b ^ (b >>> 13) ^ (v >>> 16)) >>> 0;
     };
+    const mixBits = (m) => {
+      mix(m % 4294967296);
+      mix(Math.floor(m / 4294967296));
+    };
     mix(target.id);
-    mix(this.recipeMask);
+    mixBits(this.recipeMask);
     for (let g = 1; g < this.goods; g++) mix(this.inventory[g]);
     let s = 0;
-    for (let c = 1; c < this.stations.length; c++) s |= this.stations[c] << c;
-    mix(s);
+    for (let c = 1; c < this.stations.length; c++) if (this.stations[c] === 1) s = withBit(s, c);
+    mixBits(s);
     let p = 0;
     for (let r = 1; r < this.places.length; r++) p |= this.places[r] << r;
     mix(p);
@@ -176,7 +182,7 @@ export class Planner {
    * @returns {boolean}
    */
   knows(r) {
-    return (this.recipeMask & (1 << r)) !== 0;
+    return has(this.recipeMask, r);
   }
 
   /**
@@ -228,9 +234,9 @@ export class Planner {
     let count = 0;
     this.firstKind = 0;
     this.firstArg = 0;
-    const needS = this.stationNeed[n] & ~this.stationPlanned[n];
+    const needS = andNot(this.stationNeed[n], this.stationPlanned[n]);
     for (let c = 1; c < this.stations.length; c++) {
-      if ((needS & (1 << c)) === 0 || this.stations[c] === 1) continue;
+      if (!has(needS, c) || this.stations[c] === 1) continue;
       if (count++ === 0) {
         this.firstKind = 1;
         this.firstArg = c;
@@ -265,7 +271,8 @@ export class Planner {
     const recipe = this.catalog.recipes[r];
     const G = this.goods;
     for (const input of recipe.inputs) this.req[n * G + input.good] += input.count * times;
-    if (recipe.station !== BARE_HANDS) this.stationNeed[n] |= 1 << recipe.station;
+    if (recipe.station !== BARE_HANDS)
+      this.stationNeed[n] = withBit(this.stationNeed[n], recipe.station);
     this.cost[n] += recipe.duration * times + (recipe.station !== BARE_HANDS ? this.travelCost : 0);
   }
 
@@ -349,7 +356,7 @@ export class Planner {
     for (let c = 1; c < this.stations.length; c++) {
       if (target.structures[c] !== 1) continue;
       const n = this.newNode(-1);
-      this.stationNeed[n] = 1 << c;
+      this.stationNeed[n] = bit(c);
       this.push(n);
     }
     let expanded = 0;
@@ -370,7 +377,7 @@ export class Planner {
         if (r < 0 || !this.knows(r)) continue;
         const child = this.newNode(n);
         if (child < 0) break;
-        this.stationPlanned[child] |= 1 << arg;
+        this.stationPlanned[child] = withBit(this.stationPlanned[child], arg);
         this.require(child, r, 1);
         this.setStep(child, Step.BUILD, r, 1);
         this.push(child);

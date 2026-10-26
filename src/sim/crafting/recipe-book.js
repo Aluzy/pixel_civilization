@@ -1,3 +1,4 @@
+import { withBit } from '../core/bits.js';
 import { expNeg } from '../core/math.js';
 
 /**
@@ -92,12 +93,12 @@ export class RecipeBook {
   }
 
   /**
-   * Bit set of known recipes (recipe count ≤ 31).
+   * Set of known recipes (53-bit set, core/bits.js).
    * @returns {number}
    */
   knownMask() {
     let m = 0;
-    for (let r = 0; r < this.recipeCount; r++) if (this.known[r] === 1) m |= 1 << r;
+    for (let r = 0; r < this.recipeCount; r++) if (this.known[r] === 1) m = withBit(m, r);
     return m;
   }
 

@@ -1,6 +1,7 @@
 import { tauOf } from '../agents/beliefs.js';
 import { EventType } from '../core/events.js';
-import { DocKind, popcount } from './document-store.js';
+import { andNot, has, lowest, or, popcount, withBit } from '../core/bits.js';
+import { DocKind } from './document-store.js';
 
 // Writing, reading and keeping documents (docs/design/05-savoir.md, « Livres », « Cartes »,
 // « Bibliothèques »). One writes only what one believes; one reads only in a library.
@@ -69,9 +70,7 @@ export function believedRecipes(ctx, id) {
  */
 export function nextToWrite(state, ctx, id, doc) {
   const inBook = doc >= 0 ? state.documents.recipes[doc] : 0;
-  const todo = believedRecipes(ctx, id) & ~ctx.agents.librarySeen[id] & ~inBook;
-  if (todo === 0) return -1;
-  return 31 - Math.clz32(todo & -todo);
+  return lowest(andNot(andNot(believedRecipes(ctx, id), ctx.agents.librarySeen[id]), inBook));
 }
 
 /**
@@ -108,8 +107,8 @@ export function writeOne(state, ctx, id) {
   const book = docs.carried(id, DocKind.BOOK, w.bookRecipes);
   const r = book >= 0 ? nextToWrite(state, ctx, id, book) : -1;
   if (r >= 0) {
-    docs.recipes[book] |= 1 << r;
-    if (ctx.agents.recipes[id].wrong[r] === 1) docs.wrong[book] |= 1 << r;
+    docs.recipes[book] = withBit(docs.recipes[book], r);
+    if (ctx.agents.recipes[id].wrong[r] === 1) docs.wrong[book] = withBit(docs.wrong[book], r);
     docs.author[book] = id;
     ctx.agents.recipes[id].use(r, state.tick, ctx.balance.memory.consolidation, ctx.maxTau);
     state.events.push(state.tick, EventType.WRITTEN, id, ctx.agents.x[id], ctx.agents.y[id], r);
@@ -215,14 +214,13 @@ export function readOne(state, ctx, id, li) {
   docs.libraryContent(c, li, ctx.contentOut);
   const written = ctx.contentOut[0];
   const book = a.recipes[id];
-  const todo = written & ~book.knownMask();
-  if (todo !== 0) {
-    const r = 31 - Math.clz32(todo & -todo);
+  const r = lowest(andNot(written, book.knownMask()));
+  if (r >= 0) {
     // Right if at least one document has it right.
     let right = false;
     for (let d = 0; d < docs.max; d++) {
       if (docs.kind[d] === DocKind.NONE || docs.colony[d] !== c || docs.library[d] !== li) continue;
-      if ((docs.recipes[d] & (1 << r)) !== 0 && (docs.wrong[d] & (1 << r)) === 0) right = true;
+      if (has(docs.recipes[d], r) && !has(docs.wrong[d], r)) right = true;
     }
     book.learn(r, state.tick, ctx.recipeTau, 1, !right);
     state.events.push(state.tick, EventType.READ, id, a.x[id], a.y[id], r);
@@ -277,7 +275,7 @@ export function collectiveKnowledge(state, ctx, out) {
     if (a.alive[id] !== 1) continue;
     const book = a.recipes[id];
     for (let r = 0; r < book.recipeCount; r++) {
-      if (book.known[r] === 1 && book.wrong[r] === 0) known |= 1 << r;
+      if (book.known[r] === 1 && book.wrong[r] === 0) known = withBit(known, r);
     }
   }
   const docs = state.documents;
@@ -291,7 +289,7 @@ export function collectiveKnowledge(state, ctx, out) {
       const li = docs.library[d];
       if (colony.libraryStanding[li] !== 1 || colony.libraryAbandoned[li] === 1) continue;
     }
-    written |= docs.recipes[d] & ~docs.wrong[d];
+    written = or(written, andNot(docs.recipes[d], docs.wrong[d]));
   }
   out[0] = known;
   out[1] = written;

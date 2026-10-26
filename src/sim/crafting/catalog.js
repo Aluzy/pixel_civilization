@@ -1,3 +1,4 @@
+import { MAX_BITS } from '../core/bits.js';
 /**
  * Everything that can be owned or built, indexed for fast lookups (docs/design/04-fabrication.md).
  *
@@ -158,6 +159,7 @@ export function buildCatalog(data, tables) {
     ingredientList.push(g);
   }
   if (ingredientList.length > 31) throw new Error('At most 31 ingredients (masks are 31-bit).');
+  if (data.recipes.length > MAX_BITS) throw new Error(`At most ${MAX_BITS} recipes (53-bit sets).`);
   const ingredientGood = Int16Array.from(ingredientList);
 
   const recipeForGood = new Int16Array(goodCount).fill(-1);

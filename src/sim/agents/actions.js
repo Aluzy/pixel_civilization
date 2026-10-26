@@ -1,3 +1,4 @@
+import { withBit } from '../core/bits.js';
 import { EventType } from '../core/events.js';
 import { BARE_HANDS, lowestIngredient, matchRecipe } from '../crafting/catalog.js';
 import { PACK } from '../world/chunk-store.js';
@@ -766,7 +767,8 @@ function imitate(state, ctx, maker, r) {
       continue;
     }
     const model = a.social[id];
-    model.skills[model.sheet(maker, state.tick)] |= 1 << r;
+    const sheet = model.sheet(maker, state.tick);
+    model.skills[sheet] = withBit(model.skills[sheet], r);
     const book = a.recipes[id];
     if (book.knows(r) || a.rng[id].next() >= cfg.imitationChance) continue;
     book.learn(r, state.tick, ctx.recipeTau, cfg.imitationStrength);

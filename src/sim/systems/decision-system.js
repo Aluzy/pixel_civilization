@@ -1,3 +1,4 @@
+import { andNot } from '../core/bits.js';
 import { Flag } from '../agents/actions.js';
 import { Action, isFocused } from '../agents/action-types.js';
 import { planGoal } from '../agents/behaviors.js';
@@ -155,7 +156,7 @@ function senseInputs(state, ctx, id) {
   input[INPUT.canReplicate] = roomToReplicate(state, ctx, id) ? 1 : 0;
   // Writing and reading: only with a library at home, and from what the agent saw there.
   const library = home !== null && home.librariesStanding() > 0;
-  const unwritten = (a.recipes[id].knownMask() & ~a.librarySeen[id]) !== 0;
+  const unwritten = andNot(a.recipes[id].knownMask(), a.librarySeen[id]) !== 0;
   // One scribe at a time: the first member at the camp with something to write takes the task.
   let scribe = false;
   if (library && (unwritten || carriesWriting(state, id) || wantsMap(state, ctx, id))) {
@@ -214,7 +215,7 @@ function senseInputs(state, ctx, id) {
   const young =
     state.tick - a.bornTick[id] < ctx.balance.writing.youngDays * ctx.balance.time.ticksPerDay;
   const unread =
-    a.libraryVisited[id] === 0 || (a.librarySeen[id] & ~a.recipes[id].knownMask()) !== 0;
+    a.libraryVisited[id] === 0 || andNot(a.librarySeen[id], a.recipes[id].knownMask()) !== 0;
   input[INPUT.unread] = library && unread ? (young ? 1 : 0.7) : 0;
 }
 

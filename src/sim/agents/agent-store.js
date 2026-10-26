@@ -1,3 +1,4 @@
+import { hashBits } from '../core/bits.js';
 import { RecipeBook } from '../crafting/recipe-book.js';
 import { Action } from './action-types.js';
 import { ExplorationMap } from './exploration-map.js';
@@ -223,8 +224,8 @@ export class AgentStore {
     this.delivers = new Uint16Array(max);
     /** Age at which each agent dies of old age, in ticks. */
     this.lifespan = new Int32Array(max);
-    /** What it saw written in its colony's library (bit set of recipes), and whether it went. */
-    this.librarySeen = i32();
+    /** What it saw written in its colony's library (53-bit set of recipes), and whether it went. */
+    this.librarySeen = f64();
     /** Weakest harmony component of its colony, as read on the blackboard (-1: none). */
     this.focusSeen = new Int8Array(max);
     /** Tick the newest map seen in the library was made, -1 if none. */
@@ -554,7 +555,7 @@ export class AgentStore {
       h.typedArray(this.gathered.subarray(g0, g0 + this.goodSlots));
       h.uint32(this.builds[id]).uint32(this.delivers[id]);
       this.social[id].hashInto(h);
-      h.uint32(this.lifespan[id]).uint32(this.librarySeen[id]).uint32(this.libraryVisited[id]);
+      hashBits(h.uint32(this.lifespan[id]), this.librarySeen[id]).uint32(this.libraryVisited[id]);
       h.uint32(this.mapSeen[id]).uint32(this.focusSeen[id] & 0xff);
       h.uint32(this.attackTarget[id]).uint32(this.attackCooldown[id]);
       h.typedArray(this.genes.subarray(id * this.geneCount, (id + 1) * this.geneCount));

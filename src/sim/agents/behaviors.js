@@ -1,3 +1,4 @@
+import { has, or } from '../core/bits.js';
 import { Action } from './action-types.js';
 import { PlanNote } from './journal.js';
 import { WATER_SUBJECT } from './memory.js';
@@ -156,14 +157,14 @@ function unusedStation(ctx, id) {
   const memory = ctx.agents.memory[id];
   const social = ctx.agents.social[id];
   let seen = 0;
-  for (let k = 0; k < social.count; k++) seen |= social.skills[k];
+  for (let k = 0; k < social.count; k++) seen = or(seen, social.skills[k]);
   const R = catalog.resourceCount;
   for (let code = 1; code <= catalog.structures.length; code++) {
     if (catalog.structures[code - 1].kind !== 'station') continue;
     let used = false;
     for (let r = 0; r < catalog.recipes.length && !used; r++) {
       if (catalog.recipes[r].station !== code) continue;
-      used = book.knows(r) || (seen & (1 << r)) !== 0;
+      used = book.knows(r) || has(seen, r);
     }
     if (used) continue;
     if (ctx.nav.nearestStructure(code) >= 0) return code;
