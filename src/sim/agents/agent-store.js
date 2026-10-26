@@ -30,6 +30,7 @@ export class AgentStore {
    * @param {number} [options.dangerSlots=8] - Zones whose danger an agent keeps in mind.
    * @param {number} [options.jobCount=0] - Jobs of data/jobs.json.
    * @param {number} [options.tradeSlots=1] - Recent trades kept per agent (inspector).
+   * @param {number} [options.goalCount=1] - Goals of data/ai-goals.json (weariness).
    */
   constructor({
     max,
@@ -43,8 +44,13 @@ export class AgentStore {
     dangerSlots = 8,
     jobCount = 0,
     tradeSlots = 1,
+    goalCount = 1,
   }) {
     this.sheets = sheets;
+    // Weariness per goal (decision 0029): failed trials pile up while pursuing it, and fade.
+    this.goalCount = goalCount;
+    this.weary = new Float64Array(max * goalCount);
+    this.wearyTick = new Int32Array(max);
     this.geneStart = geneStart;
     this.geneCount = geneStart.length;
     /** Decision genome, `geneCount` per agent (docs/design/06-ia.md, couche 8). */
@@ -290,6 +296,8 @@ export class AgentStore {
     this.alive[id] = 1;
     this.aliveCount++;
     this.bornTick[id] = tick;
+    this.weary.fill(0, id * this.goalCount, (id + 1) * this.goalCount);
+    this.wearyTick[id] = tick;
     this.x[id] = x;
     this.y[id] = y;
     if (this.world) this.world.setOccupant(x, y, id);
@@ -559,6 +567,8 @@ export class AgentStore {
       h.uint32(this.mapSeen[id]).uint32(this.focusSeen[id] & 0xff);
       h.uint32(this.attackTarget[id]).uint32(this.attackCooldown[id]);
       h.typedArray(this.genes.subarray(id * this.geneCount, (id + 1) * this.geneCount));
+      h.typedArray(this.weary.subarray(id * this.goalCount, (id + 1) * this.goalCount));
+      h.uint32(this.wearyTick[id]);
       const d0 = id * this.dangerSlots;
       const d1 = d0 + this.dangerCount[id];
       h.uint32(this.dangerCount[id]).uint32(this.zoneX[id]).uint32(this.zoneY[id]);

@@ -1,3 +1,4 @@
+import { wearyWeights } from '../ai/weariness.js';
 import { andNot } from '../core/bits.js';
 import { Flag } from '../agents/actions.js';
 import { Action, isFocused } from '../agents/action-types.js';
@@ -415,6 +416,8 @@ export function decisionSystem(state, ctx) {
         ? roleOf(ctx, colony, id)
         : -1;
     if (role >= 0) jobWeights(ctx, role, weights, colony.cooks.includes(id));
+    // Goals whose trials keep failing lose their appeal for a while.
+    wearyWeights(ctx, id, state.tick, weights);
     let goal = scoreGoals(ctx.goals, input, current, scores, a.rng[id], favoured, bonus, weights);
     // Exhaustion overrides choice: the body falls asleep.
     if (a.fatigue[id] >= critical) goal = ctx.goalIndex.sleep;

@@ -67,7 +67,8 @@
     "planMaxSteps": 12,
     "planTravelCost": 60,
     "planExploreCost": 600,
-    "shelterRange": 48
+    "shelterRange": 48,
+    "weariness": { "perFailure": 1, "scale": 0.3, "halfLifeDays": 1 }
   },
   "memory": {
     "placeTauDays": 3,

@@ -828,6 +828,7 @@ export class Simulation {
       dangerSlots: balance.learning.dangerSlots,
       jobCount: JOBS.jobs.length,
       tradeSlots: balance.economy.tradeSlots,
+      goalCount: GOAL_TABLE.goals.length,
     });
     agents.world = world;
     const seedKey = seedToKey(seed);

@@ -1,3 +1,4 @@
+import { refresh, tire } from '../ai/weariness.js';
 import { withBit } from '../core/bits.js';
 import { EventType } from '../core/events.js';
 import { BARE_HANDS, lowestIngredient, matchRecipe } from '../crafting/catalog.js';
@@ -800,6 +801,7 @@ function experiment(state, ctx, id) {
       state.knowledge.noteDiscovery(r, id, state.tick);
     }
     agents.hint[id] = 0;
+    refresh(ctx, id, agents.goal[id]);
     if (station === agents.ideaStation[id] && mask === agents.ideaMask[id]) {
       agents.ideaStation[id] = -1;
       agents.ideaMask[id] = 0;
@@ -810,6 +812,7 @@ function experiment(state, ctx, id) {
     agents.addCarried(id, lowestIngredient(ctx.catalog, m), -1);
   }
   book.recordFailure(station, mask, state.tick, ctx.failureTau);
+  tire(ctx, id, agents.goal[id], state.tick);
   // A material alone at a station: watching what the station does to it may give an idea.
   if (station !== BARE_HANDS && (mask & (mask - 1)) === 0) inspire(state, ctx, id, -1, station);
   // A researcher notes it in the colony's notebook, for itself and those after it.
