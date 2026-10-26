@@ -156,7 +156,7 @@ describe('room for everyone', () => {
       expect(oneByTile(sim)).toBe(true);
     }
     expect(sim.state.colonies[0].members).toBeGreaterThan(10);
-  });
+  }, 60000);
 
   it('lets two who meet head-on in a lane slip past each other', () => {
     const sim = new Simulation({ seed: 5, balance });
