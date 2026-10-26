@@ -122,3 +122,11 @@ Un souvenir de lieu peut être périmé (ressource épuisée). L'individu agit s
 - **Savoir connu** : ensemble des recettes connues par au moins un individu vivant.
 - **Savoir écrit** : ensemble des recettes présentes dans au moins un livre accessible.
 - **Savoir perdu** : recettes déjà découvertes une fois, aujourd'hui ni connues ni écrites.
+
+## Savoir durable (décision 0029)
+
+- **Tablette d'argile** : 3 recettes, faite de 2 argiles sans station ; le scribe écrit sur l'argile quand il ne trouve pas comment faire un livre.
+- **Grande bibliothèque** : un ouvrage de pierre de 3 × 3 ; 4 fois plus de place, elle ne brûle pas, on y retient 2 fois plus longtemps.
+- **Maîtres et école** : le membre qui maîtrise le mieux une recette l'enseigne à l'école (ou à la bibliothèque) ; l'élève la retient selon la force du maître et son goût d'enseigner. Le savoir enseigné compte dans l'harmonie comme le savoir écrit.
+- Les ensembles de recettes tiennent sur 53 bits (`core/bits.js`).
+- Détail dans [18](18-expansion-et-commerce.md).

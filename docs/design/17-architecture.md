@@ -19,7 +19,7 @@ Un **ouvrage** est un projet de colonie (couche 4 de [06](06-ia.md)) fait d'une 
 - que sa réserve tienne 2 portions par membre et ne baisse pas ;
 - un ouvrage tous les 2 jours, ou chaque jour si la beauté est son point faible.
 
-Elle ouvre le premier ouvrage de la liste qu'elle peut faire. Les ouvrages se répètent tant qu'il reste à faire (maisons de bois, routes, marais), les autres ne se font qu'une fois.
+Elle ouvre le premier ouvrage de la liste qu'elle peut faire. Les ouvrages se répètent tant qu'il reste à faire (maisons de bois, routes, marais, sentiers), les autres ne se font qu'une fois (le drapeau `repeat` de `data/works.json`).
 
 ## Plan de ville
 
@@ -75,6 +75,14 @@ La sixième composante de l'harmonie ([07](07-harmonie.md)) est la **beauté**, 
 - s'il y a des murs d'enceinte, la part en pierre.
 
 Quand la colonie va bien (stabilité et bien-être d'au moins 0,5) et que la beauté est sa composante la plus faible, la beauté devient son point faible. Elle ouvre alors un ouvrage chaque jour. Une colonie qui a faim ne s'embellit pas.
+
+## Ouvrages ajoutés en v0.16 (décision 0029)
+
+- **Ponton** : depuis la berge libre la plus proche du camp, 2 à 4 cases sur l'eau, pour une colonie qui a du poisson en réserve.
+- **Sentiers pavés** : les 40 cases les plus foulées du territoire, à chaque fois.
+- **Grande bibliothèque** : un bloc de pierre de 3 × 3 au nord de la place, qui devient une bibliothèque.
+- Les routes relient aussi les colonies qui ont commercé.
+- Détail dans [18](18-expansion-et-commerce.md).
 
 ## Ce qui reste à faire
 

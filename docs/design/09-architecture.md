@@ -128,6 +128,7 @@ Les individus vivent dans `src/sim/agents/` : `agent-store.js` (composants en ta
 - `createRng(seed)` retourne un générateur ; chaque sous-système dérive son propre flux (`rng.fork('world')`, `rng.fork('ai')`…) pour qu'un changement dans un système n'altère pas les tirages des autres.
 - Les individus sont toujours parcourus par identifiant croissant.
 - `hashState(state)` produit un hash (FNV-1a) des composants et blocs actifs ; le test de déterminisme compare deux exécutions.
+- Les ensembles de recettes et de stations sont des nombres de 53 bits (`src/sim/core/bits.js`), travaillés mot par mot par division et `floor` : les opérateurs binaires de JavaScript coupent à 32 bits (décision 0029).
 
 ## Protocole Worker ↔ rendu
 

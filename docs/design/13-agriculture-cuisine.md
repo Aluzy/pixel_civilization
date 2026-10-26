@@ -170,3 +170,8 @@ Une fois l'enceinte décidée, aucune parcelle nouvelle ne se fait à l'intérie
 
 - Une parcelle à côté d'un canal (8 voisins) est arrosée d'elle-même chaque jour, à l'aube. Personne n'a à porter l'eau, et le travail d'arroser ne lui est plus proposé.
 - Une case à 4 cases d'un canal peut devenir une parcelle, comme près d'un lac. Les canaux ouvrent donc des champs loin des rives.
+
+## Poisson (décision 0029)
+
+- Le poisson se mange cru, grillé au feu de camp, ou fumé au fumoir (2 poissons et 1 bois) : ce sont des plats pour les cuisiniers.
+- Détail dans [18](18-expansion-et-commerce.md).

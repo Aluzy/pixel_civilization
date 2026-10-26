@@ -133,3 +133,9 @@ Au J7 : palette d'Okabe et Ito pour les courbes, descriptions textuelles des gra
 - Palette vérifiée pour les daltonismes courants ; motifs par type aux zooms élevés.
 - Taille du texte de l'interface réglable.
 - Tous les contrôles accessibles au clavier.
+
+## Expansion et commerce (décision 0029)
+
+- Le panneau de la colonie dit si elle est née outre-mer, si son navire est à quai, où est son école, qui est son maître, ses grandes bibliothèques et le nombre de recettes enseignées.
+- L'inspecteur d'un individu qui fabrique affiche son bonus de quartier (« quartier : ×1,2 »), et « école » quand il enseigne ou apprend.
+- La chronique annonce les leçons (« apprend à l'école ») et les colonies fondées outre-mer.

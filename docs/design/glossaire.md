@@ -102,3 +102,15 @@
 | Place, rues | Carré pavé au camp et pavés le long des quatre axes qui passent par lui | `plaza`, `streets` |
 | Édifice | Bâtiment public de 3 × 3 aux coins de la place : temple, grenier, marché, monument | `edifice` |
 | Beauté | Sixième composante de l'harmonie : pavage, pierre, édifices, arbres, fontaine | `Component.BEAUTY` |
+| Poisson | Ressource renouvelable de l'eau peu profonde, prise depuis la berge | `fish` |
+| Ponton | Ouvrage avancé sur l'eau, qu'on marche comme la terre | `pier` |
+| Barque | Outil de pêche ; qui la porte avance sur l'eau | `boat` |
+| Navire | Construction à quai ; les voyages de sa colonie avancent sur l'eau | `ship` |
+| Outre-mer | Colonie fondée par une expédition qui a traversé l'eau | `overseas` |
+| Tablette | Support d'écrit en argile, 3 recettes | `tablet` |
+| Grande bibliothèque | Bibliothèque de pierre de 3 × 3 qui ne brûle pas | `great_library` |
+| Maître | Membre qui enseigne une recette qu'il maîtrise, à l'école | `teacher` |
+| Lassitude | Perte d'attrait d'un objectif dont les essais échouent | `weary` |
+| Relais | Colonie fondée près d'une route, plus près des autres | `relay` |
+| Halte | Arrêt d'une caravane chez une troisième colonie sur son chemin | `halt` |
+| Quartier | Stations du même type proches, qui travaillent plus vite | `quarters` |
