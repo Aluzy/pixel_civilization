@@ -26,6 +26,7 @@ export const BARE_HANDS = 0;
  * @property {number} defense - Defense added while carried (armour, shields), 0 otherwise.
  * @property {number} pleasure - Pleasure of eating it (dishes), 0 otherwise.
  * @property {Float64Array} harvest - Harvest speed multiplier per resource id (tools).
+ * @property {boolean} sail - Who carries it goes on water (a boat, a ship).
  */
 
 /**
@@ -42,6 +43,8 @@ export const BARE_HANDS = 0;
  * @property {string | null} door - Structure id of its door.
  * @property {number} speed - Walking speed factor on it (1, or less to wade through a canal).
  * @property {boolean} feminine - Grammatical gender of its French name, for the chronicle.
+ * @property {boolean} shore - Built only beside water (a shipyard).
+ * @property {boolean} great - A great library: four times the room, it does not burn.
  */
 
 /**
@@ -117,6 +120,7 @@ export function buildCatalog(data, tables) {
       defense: item.defense ?? 0,
       pleasure: item.pleasure ?? 0,
       harvest,
+      sail: item.sail === true,
     };
   });
 
@@ -133,6 +137,8 @@ export function buildCatalog(data, tables) {
     wall: s.wall ?? null,
     door: s.door ?? null,
     feminine: s.feminine === true,
+    shore: s.shore === true,
+    great: s.great === true,
   }));
   const structureCode = new Map(structures.map((s) => [s.id, s.code]));
 

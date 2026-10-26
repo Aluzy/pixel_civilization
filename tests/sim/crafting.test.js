@@ -140,7 +140,8 @@ describe('crafting', () => {
         sim.agents.alive[0] === 1 &&
         made(sim, ['workbench']) &&
         made(sim, ['spear']) &&
-        made(sim, ['stone_axe', 'stone_pickaxe']) &&
+        // A boat is a tool too since v0.16 (fishing, decision 0029).
+        made(sim, ['stone_axe', 'stone_pickaxe', 'boat']) &&
         made(sim, ['shelter']);
       if (ok) settled++;
     }

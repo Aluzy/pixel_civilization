@@ -51,6 +51,8 @@ export class AgentStore {
     this.goalCount = goalCount;
     this.weary = new Float64Array(max * goalCount);
     this.wearyTick = new Int32Array(max);
+    /** Speed on water as last perceived: 0 on foot, more with a boat or a ship. */
+    this.sail = new Float32Array(max);
     this.geneStart = geneStart;
     this.geneCount = geneStart.length;
     /** Decision genome, `geneCount` per agent (docs/design/06-ia.md, couche 8). */
@@ -297,6 +299,7 @@ export class AgentStore {
     this.aliveCount++;
     this.bornTick[id] = tick;
     this.weary.fill(0, id * this.goalCount, (id + 1) * this.goalCount);
+    this.sail[id] = 0;
     this.wearyTick[id] = tick;
     this.x[id] = x;
     this.y[id] = y;
@@ -568,7 +571,7 @@ export class AgentStore {
       h.uint32(this.attackTarget[id]).uint32(this.attackCooldown[id]);
       h.typedArray(this.genes.subarray(id * this.geneCount, (id + 1) * this.geneCount));
       h.typedArray(this.weary.subarray(id * this.goalCount, (id + 1) * this.goalCount));
-      h.uint32(this.wearyTick[id]);
+      h.uint32(this.wearyTick[id]).uint32(Math.round(this.sail[id] * 1000));
       const d0 = id * this.dangerSlots;
       const d1 = d0 + this.dangerCount[id];
       h.uint32(this.dangerCount[id]).uint32(this.zoneX[id]).uint32(this.zoneY[id]);

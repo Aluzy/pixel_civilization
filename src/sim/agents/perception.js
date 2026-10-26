@@ -1,3 +1,4 @@
+import { sailSpeed } from './sailing.js';
 import { EventType } from '../core/events.js';
 import { PACK } from '../world/chunk-store.js';
 import { isStructure, isVital, memoryEvent, salienceOf, tauOf } from './beliefs.js';
@@ -73,6 +74,8 @@ function confirms(ctx, subject, cell) {
   if (isStructure(ctx, subject)) {
     return nav.structure[cell] === subject - ctx.catalog.resourceCount ? 1 : 0;
   }
+  // Fish is remembered at the shore cell one takes it from.
+  if (nav.sideResource[cell] === subject) return 1;
   return nav.resource[cell] === subject && nav.quantity[cell] > 0 ? 1 : 0;
 }
 
@@ -93,6 +96,8 @@ export function perceive(state, ctx, id) {
   const code = state.world.packedAt(ax, ay) >>> PACK.STRUCTURE_SHIFT;
   agents.onTower[id] = code !== 0 && code === ctx.towerCode ? 1 : 0;
   const radius = perceptionRadius(ctx, id, ctx.dark);
+  agents.sail[id] = sailSpeed(state, ctx, id);
+  nav.waterSpeed = agents.sail[id];
   nav.prepare(state.world, ax, ay, radius);
   agents.explored[id].markArea(ax - radius, ay - radius, ax + radius, ay + radius, state.tick);
 
@@ -115,6 +120,9 @@ export function perceive(state, ctx, id) {
       (best[R + st] < 0 || nav.dist[i] < nav.dist[best[R + st]])
     )
       best[R + st] = i;
+    // A place to fish from (fish in the water beside it) counts as a place of fish.
+    const side = nav.sideResource[i];
+    if (side !== 0 && (best[side] < 0 || nav.dist[i] < nav.dist[best[side]])) best[side] = i;
     const r = nav.resource[i];
     if (r === 0 || nav.quantity[i] === 0) continue;
     if (best[r] < 0 || nav.dist[i] < nav.dist[best[r]]) best[r] = i;
@@ -122,7 +130,8 @@ export function perceive(state, ctx, id) {
   for (let subject = 1; subject < best.length; subject++) {
     const c = best[subject];
     if (c < 0) continue;
-    const quantity = subject <= R ? nav.quantity[c] : 0;
+    const quantity =
+      subject <= R ? Math.max(nav.quantity[c], nav.sideResource[c] === subject ? 1 : 0) : 0;
     notice(state, ctx, id, subject, nav.cellX(c), nav.cellY(c), quantity);
   }
 

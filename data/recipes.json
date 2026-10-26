@@ -1,6 +1,11 @@
 {
   "structures": [
-    { "id": "workbench", "name": "Établi", "color": "#d9c7a0", "kind": "station" },
+    {
+      "id": "workbench",
+      "name": "Établi",
+      "color": "#d9c7a0",
+      "kind": "station"
+    },
     {
       "id": "shelter",
       "name": "Abri",
@@ -11,7 +16,12 @@
       "wall": "house_wall",
       "door": "house_door"
     },
-    { "id": "scriptorium", "name": "Scriptorium", "color": "#ece4cf", "kind": "station" },
+    {
+      "id": "scriptorium",
+      "name": "Scriptorium",
+      "color": "#ece4cf",
+      "kind": "station"
+    },
     {
       "id": "library",
       "name": "Bibliothèque",
@@ -19,7 +29,12 @@
       "kind": "library",
       "feminine": true
     },
-    { "id": "oven", "name": "Four", "color": "#a8432f", "kind": "station" },
+    {
+      "id": "oven",
+      "name": "Four",
+      "color": "#a8432f",
+      "kind": "station"
+    },
     {
       "id": "foundry",
       "name": "Fonderie",
@@ -27,9 +42,26 @@
       "kind": "station",
       "feminine": true
     },
-    { "id": "den", "name": "Tanière", "color": "#3e0a0a", "kind": "den", "feminine": true },
-    { "id": "plot", "name": "Parcelle", "color": "#5c3d22", "kind": "plot", "feminine": true },
-    { "id": "campfire", "name": "Feu de camp", "color": "#ff8a2a", "kind": "station" },
+    {
+      "id": "den",
+      "name": "Tanière",
+      "color": "#3e0a0a",
+      "kind": "den",
+      "feminine": true
+    },
+    {
+      "id": "plot",
+      "name": "Parcelle",
+      "color": "#5c3d22",
+      "kind": "plot",
+      "feminine": true
+    },
+    {
+      "id": "campfire",
+      "name": "Feu de camp",
+      "color": "#ff8a2a",
+      "kind": "station"
+    },
     {
       "id": "treasure_room",
       "name": "Salle du trésor",
@@ -44,9 +76,26 @@
       "kind": "wall",
       "feminine": true
     },
-    { "id": "gate", "name": "Porte", "color": "#b07a3c", "kind": "gate", "feminine": true },
-    { "id": "tower", "name": "Tour", "color": "#8c8c94", "kind": "tower", "feminine": true },
-    { "id": "house_wall", "name": "Mur d'abri", "color": "#6e4a2c", "kind": "house_wall" },
+    {
+      "id": "gate",
+      "name": "Porte",
+      "color": "#b07a3c",
+      "kind": "gate",
+      "feminine": true
+    },
+    {
+      "id": "tower",
+      "name": "Tour",
+      "color": "#8c8c94",
+      "kind": "tower",
+      "feminine": true
+    },
+    {
+      "id": "house_wall",
+      "name": "Mur d'abri",
+      "color": "#6e4a2c",
+      "kind": "house_wall"
+    },
     {
       "id": "house_door",
       "name": "Porte d'abri",
@@ -54,9 +103,27 @@
       "kind": "door",
       "feminine": true
     },
-    { "id": "canal", "name": "Canal", "color": "#3f7fc4", "kind": "canal", "speed": 0.5 },
-    { "id": "pavement", "name": "Pavé", "color": "#b4a58a", "kind": "pavement", "speed": 1.4 },
-    { "id": "bridge", "name": "Pont", "color": "#8e7558", "kind": "bridge", "speed": 1.4 },
+    {
+      "id": "canal",
+      "name": "Canal",
+      "color": "#3f7fc4",
+      "kind": "canal",
+      "speed": 0.5
+    },
+    {
+      "id": "pavement",
+      "name": "Pavé",
+      "color": "#b4a58a",
+      "kind": "pavement",
+      "speed": 1.4
+    },
+    {
+      "id": "bridge",
+      "name": "Pont",
+      "color": "#8e7558",
+      "kind": "bridge",
+      "speed": 1.4
+    },
     {
       "id": "fountain",
       "name": "Fontaine",
@@ -70,13 +137,49 @@
       "color": "#8f8a84",
       "kind": "house_wall"
     },
-    { "id": "stone_wall", "name": "Mur de pierre", "color": "#6f6d72", "kind": "wall" },
-    { "id": "temple", "name": "Temple", "color": "#ece2c6", "kind": "edifice" },
-    { "id": "granary", "name": "Grenier", "color": "#b5813f", "kind": "edifice" },
-    { "id": "market", "name": "Marché", "color": "#d9a95b", "kind": "market" },
-    { "id": "monument", "name": "Monument", "color": "#c9c1a3", "kind": "edifice" },
-    { "id": "statue", "name": "Statue", "color": "#e3bf3c", "kind": "edifice", "feminine": true },
-    { "id": "tree", "name": "Arbre planté", "color": "#2e6b34", "kind": "tree" },
+    {
+      "id": "stone_wall",
+      "name": "Mur de pierre",
+      "color": "#6f6d72",
+      "kind": "wall"
+    },
+    {
+      "id": "temple",
+      "name": "Temple",
+      "color": "#ece2c6",
+      "kind": "edifice"
+    },
+    {
+      "id": "granary",
+      "name": "Grenier",
+      "color": "#b5813f",
+      "kind": "edifice"
+    },
+    {
+      "id": "market",
+      "name": "Marché",
+      "color": "#d9a95b",
+      "kind": "market"
+    },
+    {
+      "id": "monument",
+      "name": "Monument",
+      "color": "#c9c1a3",
+      "kind": "edifice"
+    },
+    {
+      "id": "statue",
+      "name": "Statue",
+      "color": "#e3bf3c",
+      "kind": "edifice",
+      "feminine": true
+    },
+    {
+      "id": "tree",
+      "name": "Arbre planté",
+      "color": "#2e6b34",
+      "kind": "tree"
+    },
     {
       "id": "quarry",
       "name": "Carrière",
@@ -84,36 +187,151 @@
       "kind": "quarry",
       "speed": 0.7,
       "feminine": true
+    },
+    {
+      "id": "pier",
+      "name": "Ponton",
+      "color": "#9c7a52",
+      "kind": "pier",
+      "speed": 1
+    },
+    {
+      "id": "smokehouse",
+      "name": "Fumoir",
+      "color": "#6b5a4a",
+      "kind": "station"
+    },
+    {
+      "id": "shipyard",
+      "name": "Chantier naval",
+      "color": "#a8865a",
+      "kind": "station",
+      "shore": true
+    },
+    {
+      "id": "school",
+      "name": "École",
+      "color": "#d8c79a",
+      "kind": "station",
+      "feminine": true
+    },
+    {
+      "id": "great_library",
+      "name": "Grande bibliothèque",
+      "color": "#c8b48c",
+      "kind": "library",
+      "feminine": true,
+      "great": true
     }
   ],
   "items": [
-    { "id": "spear", "name": "Lance", "kind": "weapon", "attack": 2 },
-    { "id": "stone_axe", "name": "Hache de pierre", "kind": "tool", "harvest": { "wood": 2 } },
+    {
+      "id": "spear",
+      "name": "Lance",
+      "kind": "weapon",
+      "attack": 2
+    },
+    {
+      "id": "stone_axe",
+      "name": "Hache de pierre",
+      "kind": "tool",
+      "harvest": {
+        "wood": 2
+      }
+    },
     {
       "id": "stone_pickaxe",
       "name": "Pioche de pierre",
       "kind": "tool",
-      "harvest": { "stone": 3 }
+      "harvest": {
+        "stone": 3
+      }
     },
-    { "id": "paper", "name": "Papier", "kind": "material" },
-    { "id": "ink", "name": "Encre", "kind": "material" },
-    { "id": "book", "name": "Livre", "kind": "book" },
-    { "id": "map", "name": "Carte", "kind": "map" },
-    { "id": "brick", "name": "Brique", "kind": "material" },
-    { "id": "copper_ingot", "name": "Lingot de cuivre", "kind": "material" },
-    { "id": "iron_ingot", "name": "Lingot de fer", "kind": "material" },
+    {
+      "id": "paper",
+      "name": "Papier",
+      "kind": "material"
+    },
+    {
+      "id": "ink",
+      "name": "Encre",
+      "kind": "material"
+    },
+    {
+      "id": "book",
+      "name": "Livre",
+      "kind": "book"
+    },
+    {
+      "id": "map",
+      "name": "Carte",
+      "kind": "map"
+    },
+    {
+      "id": "brick",
+      "name": "Brique",
+      "kind": "material"
+    },
+    {
+      "id": "copper_ingot",
+      "name": "Lingot de cuivre",
+      "kind": "material"
+    },
+    {
+      "id": "iron_ingot",
+      "name": "Lingot de fer",
+      "kind": "material"
+    },
     {
       "id": "copper_pickaxe",
       "name": "Pioche de cuivre",
       "kind": "tool",
-      "harvest": { "stone": 4, "copper": 2, "coal": 2 }
+      "harvest": {
+        "stone": 4,
+        "copper": 2,
+        "coal": 2
+      }
     },
-    { "id": "copper_axe", "name": "Hache de cuivre", "kind": "tool", "harvest": { "wood": 3 } },
-    { "id": "copper_spear", "name": "Lance de cuivre", "kind": "weapon", "attack": 3 },
-    { "id": "iron_axe", "name": "Hache de fer", "kind": "tool", "harvest": { "wood": 4 } },
-    { "id": "iron_spear", "name": "Lance de fer", "kind": "weapon", "attack": 4 },
-    { "id": "hide", "name": "Peau", "kind": "material", "feminine": true },
-    { "id": "shield", "name": "Bouclier", "kind": "armor", "defense": 2 },
+    {
+      "id": "copper_axe",
+      "name": "Hache de cuivre",
+      "kind": "tool",
+      "harvest": {
+        "wood": 3
+      }
+    },
+    {
+      "id": "copper_spear",
+      "name": "Lance de cuivre",
+      "kind": "weapon",
+      "attack": 3
+    },
+    {
+      "id": "iron_axe",
+      "name": "Hache de fer",
+      "kind": "tool",
+      "harvest": {
+        "wood": 4
+      }
+    },
+    {
+      "id": "iron_spear",
+      "name": "Lance de fer",
+      "kind": "weapon",
+      "attack": 4
+    },
+    {
+      "id": "hide",
+      "name": "Peau",
+      "kind": "material",
+      "feminine": true
+    },
+    {
+      "id": "shield",
+      "name": "Bouclier",
+      "kind": "armor",
+      "defense": 2
+    },
     {
       "id": "hide_armor",
       "name": "Armure de peau",
@@ -121,9 +339,24 @@
       "defense": 3,
       "feminine": true
     },
-    { "id": "seed", "name": "Graine", "kind": "material", "feminine": true },
-    { "id": "flour", "name": "Farine", "kind": "ingredient", "feminine": true },
-    { "id": "bread", "name": "Pain", "kind": "food", "pleasure": 3 },
+    {
+      "id": "seed",
+      "name": "Graine",
+      "kind": "material",
+      "feminine": true
+    },
+    {
+      "id": "flour",
+      "name": "Farine",
+      "kind": "ingredient",
+      "feminine": true
+    },
+    {
+      "id": "bread",
+      "name": "Pain",
+      "kind": "food",
+      "pleasure": 3
+    },
     {
       "id": "grilled_meat",
       "name": "Viande grillée",
@@ -137,246 +370,545 @@
       "kind": "food",
       "feminine": true,
       "pleasure": 5
+    },
+    {
+      "id": "grilled_fish",
+      "name": "Poisson grillé",
+      "kind": "food",
+      "pleasure": 3
+    },
+    {
+      "id": "smoked_fish",
+      "name": "Poisson fumé",
+      "kind": "food",
+      "pleasure": 4
+    },
+    {
+      "id": "tablet",
+      "name": "Tablette d'argile",
+      "kind": "tablet",
+      "feminine": true
+    },
+    {
+      "id": "boat",
+      "name": "Barque",
+      "kind": "tool",
+      "feminine": true,
+      "harvest": {
+        "fish": 2
+      },
+      "sail": true
+    },
+    {
+      "id": "ship",
+      "name": "Navire",
+      "kind": "ship",
+      "sail": true
     }
   ],
   "recipes": [
     {
       "id": "workbench",
       "station": null,
-      "inputs": { "wood": 4, "fiber": 2 },
+      "inputs": {
+        "wood": 4,
+        "fiber": 2
+      },
       "durationTicks": 60,
-      "output": { "structure": "workbench" }
+      "output": {
+        "structure": "workbench"
+      }
     },
     {
       "id": "shelter",
       "station": null,
-      "inputs": { "wood": 8, "fiber": 4, "stone": 2 },
+      "inputs": {
+        "wood": 8,
+        "fiber": 4,
+        "stone": 2
+      },
       "durationTicks": 150,
-      "output": { "structure": "shelter" }
+      "output": {
+        "structure": "shelter"
+      }
     },
     {
       "id": "spear",
       "station": "workbench",
-      "inputs": { "wood": 2, "fiber": 1 },
+      "inputs": {
+        "wood": 2,
+        "fiber": 1
+      },
       "durationTicks": 30,
-      "output": { "item": "spear" }
+      "output": {
+        "item": "spear"
+      }
     },
     {
       "id": "stone_axe",
       "station": "workbench",
-      "inputs": { "stone": 2, "wood": 1 },
+      "inputs": {
+        "stone": 2,
+        "wood": 1
+      },
       "durationTicks": 40,
-      "output": { "item": "stone_axe" }
+      "output": {
+        "item": "stone_axe"
+      }
     },
     {
       "id": "stone_pickaxe",
       "station": "workbench",
-      "inputs": { "stone": 3, "wood": 1, "fiber": 1 },
+      "inputs": {
+        "stone": 3,
+        "wood": 1,
+        "fiber": 1
+      },
       "durationTicks": 40,
-      "output": { "item": "stone_pickaxe" }
+      "output": {
+        "item": "stone_pickaxe"
+      }
     },
     {
       "id": "scriptorium",
       "station": null,
-      "inputs": { "wood": 6, "stone": 2, "clay": 2 },
+      "inputs": {
+        "wood": 6,
+        "stone": 2,
+        "clay": 2
+      },
       "durationTicks": 80,
-      "output": { "structure": "scriptorium" }
+      "output": {
+        "structure": "scriptorium"
+      }
     },
     {
       "id": "library",
       "station": null,
-      "inputs": { "stone": 6, "clay": 4, "fiber": 4 },
+      "inputs": {
+        "stone": 6,
+        "clay": 4,
+        "fiber": 4
+      },
       "durationTicks": 200,
-      "output": { "structure": "library" }
+      "output": {
+        "structure": "library"
+      }
     },
     {
       "id": "paper",
       "station": "scriptorium",
-      "inputs": { "fiber": 3 },
+      "inputs": {
+        "fiber": 3
+      },
       "durationTicks": 30,
-      "output": { "item": "paper" }
+      "output": {
+        "item": "paper"
+      }
     },
     {
       "id": "ink",
       "station": "scriptorium",
-      "inputs": { "clay": 2 },
+      "inputs": {
+        "clay": 2
+      },
       "durationTicks": 30,
-      "output": { "item": "ink" }
+      "output": {
+        "item": "ink"
+      }
     },
     {
       "id": "book",
       "station": "scriptorium",
-      "inputs": { "paper": 3, "ink": 1 },
+      "inputs": {
+        "paper": 3,
+        "ink": 1
+      },
       "durationTicks": 40,
-      "output": { "item": "book" }
+      "output": {
+        "item": "book"
+      }
     },
     {
       "id": "map",
       "station": "scriptorium",
-      "inputs": { "paper": 1, "ink": 1, "fiber": 1 },
+      "inputs": {
+        "paper": 1,
+        "ink": 1,
+        "fiber": 1
+      },
       "durationTicks": 30,
-      "output": { "item": "map" }
+      "output": {
+        "item": "map"
+      }
     },
     {
       "id": "oven",
       "station": null,
-      "inputs": { "clay": 5, "stone": 5, "coal": 2 },
+      "inputs": {
+        "clay": 5,
+        "stone": 5,
+        "coal": 2
+      },
       "durationTicks": 120,
-      "output": { "structure": "oven" }
+      "output": {
+        "structure": "oven"
+      }
     },
     {
       "id": "brick",
       "station": "oven",
-      "inputs": { "clay": 2 },
+      "inputs": {
+        "clay": 2
+      },
       "durationTicks": 30,
-      "output": { "item": "brick" }
+      "output": {
+        "item": "brick"
+      }
     },
     {
       "id": "foundry",
       "station": null,
-      "inputs": { "brick": 8, "coal": 4 },
+      "inputs": {
+        "brick": 8,
+        "coal": 4
+      },
       "durationTicks": 160,
-      "output": { "structure": "foundry" }
+      "output": {
+        "structure": "foundry"
+      }
     },
     {
       "id": "copper_ingot",
       "station": "foundry",
-      "inputs": { "copper": 2, "coal": 1 },
+      "inputs": {
+        "copper": 2,
+        "coal": 1
+      },
       "durationTicks": 40,
-      "output": { "item": "copper_ingot" }
+      "output": {
+        "item": "copper_ingot"
+      }
     },
     {
       "id": "iron_ingot",
       "station": "foundry",
-      "inputs": { "iron": 2, "coal": 1 },
+      "inputs": {
+        "iron": 2,
+        "coal": 1
+      },
       "durationTicks": 50,
-      "output": { "item": "iron_ingot" }
+      "output": {
+        "item": "iron_ingot"
+      }
     },
     {
       "id": "copper_pickaxe",
       "station": "workbench",
-      "inputs": { "copper_ingot": 2, "wood": 1 },
+      "inputs": {
+        "copper_ingot": 2,
+        "wood": 1
+      },
       "durationTicks": 40,
-      "output": { "item": "copper_pickaxe" }
+      "output": {
+        "item": "copper_pickaxe"
+      }
     },
     {
       "id": "copper_axe",
       "station": "workbench",
-      "inputs": { "copper_ingot": 2, "wood": 1, "fiber": 1 },
+      "inputs": {
+        "copper_ingot": 2,
+        "wood": 1,
+        "fiber": 1
+      },
       "durationTicks": 40,
-      "output": { "item": "copper_axe" }
+      "output": {
+        "item": "copper_axe"
+      }
     },
     {
       "id": "copper_spear",
       "station": "workbench",
-      "inputs": { "copper_ingot": 1, "fiber": 2 },
+      "inputs": {
+        "copper_ingot": 1,
+        "fiber": 2
+      },
       "durationTicks": 30,
-      "output": { "item": "copper_spear" }
+      "output": {
+        "item": "copper_spear"
+      }
     },
     {
       "id": "iron_axe",
       "station": "workbench",
-      "inputs": { "iron_ingot": 2, "wood": 1 },
+      "inputs": {
+        "iron_ingot": 2,
+        "wood": 1
+      },
       "durationTicks": 40,
-      "output": { "item": "iron_axe" }
+      "output": {
+        "item": "iron_axe"
+      }
     },
     {
       "id": "iron_spear",
       "station": "workbench",
-      "inputs": { "iron_ingot": 1, "fiber": 2 },
+      "inputs": {
+        "iron_ingot": 1,
+        "fiber": 2
+      },
       "durationTicks": 30,
-      "output": { "item": "iron_spear" }
+      "output": {
+        "item": "iron_spear"
+      }
     },
     {
       "id": "shield",
       "station": "workbench",
-      "inputs": { "wood": 3, "hide": 1 },
+      "inputs": {
+        "wood": 3,
+        "hide": 1
+      },
       "durationTicks": 40,
-      "output": { "item": "shield" }
+      "output": {
+        "item": "shield"
+      }
     },
     {
       "id": "hide_armor",
       "station": "workbench",
-      "inputs": { "hide": 2, "fiber": 2 },
+      "inputs": {
+        "hide": 2,
+        "fiber": 2
+      },
       "durationTicks": 60,
-      "output": { "item": "hide_armor" }
+      "output": {
+        "item": "hide_armor"
+      }
     },
     {
       "id": "plot",
       "station": null,
-      "inputs": { "seed": 1 },
+      "inputs": {
+        "seed": 1
+      },
       "durationTicks": 20,
-      "output": { "structure": "plot" }
+      "output": {
+        "structure": "plot"
+      }
     },
     {
       "id": "campfire",
       "station": null,
-      "inputs": { "wood": 3, "stone": 3 },
+      "inputs": {
+        "wood": 3,
+        "stone": 3
+      },
       "durationTicks": 60,
-      "output": { "structure": "campfire" }
+      "output": {
+        "structure": "campfire"
+      }
     },
     {
       "id": "flour",
       "station": null,
-      "inputs": { "wheat": 3 },
+      "inputs": {
+        "wheat": 3
+      },
       "durationTicks": 30,
-      "output": { "item": "flour" }
+      "output": {
+        "item": "flour"
+      }
     },
     {
       "id": "bread",
       "station": "campfire",
-      "inputs": { "flour": 2 },
+      "inputs": {
+        "flour": 2
+      },
       "durationTicks": 30,
-      "output": { "item": "bread" }
+      "output": {
+        "item": "bread"
+      }
     },
     {
       "id": "grilled_meat",
       "station": "campfire",
-      "inputs": { "carcass": 1 },
+      "inputs": {
+        "carcass": 1
+      },
       "durationTicks": 20,
-      "output": { "item": "grilled_meat" }
+      "output": {
+        "item": "grilled_meat"
+      }
     },
     {
       "id": "berry_pie",
       "station": "campfire",
-      "inputs": { "flour": 1, "berries": 2 },
+      "inputs": {
+        "flour": 1,
+        "berries": 2
+      },
       "durationTicks": 30,
-      "output": { "item": "berry_pie" }
+      "output": {
+        "item": "berry_pie"
+      }
     },
     {
       "id": "treasure_room",
       "station": null,
-      "inputs": { "stone": 8, "clay": 4 },
+      "inputs": {
+        "stone": 8,
+        "clay": 4
+      },
       "durationTicks": 200,
-      "output": { "structure": "treasure_room" }
+      "output": {
+        "structure": "treasure_room"
+      }
     },
     {
       "id": "palisade",
       "station": null,
-      "inputs": { "wood": 2 },
+      "inputs": {
+        "wood": 2
+      },
       "durationTicks": 20,
-      "output": { "structure": "palisade" }
+      "output": {
+        "structure": "palisade"
+      }
     },
     {
       "id": "gate",
       "station": null,
-      "inputs": { "wood": 4, "clay": 2 },
+      "inputs": {
+        "wood": 4,
+        "clay": 2
+      },
       "durationTicks": 60,
-      "output": { "structure": "gate" }
+      "output": {
+        "structure": "gate"
+      }
     },
     {
       "id": "tower",
       "station": null,
-      "inputs": { "stone": 6, "fiber": 2 },
+      "inputs": {
+        "stone": 6,
+        "fiber": 2
+      },
       "durationTicks": 160,
-      "output": { "structure": "tower" }
+      "output": {
+        "structure": "tower"
+      }
     },
     {
       "id": "canal",
       "station": null,
-      "inputs": { "stone": 1 },
+      "inputs": {
+        "stone": 1
+      },
       "durationTicks": 30,
-      "output": { "structure": "canal" }
+      "output": {
+        "structure": "canal"
+      }
+    },
+    {
+      "id": "grilled_fish",
+      "station": "campfire",
+      "inputs": {
+        "fish": 1
+      },
+      "durationTicks": 15,
+      "output": {
+        "item": "grilled_fish"
+      }
+    },
+    {
+      "id": "smokehouse",
+      "station": null,
+      "inputs": {
+        "wood": 3,
+        "clay": 3,
+        "fiber": 2
+      },
+      "durationTicks": 120,
+      "output": {
+        "structure": "smokehouse"
+      }
+    },
+    {
+      "id": "smoked_fish",
+      "station": "smokehouse",
+      "inputs": {
+        "fish": 2,
+        "wood": 1
+      },
+      "durationTicks": 40,
+      "output": {
+        "item": "smoked_fish"
+      }
+    },
+    {
+      "id": "tablet",
+      "station": null,
+      "inputs": {
+        "clay": 2
+      },
+      "durationTicks": 30,
+      "output": {
+        "item": "tablet"
+      }
+    },
+    {
+      "id": "boat",
+      "station": "workbench",
+      "inputs": {
+        "wood": 5,
+        "fiber": 2,
+        "clay": 1
+      },
+      "durationTicks": 80,
+      "output": {
+        "item": "boat"
+      }
+    },
+    {
+      "id": "shipyard",
+      "station": null,
+      "inputs": {
+        "wood": 8,
+        "fiber": 2,
+        "coal": 2
+      },
+      "durationTicks": 160,
+      "output": {
+        "structure": "shipyard"
+      }
+    },
+    {
+      "id": "ship",
+      "station": "shipyard",
+      "inputs": {
+        "wood": 12,
+        "fiber": 6
+      },
+      "durationTicks": 400,
+      "output": {
+        "item": "ship"
+      }
+    },
+    {
+      "id": "school",
+      "station": null,
+      "inputs": {
+        "clay": 6,
+        "fiber": 4
+      },
+      "durationTicks": 160,
+      "output": {
+        "structure": "school"
+      }
     }
   ]
 }

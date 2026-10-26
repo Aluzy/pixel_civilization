@@ -68,6 +68,19 @@
         "wood": 1
       },
       "ticks": 40
+    },
+    "pier": {
+      "cost": {
+        "wood": 2
+      },
+      "ticks": 40
+    },
+    "great_library": {
+      "cost": {
+        "stone": 3,
+        "clay": 1
+      },
+      "ticks": 50
     }
   },
   "works": [
@@ -101,7 +114,8 @@
     {
       "id": "stone_house",
       "name": "Maison de pierre",
-      "feminine": true
+      "feminine": true,
+      "repeat": true
     },
     {
       "id": "stone_wall",
@@ -115,11 +129,28 @@
     {
       "id": "road",
       "name": "Route pavée",
-      "feminine": true
+      "feminine": true,
+      "repeat": true
     },
     {
       "id": "drain",
-      "name": "Assèchement d'un marais"
+      "name": "Assèchement d'un marais",
+      "repeat": true
+    },
+    {
+      "id": "pier",
+      "name": "Ponton"
+    },
+    {
+      "id": "paths",
+      "name": "Sentiers pavés",
+      "plural": true,
+      "repeat": true
+    },
+    {
+      "id": "great_library",
+      "name": "Grande bibliothèque",
+      "feminine": true
     }
   ]
 }

@@ -383,9 +383,13 @@
     "avenueStep": 3,
     "roadTrees": 4,
     "drainTiles": 40,
-    "treesWanted": 30
+    "treesWanted": 30,
+    "pierReach": 16,
+    "pierLength": 4,
+    "pathTiles": 40
   },
   "trails": { "steps": 60, "speed": 1.25 },
+  "sailing": { "boatSpeed": 0.8, "shipSpeed": 1.2, "swimSpeed": 0.3 },
   "fortress": {
     "treasureMembers": 30,
     "dangerDecay": 0.8,

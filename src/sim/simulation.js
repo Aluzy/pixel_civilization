@@ -443,6 +443,10 @@ function buildContext(balance, tables, agents, seedKey) {
   const darknessByPhase = Float64Array.from(phases.map((p) => worldData.darkness[p] ?? 0));
   const phase0 = phaseIndexAt(0, time);
   /** @type {SimContext} */
+  // Decks over water (a pier): walked like land.
+  const deck = Uint8Array.from(['', ...catalog.structures.map((st) => st.kind)], (k) =>
+    k === 'pier' ? 1 : 0,
+  );
   const ctx = {
     balance,
     tables,
@@ -474,8 +478,12 @@ function buildContext(balance, tables, agents, seedKey) {
       trailSteps: balance.trails.steps,
       trailSpeed: balance.trails.speed,
       fromShore,
+      deck,
     }),
     fromShore,
+    deck,
+    boatGood: catalog.items.find((it) => it.id === 'boat')?.good ?? 0,
+    shipGood: catalog.items.find((it) => it.id === 'ship')?.good ?? 0,
     blocksAgent,
     blocksPredator,
     passage,
@@ -494,6 +502,7 @@ function buildContext(balance, tables, agents, seedKey) {
     plainBiome: tables.biomes.findIndex((b) => b.id === 'plain'),
     forestBiome: tables.biomes.findIndex((b) => b.id === 'forest'),
     woodResource: tables.resources.findIndex((r) => r.id === 'wood') + 1,
+    fishResource: tables.resources.findIndex((r) => r.id === 'fish') + 1,
     quarryBiome: Uint8Array.from(tables.biomes, (b) =>
       b.id === 'mountain' || b.id === 'desert' ? 1 : 0,
     ),

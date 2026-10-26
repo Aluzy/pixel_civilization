@@ -28,6 +28,7 @@ export class Navigator {
    * @param {number} [options.trailSteps] - Footsteps that make a trail.
    * @param {number} [options.trailSpeed] - Speed factor on a trail.
    * @param {Uint8Array} [options.fromShore] - 1 for each resource taken from the next tile.
+   * @param {Uint8Array} [options.deck] - 1 for each structure code walked over water (a pier).
    */
   constructor({
     biomeSpeed,
@@ -41,7 +42,9 @@ export class Navigator {
     trailSteps = 256,
     trailSpeed = 1,
     fromShore = new Uint8Array(256),
+    deck = new Uint8Array(256),
   }) {
+    this.deck = deck;
     /** 1 for each resource taken from a neighbouring tile, standing beside it (fish). */
     this.fromShore = fromShore;
     /** Speed on water for the agent being served: 0 on foot, more with a boat or a ship. */
@@ -136,10 +139,10 @@ export class Navigator {
         this.structure[i] = (p >>> PACK.STRUCTURE_SHIFT) & PACK.MASK;
         const worn = world.lastWear() >= this.trailSteps ? this.trailSpeed : 1;
         const wade = this.structureSpeed === null ? 1 : this.structureSpeed[this.structure[i]];
-        const ground =
-          biome === this.waterBiome && this.waterSpeed > 0
-            ? this.waterSpeed
-            : this.biomeSpeed[biome];
+        let ground = this.biomeSpeed[biome];
+        if (biome === this.waterBiome) {
+          ground = this.deck[this.structure[i]] === 1 ? 1 : this.waterSpeed;
+        }
         const speed = this.blocks[this.structure[i]] === 1 ? 0 : ground * worn * wade;
         if (this.fromShore[this.resource[i]] === 1 && this.quantity[i] > 0) shore = true;
         this.stepCost[i] = speed > 0 ? 1 / speed : Infinity;

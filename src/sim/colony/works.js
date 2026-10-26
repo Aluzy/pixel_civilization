@@ -66,7 +66,7 @@ export function buildWorks(data, catalog, tables) {
   const works = data.works.map((w) => ({
     id: w.id,
     name: w.name,
-    repeat: w.id === 'stone_house' || w.id === 'road' || w.id === 'drain',
+    repeat: w.repeat === true,
   }));
   const index = Object.fromEntries(works.map((w, i) => [w.id, i]));
   return { byCode, byBiome, works, index };
@@ -639,6 +639,90 @@ function planDrain(state, ctx, colony, p) {
 }
 
 /**
+ * A pier (decision 0029): from the shore tile nearest the camp, straight out over the water, 2 to
+ * `pierLength` tiles, for a colony that eats fish already.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('./colony-store.js').Colony} colony
+ * @param {import('./colony-store.js').Project} p
+ * @returns {void}
+ */
+function planPier(state, ctx, colony, p) {
+  const code = ctx.structureCode.pier ?? 0;
+  if (code === 0 || ctx.works.byCode[code] === null || colony.stock[ctx.fishResource] <= 0) return;
+  const cfg = ctx.balance.works;
+  const water = ctx.waterBiome;
+  for (let r = 1; r <= cfg.pierReach; r++) {
+    for (let k = 0; k < 8 * r; k++) {
+      const side = (k / (2 * r)) | 0;
+      const t = k - side * 2 * r;
+      const x = colony.campX + (side === 0 ? -r + t : side === 1 ? r : side === 2 ? r - t : -r);
+      const y = colony.campY + (side === 0 ? -r : side === 1 ? -r + t : side === 2 ? r : r - t);
+      if (!freeLand(state, ctx, x, y)) continue;
+      // From this shore tile straight out over the water, the way it faces it.
+      for (let d = 0; d < 4; d++) {
+        const dx = d === 0 ? 1 : d === 1 ? -1 : 0;
+        const dy = d === 2 ? 1 : d === 3 ? -1 : 0;
+        let n = 0;
+        while (n < cfg.pierLength) {
+          const px = x + dx * (n + 1);
+          const py = y + dy * (n + 1);
+          const packed = state.world.packedAt(px, py);
+          if ((packed & PACK.MASK) !== water || packed >>> PACK.STRUCTURE_SHIFT !== 0) break;
+          n++;
+        }
+        if (n < 2) continue;
+        for (let k2 = 1; k2 <= n; k2++) addTile(p, x + dx * k2, y + dy * k2, code, -1 - water);
+        return;
+      }
+    }
+  }
+}
+
+/**
+ * Paved paths (decision 0029): the most trodden tiles of the territory are paved, the most worn
+ * first. The ways people really walk become roads.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('./colony-store.js').Colony} colony
+ * @param {import('./colony-store.js').Project} p
+ * @returns {void}
+ */
+function planPaths(state, ctx, colony, p) {
+  const cfg = ctx.balance.works;
+  const r = ctx.balance.harmony.territoryRadius;
+  const worn = ctx.balance.trails.steps;
+  const tiles = [];
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      const x = colony.campX + dx;
+      const y = colony.campY + dy;
+      state.world.packedAt(x, y);
+      const wear = state.world.lastWear();
+      if (wear < worn || !freeLand(state, ctx, x, y)) continue;
+      tiles.push([wear, x, y]);
+    }
+  }
+  // Most worn first; on a tie, nearest the camp, then by position (a fixed order).
+  const dist = (t) => Math.max(Math.abs(t[1] - colony.campX), Math.abs(t[2] - colony.campY));
+  tiles.sort((u, v) => v[0] - u[0] || dist(u) - dist(v) || u[2] - v[2] || u[1] - v[1]);
+  for (let k = 0; k < tiles.length && k < cfg.pathTiles; k++) {
+    addTile(p, tiles[k][1], tiles[k][2], ctx.pavementCode, 0);
+  }
+}
+
+/**
+ * The great library: a 3 × 3 block of stone near the square (planned in the knowledge chapter).
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('./colony-store.js').Colony} colony
+ * @param {import('./colony-store.js').Project} p
+ * @returns {void}
+ */
+// eslint-disable-next-line no-unused-vars
+function planGreatLibrary(state, ctx, colony, p) {}
+
+/**
  * Fills the work's tiles for the work `w` (index in data/works.json).
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
@@ -650,6 +734,15 @@ function planDrain(state, ctx, colony, p) {
 function planWork(state, ctx, colony, p, w) {
   const id = ctx.works.works[w].id;
   switch (id) {
+    case 'pier':
+      planPier(state, ctx, colony, p);
+      break;
+    case 'paths':
+      planPaths(state, ctx, colony, p);
+      break;
+    case 'great_library':
+      planGreatLibrary(state, ctx, colony, p);
+      break;
     case 'plaza':
       planPlaza(state, ctx, colony, p);
       break;

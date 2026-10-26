@@ -1,3 +1,4 @@
+import { groundSpeed } from './sailing.js';
 import { refresh, tire } from '../ai/weariness.js';
 import { withBit } from '../core/bits.js';
 import { EventType } from '../core/events.js';
@@ -256,8 +257,9 @@ export function stepAction(state, ctx, id) {
       const packed = state.world.packedAt(nx, ny);
       const trail = state.world.lastWear() >= ctx.trailSteps;
       const other = state.world.lastOccupant();
-      const wade = ctx.structureSpeed[packed >>> PACK.STRUCTURE_SHIFT];
-      const factor = ctx.biomeSpeed[packed & PACK.MASK] * (trail ? ctx.trailSpeed : 1) * wade;
+      const code = packed >>> PACK.STRUCTURE_SHIFT;
+      const ground = groundSpeed(ctx, packed & PACK.MASK, code, agents.sail[id]);
+      const factor = ground * (trail ? ctx.trailSpeed : 1) * ctx.structureSpeed[code];
       // A wall built across the path since it was planned: replan.
       if (factor <= 0 || ctx.blocksAgent[packed >>> PACK.STRUCTURE_SHIFT] === 1) {
         finish(ctx, id);

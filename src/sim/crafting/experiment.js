@@ -1,3 +1,4 @@
+import { has, withBit } from '../core/bits.js';
 import { BARE_HANDS, lowestIngredient } from './catalog.js';
 
 /**
@@ -91,7 +92,7 @@ export function chooseTrial(
   // Looking for a use of one good: a station none of its known recipes uses is worth a try.
   let usedStations = 0;
   for (let r = 0; r < catalog.recipes.length && focused !== 0; r++) {
-    if (book.knows(r)) usedStations |= 1 << catalog.recipes[r].station;
+    if (book.knows(r)) usedStations = withBit(usedStations, catalog.recipes[r].station);
   }
   // A material is tried with other materials; a food or produce with any ingredient.
   const anyIngredient = focus > 0 && catalog.material[focus] !== 1;
@@ -122,7 +123,7 @@ export function chooseTrial(
           if (focusStation > 0 && popcount(mask) > 1) continue;
           if (focused !== 0) {
             score -= (popcount(mask) - 1) * weights.focusExtra;
-            if (s !== BARE_HANDS && (usedStations & (1 << s)) === 0) {
+            if (s !== BARE_HANDS && !has(usedStations, s)) {
               score += weights.unknownStationBonus;
             }
           }
