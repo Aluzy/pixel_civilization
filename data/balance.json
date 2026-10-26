@@ -68,7 +68,7 @@
     "planTravelCost": 60,
     "planExploreCost": 600,
     "shelterRange": 48,
-    "weariness": { "perFailure": 1, "scale": 0.3, "halfLifeDays": 1 }
+    "weariness": { "perFailure": 1, "grace": 8, "scale": 0.3, "halfLifeDays": 3 }
   },
   "memory": {
     "placeTauDays": 3,

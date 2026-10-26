@@ -50,7 +50,8 @@ export function refresh(ctx, id, goal) {
 }
 
 /**
- * Divides each goal's weight by 1 + `scale` × its weariness (faded to `tick`).
+ * Divides each goal's weight by 1 + `scale` × its weariness beyond `grace` (faded to `tick`):
+ * the first failures are the normal cost of trying.
  * @param {import('../simulation.js').SimContext} ctx
  * @param {number} id
  * @param {number} tick
@@ -61,9 +62,9 @@ export function wearyWeights(ctx, id, tick, weights) {
   fadeWeariness(ctx, id, tick);
   const a = ctx.agents;
   const G = a.goalCount;
-  const scale = ctx.balance.ai.weariness.scale;
+  const { scale, grace } = ctx.balance.ai.weariness;
   for (let g = 0; g < G; g++) {
-    const w = a.weary[id * G + g];
+    const w = a.weary[id * G + g] - grace;
     if (w > 0) weights[g] /= 1 + scale * w;
   }
 }
