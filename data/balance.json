@@ -366,6 +366,7 @@
     "scoutLeg": [40, 70],
     "arriveRadius": 3
   },
+  "canal": { "minMembers": 20, "reach": 6, "maxLength": 60, "batch": 10 },
   "trails": { "steps": 60, "speed": 1.25 },
   "fortress": {
     "treasureMembers": 30,

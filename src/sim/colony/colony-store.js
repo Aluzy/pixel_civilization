@@ -10,6 +10,7 @@ export const ProjectKind = Object.freeze({
   TREASURE: 5, // Gather the materials of a treasure room, then build it at the camp.
   ENCLOSURE: 6, // Gather wood (and clay for the gate), then build the wall segment by segment.
   TOWER: 7, // Raise a tower on the wall, beside a gate (one project per tower).
+  CANAL: 8, // Gather stone, then dig a canal from the water to a home, tile by tile.
 });
 
 /** Most gates of an enclosure (one per side). */
@@ -294,6 +295,14 @@ export class Colony {
     this.encTick = 0;
     this.encClosedTick = 0;
     this.breaches = 0;
+    // Canals (decision 0027): the route being dug, from the water's end, and how far it is dug.
+    this.canalX = new Int32Array(64);
+    this.canalY = new Int32Array(64);
+    this.canalLen = 0;
+    this.canalNext = 0;
+    /** Canal tiles dug, and canals traced, since the start. */
+    this.canalTiles = 0;
+    this.canalsPlanned = 0;
     /** @type {Project[]} */
     this.projects = [];
     for (let i = 0; i < cfg.projectSlots; i++) this.projects.push(new Project(goods));
@@ -558,6 +567,9 @@ export class Colony {
     h.uint32(this.towerCount).uint32(this.towersBuilt);
     h.uint32(this.encOpen).uint32(this.encTotal).uint32(this.encTick);
     h.uint32(this.encClosedTick).uint32(this.breaches).uint32(this.gleaning);
+    h.uint32(this.canalLen).uint32(this.canalNext).uint32(this.canalTiles);
+    h.uint32(this.canalsPlanned).typedArray(this.canalX.subarray(0, this.canalLen));
+    h.typedArray(this.canalY.subarray(0, this.canalLen));
   }
 
   /**

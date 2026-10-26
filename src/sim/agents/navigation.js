@@ -22,6 +22,8 @@ export class Navigator {
    * @param {Uint8Array} [options.blocks] - 1 for each structure code that cannot be crossed.
    * @param {Uint8Array} [options.passage] - 1 for each structure code one goes through (gate).
    * @param {Uint8Array} [options.beds] - 1 for each structure code one sleeps in (shelter).
+   * @param {Uint8Array} [options.wet] - 1 for each structure code holding water (canal).
+   * @param {Float64Array | null} [options.structureSpeed] - Speed factor per structure code.
    * @param {number} [options.crowdCost] - Extra cost of a tile where another agent walks.
    * @param {number} [options.trailSteps] - Footsteps that make a trail.
    * @param {number} [options.trailSpeed] - Speed factor on a trail.
@@ -32,6 +34,8 @@ export class Navigator {
     blocks = new Uint8Array(256),
     passage = new Uint8Array(256),
     beds = new Uint8Array(256),
+    wet = new Uint8Array(256),
+    structureSpeed = null,
     crowdCost = 0,
     trailSteps = 256,
     trailSpeed = 1,
@@ -39,6 +43,10 @@ export class Navigator {
     /** Footsteps that make a trail, and how much faster one walks on it. */
     this.trailSteps = trailSteps;
     this.trailSpeed = trailSpeed;
+    /** 1 for each structure code that holds water (a canal): one drinks beside it. */
+    this.wet = wet;
+    /** Walking speed factor per structure code, or null (all 1). */
+    this.structureSpeed = structureSpeed;
     /** 1 for each structure code one sleeps in: a sleeper there does not step aside. */
     this.beds = beds;
     this.biomeSpeed = biomeSpeed;
@@ -118,7 +126,9 @@ export class Navigator {
         this.quantity[i] = (p >> PACK.QUANTITY_SHIFT) & PACK.MASK;
         this.structure[i] = (p >>> PACK.STRUCTURE_SHIFT) & PACK.MASK;
         const worn = world.lastWear() >= this.trailSteps ? this.trailSpeed : 1;
-        const speed = this.blocks[this.structure[i]] === 1 ? 0 : this.biomeSpeed[biome] * worn;
+        const wade = this.structureSpeed === null ? 1 : this.structureSpeed[this.structure[i]];
+        const speed =
+          this.blocks[this.structure[i]] === 1 ? 0 : this.biomeSpeed[biome] * worn * wade;
         this.stepCost[i] = speed > 0 ? 1 / speed : Infinity;
         this.held[i] = 0;
         const other = world.lastOccupant();
@@ -306,7 +316,8 @@ export class Navigator {
       const nc = col + DX[k];
       const nr = row + DY[k];
       if (nc < 0 || nr < 0 || nc >= side || nr >= side) continue;
-      if (this.biome[nr * side + nc] === this.waterBiome) return true;
+      const n = nr * side + nc;
+      if (this.biome[n] === this.waterBiome || this.wet[this.structure[n]] === 1) return true;
     }
     return false;
   }

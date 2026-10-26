@@ -160,3 +160,8 @@ Une fois l'enceinte décidée, aucune parcelle nouvelle ne se fait à l'intérie
 
 - Les parcelles se font hors les murs, à 20 cases au plus de l'enceinte (au lieu de 20 cases du camp). Le garde-champ (« dans les champs ») se compte de la même façon.
 - Une parcelle restée dans les murs cède la place à une maison quand le plan du village en a besoin.
+
+## Irrigation (décision 0027)
+
+- Une parcelle à côté d'un canal (8 voisins) est arrosée d'elle-même chaque jour, à l'aube. Personne n'a à porter l'eau, et le travail d'arroser ne lui est plus proposé.
+- Une case à 4 cases d'un canal peut devenir une parcelle, comme près d'un lac. Les canaux ouvrent donc des champs loin des rives.

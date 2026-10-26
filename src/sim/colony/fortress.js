@@ -72,7 +72,7 @@ function impassable(state, ctx, x, y) {
  * @returns {boolean}
  */
 function inTheWay(ctx, code) {
-  if (code === 0 || code === ctx.plotCode) return false;
+  if (code === 0 || code === ctx.plotCode || code === ctx.canalCode) return false;
   return code !== ctx.wallCode && code !== ctx.gateCode && code !== ctx.towerCode;
 }
 
@@ -302,6 +302,8 @@ export function openTile(state, ctx, x, y) {
   const p = state.world.packedAt(x, y);
   if (ctx.biomeSpeed[p & PACK.MASK] <= 0) return false;
   const code = p >>> PACK.STRUCTURE_SHIFT;
+  // A canal through the ring is a water gate: closed to predators.
+  if (code !== 0 && code === ctx.canalCode) return false;
   return code !== ctx.wallCode && code !== ctx.gateCode && code !== ctx.towerCode;
 }
 

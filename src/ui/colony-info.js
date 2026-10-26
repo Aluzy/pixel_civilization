@@ -30,6 +30,7 @@ export function formatColony(colony, colonies = []) {
   }
   lines.push(
     `${colony.shelters} abri(s), ${colony.beds} lit(s)` +
+      (colony.canalTiles ? ` · ${colony.canalTiles} case(s) de canal` : '') +
       (colony.fields ? ` · ${colony.fields} champ(s), ${colony.planted} plant(s)` : ''),
   );
   const h = colony.harmony;

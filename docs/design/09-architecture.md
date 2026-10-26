@@ -113,6 +113,9 @@ Les individus vivent dans `src/sim/agents/` : `agent-store.js` (composants en ta
 - `ChunkStore#packedAt` retient la dernière case lue : `lastOccupant()` et `lastWear()` la relisent sans recherche de bloc.
 - Le `Navigator` reçoit les agents (cases occupées), les passages, les lits et les sentiers.
 - Les colonies ont leurs lits (`bedX`, `bedY`), une tour par porte (`towerX[]`, `towerY[]`, `towersBuilt`) ; les agents leur dernier repas (`mealTick`) ; tout est haché.
+- Canaux (décision 0027) : `src/sim/colony/canal.js`. Ce module trace la route (recherche en largeur dans un carré de 81 cases), gère le chantier (`digCanal`, appelé par l'action `BUILD`) et l'irrigation (`besideCanal`, lu par `farmSystem`).
+  - Le `Navigator` reçoit `wet` (codes qui tiennent de l'eau) et `structureSpeed` (patauger).
+  - Les colonies gardent la route en cours (`canalX`, `canalY`, `canalLen`, `canalNext`), hachée.
 
 ## Aléatoire et déterminisme
 

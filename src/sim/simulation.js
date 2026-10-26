@@ -138,7 +138,10 @@ export const RNG_STREAMS = Object.freeze([
  * @property {Int32Array} houseBox - Scratch: x0, y0, x1, y1 of the house last checked.
  * @property {Int32Array} houseStep - Scratch: the tile before a door.
  * @property {Int32Array} encBox - Scratch: the box an enclosure is drawn around.
- * @property {Uint8Array} housePart - 1 for a house's wall and door codes (not remembered).
+ * @property {Uint8Array} housePart - 1 for structures not remembered as places: a house's wall
+ *   and door (the house is remembered by its beds), a canal (remembered as water).
+ * @property {Float64Array} structureSpeed - Walking speed factor per structure code.
+ * @property {number} canalCode - Structure code of a canal (0 if none).
  * @property {Int32Array} siteOut - Scratch: x, y, direction of a planned house.
  * @property {Int32Array} newBeds - Scratch: beds of the house just raised (x, y pairs).
  * @property {number} newBedCount
@@ -362,7 +365,8 @@ function buildContext(balance, tables, agents, seedKey) {
     if (st.kind === 'wall' || st.kind === 'house_wall') {
       blocksAgent[st.code] = blocksPredator[st.code] = 1;
     }
-    if (st.kind === 'gate' || st.kind === 'tower' || st.kind === 'door') {
+    // Predators do not swim across a canal either.
+    if (st.kind === 'gate' || st.kind === 'tower' || st.kind === 'door' || st.kind === 'canal') {
       blocksPredator[st.code] = 1;
     }
     if (st.kind === 'gate' || st.kind === 'door') passage[st.code] = 1;
@@ -371,6 +375,14 @@ function buildContext(balance, tables, agents, seedKey) {
   const shelterDef = catalog.structures.find((st) => st.kind === 'shelter');
   const houseSize = Int32Array.from(shelterDef?.footprint ?? [3, 3]);
   const idCode = (id) => catalog.structures.find((st) => st.id === id)?.code ?? 0;
+  // Walking speed on a structure (wading through a canal), and the water it holds.
+  const structureSpeed = Float64Array.from({ length: catalog.structures.length + 1 }, (_, c) =>
+    c > 0 ? catalog.structures[c - 1].speed : 1,
+  );
+  const canalCode = codeOf('canal');
+  const wet = Uint8Array.from({ length: catalog.structures.length + 1 }, (_, c) =>
+    c > 0 && c === canalCode ? 1 : 0,
+  );
   const treasureGoods = Uint8Array.from({ length: catalog.goodCount }, (_, g) =>
     g > 0 && g <= R && tables.resources[g - 1].treasure ? 1 : 0,
   );
@@ -426,6 +438,8 @@ function buildContext(balance, tables, agents, seedKey) {
       blocks: blocksAgent,
       passage,
       beds: shelterCodes,
+      wet,
+      structureSpeed,
       crowdCost: balance.actions.crowdCost,
       trailSteps: balance.trails.steps,
       trailSpeed: balance.trails.speed,
@@ -433,6 +447,8 @@ function buildContext(balance, tables, agents, seedKey) {
     blocksAgent,
     blocksPredator,
     passage,
+    structureSpeed,
+    canalCode,
     treasureGoods,
     wallCode: codeOf('wall'),
     gateCode: codeOf('gate'),
@@ -503,7 +519,9 @@ function buildContext(balance, tables, agents, seedKey) {
     houseStep: new Int32Array(2),
     encBox: new Int32Array(4),
     housePart: Uint8Array.from({ length: catalog.structures.length + 1 }, (_, c) =>
-      c > 0 && (c === idCode(shelterDef?.wall) || c === idCode(shelterDef?.door)) ? 1 : 0,
+      c > 0 && (c === idCode(shelterDef?.wall) || c === idCode(shelterDef?.door) || c === canalCode)
+        ? 1
+        : 0,
     ),
     siteOut: new Int32Array(3),
     newBeds: new Int32Array(2 * (houseSize[0] - 2) * (houseSize[1] - 2)),
@@ -613,6 +631,7 @@ const PROJECT_KINDS = [
   'treasure',
   'enclosure',
   'tower',
+  'canal',
 ];
 const PROJECT_NAMES = [
   '',
@@ -623,6 +642,7 @@ const PROJECT_NAMES = [
   'Salle du trésor',
   'Enceinte',
   'Tour',
+  'Canal',
 ];
 
 /**
@@ -927,6 +947,7 @@ export class Simulation {
       deaths: colony.deaths,
       shelters: colony.shelterCount,
       beds: colony.beds(),
+      canalTiles: colony.canalTiles,
       camp: colony.hasCamp ? { x: colony.campX, y: colony.campY } : null,
       stock,
       projects,

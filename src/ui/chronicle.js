@@ -82,6 +82,7 @@ const PROJECT_TEXT = {
   5: 'bâtit sa salle du trésor',
   6: 'achève son enceinte',
   7: 'élève une tour sur son enceinte',
+  8: "creuse un canal qui amène l'eau jusqu'aux maisons",
 };
 
 // Events about places, not individuals.

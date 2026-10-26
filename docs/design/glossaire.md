@@ -97,3 +97,4 @@
 | Plan du village | Rangées de maisons séparées par des allées, autour du camp, dans l'enceinte s'il y en a une | `planHouse` |
 | Sentier | Case foulée 60 fois, devenue pour de bon plus rapide à parcourir | `wear`, `trails` |
 | Occupant | L'individu qui se tient sur une case : deux individus ne partagent jamais une case | `occupant` |
+| Canal | Case creusée depuis l'eau, où l'eau coule : on y boit, on y patauge, il irrigue les parcelles voisines ; les prédateurs ne le traversent pas (décision 0027) | `canal`, `canal.js` |

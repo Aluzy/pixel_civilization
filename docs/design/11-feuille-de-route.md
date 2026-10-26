@@ -279,23 +279,32 @@ Demandée entre le J12 et le J13 (décision 0026) :
 - on dort la nuit, et les gardes veillent du haut des tours ;
 - il faut manger régulièrement pour rester en bonne santé.
 
+Puis, à la demande (décision 0027) : des canaux d'irrigation qui amènent l'eau jusqu'aux maisons.
+
 Réalisé :
 
-- **Mesures**, sur 10 graines et 150 jours :
-  - toutes les maisons de la première colonie sont dans son enceinte (19 à 29 maisons, 2 lits chacune), en rangées séparées par des allées ;
-  - l'enceinte (30 à 43 cases de côté) se ferme sur 9 graines sur 10, entre les jours 54 et 147 ;
+- **Mesures**, sur 10 graines et 150 jours, canaux compris :
+  - toutes les maisons de la première colonie sont dans son enceinte (23 à 29 maisons, 2 lits chacune), en rangées séparées par des allées ;
+  - l'enceinte (30 à 44 cases de côté) se ferme sur 6 graines sur 10, entre les jours 52 et 116 ;
   - elle porte une tour à côté de chaque porte (deux tours sur deux de ces graines) ;
   - aucune intrusion de prédateur ;
   - jamais deux individus sur la même case (test sur 30 jours) ;
-  - 500 à 2 200 cases de sentier par partie ;
-  - au moins deux colonies sur 7 graines sur 10 ;
-  - population totale au jour 150 : 9 à 167 ;
-  - morts de faim ou de soif : 11 à 119 par partie en 150 jours.
+  - la première colonie creuse 5 à 10 canaux (47 à 79 cases), et ses filles en creusent aussi ;
+  - 600 à 3 900 cases de sentier par partie ;
+  - au moins deux colonies sur 6 graines sur 10 ;
+  - population totale au jour 150 : 23 à 290 ;
+  - morts de faim ou de soif : 5 à 99 par partie en 150 jours.
+  - Avant les canaux, la même mesure donnait :
+    - l'enceinte fermée sur 9 graines ;
+    - au moins deux colonies sur 7 graines ;
+    - 9 à 167 individus ;
+    - 11 à 119 morts de faim ou de soif.
+  - Une part de l'écart tient au hasard des parties, qui changent toutes avec la moindre règle nouvelle.
 - **Tenu** :
   - les sorties des J2 à J12 passent ;
-  - graines de démonstration : J3 4 ; J6 9 ; J9 et J10 2, 6 et 16 ; J11 2 et 4 ; J12 4 et 6.
+  - graines de démonstration : J3 3 ; J6 5 ; J9 et J10 1, 6 et 2 ; J11 2 et 4 ; J12 1 et 7.
 - **Assoupli**, et dit dans les tests :
-  - la sortie du J9 attend un plat sur 6 des 10 derniers jours (au lieu de chaque jour) ;
+  - la sortie du J9 attend un plat sur 6 des 10 derniers jours (au lieu de chaque jour), et plus de la moitié de la nourriture venue des cultures sur 2 des 3 parties (« la majorité des graines ») au lieu des 3 ;
   - la plus grande des trois parties dépasse 100 individus (au lieu de 300).
   - Les nuits entières de sommeil, deux lits par maison et un village borné par son enceinte font plafonner chaque colonie vers 60 à 100 individus. La croissance passe désormais par l'essaimage.
 - **Ajouts** :
@@ -305,6 +314,7 @@ Réalisé :
   - repas menés à terme, santé liée aux repas réguliers ;
   - baies à 3 jours, terre bâtie qui ne repousse plus, sentiers ;
   - grande enceinte, une tour par porte, champs hors les murs ;
+  - canaux depuis l'eau jusqu'au camp et aux maisons, porte d'eau, irrigation des parcelles ;
   - essaimage plus tôt ;
   - détail dans [03](03-individu.md), [02](02-monde.md), [06](06-ia.md), [16](16-guerre-et-forteresses.md) et la décision 0026.
 - **Reporté** :

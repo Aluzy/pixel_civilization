@@ -1,5 +1,7 @@
 import { releaseTask } from '../colony/colony-logic.js';
 import { nextSegment } from '../colony/fortress.js';
+import { nextCanal } from '../colony/canal.js';
+import { ProjectKind } from '../colony/colony-store.js';
 import { Action } from './action-types.js';
 import { goToCamp } from './colony-work.js';
 import { explore, moveTo, startHere } from './movement.js';
@@ -33,7 +35,11 @@ export function wallWork(state, ctx, colony, project, id, plan) {
     return;
   }
   const out = ctx.recallTarget;
-  if (!nextSegment(state, ctx, colony, project, id, out)) {
+  const next =
+    project.kind === ProjectKind.CANAL
+      ? nextCanal(colony, out)
+      : nextSegment(state, ctx, colony, project, id, out);
+  if (!next) {
     releaseTask(state, ctx, id);
     startHere(ctx, id, Action.IDLE);
     return;

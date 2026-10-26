@@ -85,6 +85,15 @@ Les individus modifient durablement le monde : ils bâtissent, défrichent, cult
   - les allées du village, les portes et les chemins vers l'eau se creusent d'eux-mêmes.
 - Le sentier se voit sur la carte : le sol prend une teinte plus terreuse.
 
+## Canaux (décision 0027)
+
+Les individus amènent l'eau jusqu'à leurs maisons.
+
+- Un **canal** est une case creusée à mains nues, tapissée d'une pierre. L'eau y coule dès qu'il touche un lac ou un canal déjà creusé : on le creuse toujours depuis l'eau.
+- On y boit comme au bord d'un lac. On le traverse en pataugeant, deux fois plus lentement. Les prédateurs ne le traversent pas.
+- Une parcelle à côté d'un canal est arrosée d'elle-même chaque jour (irrigation).
+- Sur la carte, il est bleu (`#3f7fc4`), plus clair que l'eau.
+
 ## Cycle jour/nuit
 
 - Un jour dure 1 200 cycles (120 s à ×1, à 10 cycles/s).

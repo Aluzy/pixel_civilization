@@ -39,6 +39,7 @@ export const BARE_HANDS = 0;
  *   (a shelter): its inside tiles are beds.
  * @property {string | null} wall - Structure id of its walls.
  * @property {string | null} door - Structure id of its door.
+ * @property {number} speed - Walking speed factor on it (1, or less to wade through a canal).
  * @property {boolean} feminine - Grammatical gender of its French name, for the chronicle.
  */
 
@@ -127,6 +128,7 @@ export function buildCatalog(data, tables) {
     kind: s.kind,
     sleepRecovery: s.sleepRecovery ?? 1,
     footprint: s.footprint ?? null,
+    speed: s.speed ?? 1,
     wall: s.wall ?? null,
     door: s.door ?? null,
     feminine: s.feminine === true,

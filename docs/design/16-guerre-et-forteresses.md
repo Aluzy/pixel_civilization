@@ -133,6 +133,7 @@ L'enceinte doit loger toutes les habitations, elle est donc bien plus grande :
   - La nuit, chaque garde monte sur la tour libre la plus proche : il y voit 6 cases plus loin et frappe ×1,5.
   - Le jour, il dort quand sa fatigue l'y pousse.
 - Les prédateurs ne passent ni les murs ni les portes des maisons : qui dort dans une maison est à l'abri, même hors de l'enceinte.
+- **Porte d'eau** (décision 0027) : un canal peut passer sous l'enceinte à la place d'un pan de palissade. Les prédateurs ne le traversent pas : le pan compte comme fermé.
 
 ## 4. Conflits entre colonies (J13)
 

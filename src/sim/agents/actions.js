@@ -30,6 +30,7 @@ import { harvestedPlot } from '../systems/farm-system.js';
 import { fetchInputs, stockProduce, tillDone, waterPlot, sowPlot } from '../farming/farm-jobs.js';
 import { buildSegment } from '../colony/fortress.js';
 import { houseDir, raiseHouse } from '../colony/house.js';
+import { digCanal } from '../colony/canal.js';
 import { Expedition } from '../colony/colony-store.js';
 import {
   libraryBeside,
@@ -159,7 +160,9 @@ function besideWater(state, ctx, x, y) {
   for (let dy = -1; dy <= 1; dy++) {
     for (let dx = -1; dx <= 1; dx++) {
       if (dx === 0 && dy === 0) continue;
-      if ((state.world.packedAt(x + dx, y + dy) & PACK.MASK) === ctx.waterBiome) return true;
+      const p = state.world.packedAt(x + dx, y + dy);
+      if ((p & PACK.MASK) === ctx.waterBiome) return true;
+      if (p >>> PACK.STRUCTURE_SHIFT === ctx.canalCode && ctx.canalCode !== 0) return true;
     }
   }
   return false;
@@ -214,7 +217,8 @@ export function stepAction(state, ctx, id) {
       const packed = state.world.packedAt(nx, ny);
       const trail = state.world.lastWear() >= ctx.trailSteps;
       const other = state.world.lastOccupant();
-      const factor = ctx.biomeSpeed[packed & PACK.MASK] * (trail ? ctx.trailSpeed : 1);
+      const wade = ctx.structureSpeed[packed >>> PACK.STRUCTURE_SHIFT];
+      const factor = ctx.biomeSpeed[packed & PACK.MASK] * (trail ? ctx.trailSpeed : 1) * wade;
       // A wall built across the path since it was planned: replan.
       if (factor <= 0 || ctx.blocksAgent[packed >>> PACK.STRUCTURE_SHIFT] === 1) {
         finish(ctx, id);
@@ -351,7 +355,11 @@ export function stepAction(state, ctx, id) {
     case Action.BUILD:
       agents.actionProgress[id] += 1;
       if (agents.actionProgress[id] >= ctx.catalog.recipes[agents.craftRecipe[id]].duration) {
-        buildSegment(state, ctx, id);
+        if (ctx.catalog.recipes[agents.craftRecipe[id]].output === ctx.canalCode) {
+          digCanal(state, ctx, id);
+        } else {
+          buildSegment(state, ctx, id);
+        }
         finish(ctx, id);
       }
       return;

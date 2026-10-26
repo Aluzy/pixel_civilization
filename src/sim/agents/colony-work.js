@@ -83,7 +83,9 @@ export function colonyWork(state, ctx, id, plan) {
   }
   if (
     a.taskBuild[id] === 1 &&
-    (project.kind === ProjectKind.ENCLOSURE || project.kind === ProjectKind.TOWER)
+    (project.kind === ProjectKind.ENCLOSURE ||
+      project.kind === ProjectKind.TOWER ||
+      project.kind === ProjectKind.CANAL)
   ) {
     wallWork(state, ctx, colony, project, id, plan);
     plan.note = PlanNote.COLONY;

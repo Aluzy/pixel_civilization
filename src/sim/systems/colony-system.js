@@ -1,3 +1,4 @@
+import { canalProject } from '../colony/canal.js';
 import { claimFreeStock, openTasks, releaseTask } from '../colony/colony-logic.js';
 import { Enclosure, ProjectKind } from '../colony/colony-store.js';
 import { planEnclosure, updateDanger, wallNeeds, wantsEnclosure } from '../colony/fortress.js';
@@ -65,6 +66,7 @@ export function colonySystem(state, ctx) {
       if (slot >= 0) openBuildProject(state, ctx, colony, slot, ProjectKind.LIBRARY, 'library');
     }
     fortress(state, ctx, colony);
+    canalProject(state, ctx, colony);
     // Plant what is over-harvested near the camp when durability or spatial order is the weakest
     // point, and berries when stability or well-being is (food to spare is what lets it grow).
     const focus = colony.focus;

@@ -107,6 +107,7 @@ Clic sur un événement → pause et caméra sur le lieu.
 - Les **sentiers** apparaissent quand ils se creusent : le sol y prend une teinte plus terreuse (un quart de brun mêlé à la couleur du biome).
 - La ligne Enceinte du bloc Colonie compte les tours de guet bâties (« 3/4 tour(s) de guet »).
 - Le bloc Colonie compte les lits des maisons.
+- Les canaux se voient en bleu clair ; le bloc Colonie compte leurs cases ; la chronique annonce chaque canal achevé (décision 0027).
 
 ## Graine et partie
 
