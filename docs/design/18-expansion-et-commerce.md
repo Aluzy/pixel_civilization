@@ -62,4 +62,12 @@ Sur 100 graines et 150 jours (v0.15), puis une graine sur 1 000 jours :
 
 ## Ce que fait la v0.16
 
-À compléter avec les mesures.
+Mesuré sur les graines 1 à 100 et 150 jours, face à la v0.15 :
+
+- La faim recule : 12 % des morts au lieu de 41 %. Une seule partie s'éteint (9 avant), deux seulement restent sous 10 individus (13 avant).
+- Le savoir tient : composante Savoir médiane 0,94 (0 avant). Une leçon est donnée dans 99 parties, un livre ou une tablette est écrit dans 92 (53).
+- Les colonies prennent la mer : un navire dans 75 parties, 74 colonies d'outre-mer dans 43 parties, des relais dans 11.
+- L'harmonie médiane passe de 49 à 63.
+- La population au jour 150 ne bouge pas en moyenne (69) : les colonies durent, mais elles ne grandissent pas plus vite. Le prochain levier est la vitesse des naissances et l'encombrement des portes au coucher.
+- Ponton, sentiers pavés et grande bibliothèque restent rares à 150 jours (7, 18 et 1 parties) : ils viennent après les autres ouvrages.
+- Écarts à la conception de départ : le navire est une construction à quai, pas un objet ; le chantier naval est abandonné ; la barque est un outil.
