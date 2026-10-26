@@ -1047,6 +1047,10 @@ export class Simulation {
       },
       inventor: colony.inventor,
       scribe: colony.scribe,
+      teacher: colony.teacher,
+      school: colony.hasSchool ? { x: colony.schoolX, y: colony.schoolY } : null,
+      ship: colony.hasShip ? { x: colony.shipX, y: colony.shipY } : null,
+      overseas: colony.overseas,
       knowledge: this.describeKnowledge(),
       market: this.describeMarket(colony),
       parent: colony.parent,
@@ -1231,7 +1235,7 @@ export class Simulation {
   describeLibraries(c) {
     const colony = this.state.colonies[c];
     const out = [];
-    const content = new Int32Array(3);
+    const content = new Float64Array(3);
     for (let li = 0; li < colony.libraryCount; li++) {
       if (colony.libraryStanding[li] !== 1) continue;
       const documents = this.state.documents.libraryContent(c, li, content);
@@ -1239,6 +1243,7 @@ export class Simulation {
         x: colony.libraryX[li],
         y: colony.libraryY[li],
         abandoned: colony.libraryAbandoned[li] === 1,
+        great: colony.libraryGreat[li] === 1,
         documents,
         recipes: this.recipeNames(content[0]),
       });
@@ -1249,8 +1254,8 @@ export class Simulation {
   /**
    * Collective knowledge (docs/design/05-savoir.md): recipes known by the living, written within
    * reach, lost, saved by a book, found again.
-   * @returns {{ known: string[], written: string[], lost: string[], saved: string[],
-   *   recovered: string[] }}
+   * @returns {{ known: string[], written: string[], taught: string[], lost: string[],
+   *   saved: string[], recovered: string[] }}
    */
   describeKnowledge() {
     const k = this.state.knowledge;
@@ -1262,6 +1267,7 @@ export class Simulation {
     return {
       known: this.recipeNames(k.known),
       written: this.recipeNames(k.written),
+      taught: this.recipeNames(k.taught),
       lost: this.recipeNames(k.lostMask),
       saved: pick(k.savedByBook),
       recovered: pick(k.recovered),
@@ -1399,6 +1405,8 @@ export class Simulation {
       },
       goal: a.goal[id] >= 0 ? goals[a.goal[id]].name : '—',
       action: ACTION_NAMES[a.action[id]],
+      // Quarter bonus of the craft under way (decision 0029), 1 elsewhere.
+      craftSpeed: a.action[id] === Action.CRAFT ? a.craftSpeed[id] : 1,
       asleep: a.asleep[id] === 1,
       exploration: withMap
         ? { cellSize: a.explored[id].cellSize, cells: a.explored[id].entries() }

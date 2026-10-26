@@ -122,7 +122,7 @@
       "fromShore": true,
       "quantity": [2, 6],
       "nutrition": 10,
-      "harvestTicks": 20,
+      "harvestTicks": 8,
       "regrowTicks": 1200
     }
   ],
