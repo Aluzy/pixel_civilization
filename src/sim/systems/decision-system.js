@@ -427,8 +427,10 @@ export function decisionSystem(state, ctx) {
     // Sleep and focused work (harvesting, making, trying) are not reconsidered every few ticks:
     // only an attack, the end of the action or a vital need interrupts them.
     const busy = a.asleep[id] === 1 || isFocused(a.action[id]);
-    // At night, work in hand is reconsidered too: night is for sleeping.
-    const late = ctx.dark && a.asleep[id] === 0;
+    // At night, work out in the fields is reconsidered too: night is for sleeping (one may still
+    // craft or try by the fire).
+    const outdoors = a.action[id] === Action.HARVEST || a.action[id] === Action.BUILD;
+    const late = ctx.dark && outdoors;
     const due = (state.tick + id) % interval === 0 && (!busy || late || starving(ctx, id));
     if (!due && a.needsDecision[id] === 0) continue;
 
