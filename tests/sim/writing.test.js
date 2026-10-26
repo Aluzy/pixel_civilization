@@ -264,10 +264,10 @@ describe('ageing', () => {
 });
 
 // J6 exit: a recipe survives the death of the one who discovered it thanks to a book, and a game
-// shows at least one piece of knowledge lost then found again. Seed 5 tells both: a recipe is
+// shows at least one piece of knowledge lost then found again. Seed 9 tells both: a recipe is
 // read in the library after its discoverer died, and a recipe is lost and found again later.
 // (The seeds change when behaviour does: seed 8 told both until J7, seed 32 until J8, seeds 5 and
-// 33 until J9, seed 5 until J10, seeds 1 and 30 until J12, seeds 6 and 1 until the village, seed 9 until the canals.)
+// 33 until J9, seed 5 until J10, seeds 1 and 30 until J12, seeds 6 and 1 until the village, seed 9 until the canals, seed 5 until the architecture.)
 describe('written knowledge (J6 exit)', () => {
   /**
    * Runs a game day by day until `done` holds or 90 days have passed.
@@ -286,18 +286,18 @@ describe('written knowledge (J6 exit)', () => {
     return k;
   }
 
-  it('saves a recipe through a book after its discoverer died (seed 5)', async () => {
+  it('saves a recipe through a book after its discoverer died (seed 9)', async () => {
     const saved = (k) => k.savedByBook.some((t) => t >= 0);
-    const k = await play(5, saved);
+    const k = await play(9, saved);
     expect(saved(k)).toBe(true);
     const r = k.savedByBook.findIndex((t) => t >= 0);
     expect(k.discovererDied[r]).toBeGreaterThanOrEqual(0);
     expect(k.savedByBook[r]).toBeGreaterThan(k.discovererDied[r]);
   }, 300000);
 
-  it('loses then finds knowledge again (seed 5)', async () => {
+  it('loses then finds knowledge again (seed 9)', async () => {
     const found = (k) => k.recovered.some((t, r) => t >= 0 && k.lost[r] >= 0 && t > k.lost[r]);
-    const k = await play(5, found);
+    const k = await play(9, found);
     expect(found(k)).toBe(true);
   }, 300000);
 });

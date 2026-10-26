@@ -397,7 +397,7 @@ export function tillable(state, ctx, x, y) {
     for (let dx = -reach; dx <= reach; dx++) {
       const p = state.world.packedAt(x + dx, y + dy);
       if ((p & PACK.MASK) === ctx.waterBiome) return true;
-      if (ctx.canalCode !== 0 && p >>> PACK.STRUCTURE_SHIFT === ctx.canalCode) return true;
+      if (ctx.wet[p >>> PACK.STRUCTURE_SHIFT] === 1) return true;
     }
   }
   return false;

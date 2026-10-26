@@ -31,6 +31,7 @@ import { fetchInputs, stockProduce, tillDone, waterPlot, sowPlot } from '../farm
 import { buildSegment } from '../colony/fortress.js';
 import { houseDir, raiseHouse } from '../colony/house.js';
 import { digCanal } from '../colony/canal.js';
+import { WORKS_RECIPE, exhausted, layTile, worksTicks } from '../colony/works.js';
 import { Expedition } from '../colony/colony-store.js';
 import {
   libraryBeside,
@@ -162,7 +163,7 @@ function besideWater(state, ctx, x, y) {
       if (dx === 0 && dy === 0) continue;
       const p = state.world.packedAt(x + dx, y + dy);
       if ((p & PACK.MASK) === ctx.waterBiome) return true;
-      if (p >>> PACK.STRUCTURE_SHIFT === ctx.canalCode && ctx.canalCode !== 0) return true;
+      if (ctx.wet[p >>> PACK.STRUCTURE_SHIFT] === 1) return true;
     }
   }
   return false;
@@ -352,10 +353,15 @@ export function stepAction(state, ctx, id) {
         finish(ctx, id);
       }
       return;
-    case Action.BUILD:
+    case Action.BUILD: {
+      const r = agents.craftRecipe[id];
+      const works = r === WORKS_RECIPE;
       agents.actionProgress[id] += 1;
-      if (agents.actionProgress[id] >= ctx.catalog.recipes[agents.craftRecipe[id]].duration) {
-        if (ctx.catalog.recipes[agents.craftRecipe[id]].output === ctx.canalCode) {
+      const need = works ? worksTicks(state, ctx, id) : ctx.catalog.recipes[r].duration;
+      if (agents.actionProgress[id] >= need) {
+        if (works) {
+          layTile(state, ctx, id);
+        } else if (ctx.catalog.recipes[r].output === ctx.canalCode) {
           digCanal(state, ctx, id);
         } else {
           buildSegment(state, ctx, id);
@@ -363,6 +369,7 @@ export function stepAction(state, ctx, id) {
         finish(ctx, id);
       }
       return;
+    }
     case Action.EXPERIMENT:
       agents.actionProgress[id] += 1;
       if (agents.actionProgress[id] >= ctx.balance.actions.experimentTicks) {
@@ -522,7 +529,7 @@ function harvest(state, ctx, id) {
   if (agents.gathered[habit] < 65535) agents.gathered[habit]++;
   if (state.world.lastTakeDepleted) {
     harvestedPlot(state, x, y, id);
-    ctx.scheduleRegrowth(state, x, y, taken);
+    if (!exhausted(state, ctx, id, x, y, taken)) ctx.scheduleRegrowth(state, x, y, taken);
     forgetEmptied(ctx, id, taken, x, y);
   } else {
     consolidate(state, ctx, id, taken);

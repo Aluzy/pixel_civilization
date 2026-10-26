@@ -101,6 +101,17 @@ Fil d'événements générés automatiquement, horodatés en jour et heure de je
 
 Clic sur un événement → pause et caméra sur le lieu.
 
+### L'architecture (décision 0028)
+
+- La carte montre les ouvrages dans leurs couleurs (`data/recipes.json`) :
+  - pavés gris-beige, ponts bruns, fontaine bleu clair ;
+  - murs de maison et d'enceinte en pierre gris ;
+  - temple crème, grenier ocre, marché doré, monument et sa statue d'or ;
+  - arbres vert sombre, carrières brun-gris ;
+  - le sol des clairières et des marais asséchés devient celui des plaines.
+- Le bloc Colonie nomme l'ouvrage en cours et ses cases posées (« Place pavée (12/25 cases) »). Il montre la beauté parmi les composantes de l'harmonie. La chronique annonce chaque ouvrage achevé (« La colonie élève un temple sur sa place »).
+- Le tableau de bord trace la beauté avec les autres composantes.
+
 ### Le village (décision 0026)
 
 - La carte montre les maisons : murs d'abri brun sombre, porte d'abri claire, lits de la couleur de l'abri.

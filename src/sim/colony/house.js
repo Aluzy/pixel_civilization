@@ -90,6 +90,8 @@ export function houseFits(state, ctx, x, y, dir, within) {
       const wall = tx === x0 || tx === x1 || ty === y0 || ty === y1;
       if (wall && !(tx === x && ty === y) && world.lastOccupant() >= 0) return false;
       if (onAnyRing(ctx.colonies, tx, ty)) return false;
+      // The axes through the camp are kept for the streets.
+      if (within !== null && (tx === within.campX || ty === within.campY)) return false;
     }
   }
   const step = ctx.houseStep;
@@ -196,8 +198,9 @@ export function planHouse(state, ctx, colony, out) {
     for (let k = 0; k < Math.max(1, 8 * r); k++) {
       const i = ringX(r, k);
       const j = ringY(r, k);
-      const x = cx + i * pitchX + 1;
-      const y = cy + j * pitchY + ctx.houseSize[1] - 1;
+      // The lanes fall on the axes through the camp: the streets (decision 0028).
+      const x = cx + i * pitchX + 2;
+      const y = cy + j * pitchY - 1;
       if (Math.max(Math.abs(x - cx), Math.abs(y - cy)) > max) continue;
       if (!houseFits(state, ctx, x, y, HouseDir.SOUTH, colony)) continue;
       if (!clearOfCore(ctx, cx, cy, core)) continue;

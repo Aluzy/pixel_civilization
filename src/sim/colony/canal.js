@@ -28,7 +28,7 @@ const queue = new Int32Array(CELLS);
  */
 export function wetAt(state, ctx, x, y) {
   const p = state.world.packedAt(x, y);
-  return (p & PACK.MASK) === ctx.waterBiome || p >>> PACK.STRUCTURE_SHIFT === ctx.canalCode;
+  return (p & PACK.MASK) === ctx.waterBiome || ctx.wet[p >>> PACK.STRUCTURE_SHIFT] === 1;
 }
 
 /**
@@ -98,7 +98,9 @@ export function diggable(state, ctx, x, y) {
   const p = state.world.packedAt(x, y);
   if (ctx.biomeSpeed[p & PACK.MASK] <= 0) return false;
   const code = p >>> PACK.STRUCTURE_SHIFT;
-  return code === 0 || code === ctx.plotCode || code === ctx.wallCode;
+  // A paved street is crossed under a bridge.
+  if (code !== 0 && code === ctx.pavementCode) return true;
+  return code === 0 || code === ctx.plotCode || ctx.ringWall[code] === 1;
 }
 
 /**
@@ -115,9 +117,17 @@ function thirstiest(state, ctx, colony, out) {
   let bx = colony.campX;
   let by = colony.campY;
   let worst = waterDistance(state, ctx, bx, by, reach);
+  // The camp: the canal ends in a fountain on its square, beside the camp.
+  colony.canalToCamp = worst > reach;
+  if (colony.canalToCamp && diggable(state, ctx, bx + 1, by + 1)) {
+    out[0] = bx + 1;
+    out[1] = by + 1;
+    return true;
+  }
   for (let k = 0; k < colony.bedCount; k++) {
     const d = waterDistance(state, ctx, colony.bedX[k], colony.bedY[k], reach);
     if (d > worst) {
+      colony.canalToCamp = false;
       worst = d;
       bx = colony.bedX[k];
       by = colony.bedY[k];
@@ -274,7 +284,12 @@ export function digCanal(state, ctx, id) {
     if (plot >= 0) state.crops.retire(plot);
   }
   if (((p >> PACK.RESOURCE_SHIFT) & PACK.MASK) !== 0) state.world.setResource(x, y, 0, 0);
-  state.world.setStructure(x, y, ctx.canalCode);
+  const last = colony.canalNext === colony.canalLen - 1;
+  const paved = p >>> PACK.STRUCTURE_SHIFT === ctx.pavementCode && ctx.pavementCode !== 0;
+  let code = ctx.canalCode;
+  if (paved && ctx.bridgeCode !== 0) code = ctx.bridgeCode;
+  else if (last && colony.canalToCamp && ctx.fountainCode !== 0) code = ctx.fountainCode;
+  state.world.setStructure(x, y, code);
   colony.canalNext++;
   colony.canalTiles++;
   a.taskTick[id] = state.tick;

@@ -8,7 +8,7 @@ import { explore, moveTo, startHere } from './movement.js';
 import { discover, gather, pursue, useRecipe } from './work.js';
 import { canHarvest } from './actions.js';
 import { saleGood } from '../economy/jobs.js';
-import { wallWork } from './wall-work.js';
+import { wallWork, worksWork } from './wall-work.js';
 
 // Behaviours of the colony goals: collective tasks and replication.
 
@@ -79,6 +79,11 @@ export function colonyWork(state, ctx, id, plan) {
   const project = colony.projects[a.taskProject[id]];
   if (a.taskBuild[id] === 1 && project.kind === ProjectKind.FIELD) {
     plantField(state, ctx, colony, project, id, plan);
+    return;
+  }
+  if (a.taskBuild[id] === 1 && project.kind === ProjectKind.WORKS) {
+    worksWork(state, ctx, colony, project, id, plan);
+    plan.note = PlanNote.COLONY;
     return;
   }
   if (
@@ -229,7 +234,8 @@ function research(state, ctx, colony, id) {
   const book = a.recipes[id];
   const limit = ctx.balance.colony.researchTicks;
   for (const p of colony.projects) {
-    if (p.kind === ProjectKind.FIELD || !readyToBuild(colony, p) || book.knows(p.recipe)) continue;
+    if (p.kind === ProjectKind.FIELD || p.kind === ProjectKind.WORKS) continue;
+    if (!readyToBuild(colony, p) || book.knows(p.recipe)) continue;
     if (p.researcher === id) return true;
     const free = p.researcher < 0 || a.alive[p.researcher] !== 1;
     // A researcher keeps the task for a while: it remembers what it already tried.

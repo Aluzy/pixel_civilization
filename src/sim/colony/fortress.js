@@ -73,7 +73,7 @@ function impassable(state, ctx, x, y) {
  */
 function inTheWay(ctx, code) {
   if (code === 0 || code === ctx.plotCode || code === ctx.canalCode) return false;
-  return code !== ctx.wallCode && code !== ctx.gateCode && code !== ctx.towerCode;
+  return ctx.ringWall[code] !== 1 && code !== ctx.gateCode && code !== ctx.towerCode;
 }
 
 /**
@@ -304,7 +304,7 @@ export function openTile(state, ctx, x, y) {
   const code = p >>> PACK.STRUCTURE_SHIFT;
   // A canal through the ring is a water gate: closed to predators.
   if (code !== 0 && code === ctx.canalCode) return false;
-  return code !== ctx.wallCode && code !== ctx.gateCode && code !== ctx.towerCode;
+  return ctx.ringWall[code] !== 1 && code !== ctx.gateCode && code !== ctx.towerCode;
 }
 
 /**
@@ -346,7 +346,7 @@ export function nextSegment(state, ctx, colony, project, id, out) {
       if ((colony.towersBuilt & (1 << i)) !== 0) continue;
       const tx = colony.towerX[i];
       const ty = colony.towerY[i];
-      if (state.world.packedAt(tx, ty) >>> PACK.STRUCTURE_SHIFT !== ctx.wallCode) continue;
+      if (ctx.ringWall[state.world.packedAt(tx, ty) >>> PACK.STRUCTURE_SHIFT] !== 1) continue;
       const d = Math.max(Math.abs(tx - x), Math.abs(ty - y));
       if (d < bestD) {
         bestD = d;
@@ -445,7 +445,7 @@ export function buildSegment(state, ctx, id) {
   const here = state.world.packedAt(x, y) >>> PACK.STRUCTURE_SHIFT;
   if (code === ctx.towerCode) {
     const t = colony.towerAt(x, y);
-    if (t < 0 || (colony.towersBuilt & (1 << t)) !== 0 || here !== ctx.wallCode) return false;
+    if (t < 0 || (colony.towersBuilt & (1 << t)) !== 0 || ctx.ringWall[here] !== 1) return false;
   } else {
     if (!colony.onRing(x, y) || !openTile(state, ctx, x, y)) return false;
     const gate = colony.gateAt(x, y);

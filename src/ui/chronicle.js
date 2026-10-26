@@ -1,6 +1,7 @@
 import { describeTick } from '../sim/core/clock.js';
 import { EventType } from '../sim/core/events.js';
 import { subjectLabel } from './names.js';
+import worksData from '../../data/works.json' with { type: 'json' };
 
 /**
  * @param {number} subject - Memory subject: 0 = water, a resource id, or a structure.
@@ -83,6 +84,24 @@ const PROJECT_TEXT = {
   6: 'achève son enceinte',
   7: 'élève une tour sur son enceinte',
   8: "creuse un canal qui amène l'eau jusqu'aux maisons",
+};
+
+/** Project kind of a work of architecture (ProjectKind.WORKS). */
+const WORKS_KIND = 9;
+
+// What a completed work of architecture did (decision 0028), by work.
+const WORK_TEXT = {
+  plaza: 'pave sa place',
+  streets: 'pave ses rues',
+  temple: 'élève un temple sur sa place',
+  granary: 'bâtit un grenier sur sa place',
+  market: 'ouvre un marché sur sa place',
+  monument: 'dresse un monument et sa statue',
+  stone_house: 'rebâtit une maison en pierre',
+  stone_wall: 'rebâtit son enceinte en pierre',
+  avenue: "plante une allée d'arbres autour de ses murs",
+  road: 'pave une route vers une colonie sœur',
+  drain: 'assèche un marais',
 };
 
 // Events about places, not individuals.
@@ -277,7 +296,9 @@ export function formatEvent(event, time, names) {
     text = `Naissance de ${who}, réplique de l’individu #${event.subject}.`;
   } else if (event.type === EventType.COLONY_PROJECT) {
     const kind = event.subject & 15;
-    const what = PROJECT_TEXT[kind] ?? 'bâtit un abri';
+    const work = worksData.works[event.other];
+    const what =
+      kind === WORKS_KIND && work ? WORK_TEXT[work.id] : (PROJECT_TEXT[kind] ?? 'bâtit un abri');
     text = `La colonie ${what} ${where}, œuvre de ${event.subject >> 4} individu(s).`;
   }
   return `${shortClock(event.tick, time)} · ${text.charAt(0).toUpperCase()}${text.slice(1)}`;

@@ -11,7 +11,11 @@ export const ProjectKind = Object.freeze({
   ENCLOSURE: 6, // Gather wood (and clay for the gate), then build the wall segment by segment.
   TOWER: 7, // Raise a tower on the wall, beside a gate (one project per tower).
   CANAL: 8, // Gather stone, then dig a canal from the water to a home, tile by tile.
+  WORKS: 9, // A work of architecture (paving, a public building…): its tiles laid one by one.
 });
+
+/** Most tiles of one work of architecture. */
+export const MAX_WORK_TILES = 256;
 
 /** Most gates of an enclosure (one per side). */
 export const MAX_GATES = 4;
@@ -73,6 +77,16 @@ export class Project {
     /** Member trying to find out how to build it when nobody knows, and since when. */
     this.researcher = -1;
     this.researcherTick = 0;
+    // A work of architecture (decision 0028): which one (index in data/works.json), and its
+    // tiles: where, what goes there (a structure code, or −1 − biome for a change of ground),
+    // what must be there before (a structure code, or −1 − biome), and how far it is laid.
+    this.work = -1;
+    this.tileX = new Int32Array(MAX_WORK_TILES);
+    this.tileY = new Int32Array(MAX_WORK_TILES);
+    this.tileCode = new Int16Array(MAX_WORK_TILES);
+    this.tileFrom = new Int16Array(MAX_WORK_TILES);
+    this.tileLen = 0;
+    this.tileNext = 0;
   }
 
   /** @returns {void} */
@@ -85,6 +99,9 @@ export class Project {
     this.contributors.fill(-1);
     this.builder = -1;
     this.researcher = -1;
+    this.work = -1;
+    this.tileLen = 0;
+    this.tileNext = 0;
   }
 
   /**
@@ -112,6 +129,10 @@ export class Project {
     h.typedArray(this.needs).typedArray(this.delivered).typedArray(this.reserved);
     h.typedArray(this.contributors).uint32(this.builder);
     h.uint32(this.researcher).uint32(this.researcherTick);
+    const n = this.tileLen;
+    h.uint32(this.work).uint32(n).uint32(this.tileNext);
+    h.typedArray(this.tileX.subarray(0, n)).typedArray(this.tileY.subarray(0, n));
+    h.typedArray(this.tileCode.subarray(0, n)).typedArray(this.tileFrom.subarray(0, n));
   }
 }
 
@@ -179,9 +200,9 @@ export class Colony {
     this.lastProject = new Int32Array(MAX_CONTRIBUTORS).fill(-1);
     /** Open tasks at the last count of the colony system. */
     this.open = 0;
-    // Harmony (docs/design/07-harmonie.md): score then 5 components, weakest component, daily
+    // Harmony (docs/design/07-harmonie.md): score then 6 components, weakest component, daily
     // population, last death of hunger or thirst, harvests and regrowths of the last days.
-    this.harmony = new Float64Array(6);
+    this.harmony = new Float64Array(7);
     /** Weakest component (index in COMPONENT_IDS), -1 before the first count. */
     this.focus = -1;
     this.popHistory = new Int32Array(harmonyCfg.stabilityDays);
@@ -300,9 +321,20 @@ export class Colony {
     this.canalY = new Int32Array(64);
     this.canalLen = 0;
     this.canalNext = 0;
+    /** True if the canal being dug goes to the camp (it ends in a fountain on the square). */
+    this.canalToCamp = false;
     /** Canal tiles dug, and canals traced, since the start. */
     this.canalTiles = 0;
     this.canalsPlanned = 0;
+    // Architecture (decision 0028): the works done (bit per work of data/works.json that is
+    // done once), the colonies a road joins it to (bit per colony), the day the last work was
+    // opened, and what the town looked like at the last count, for the beauty of its harmony.
+    this.worksDone = 0;
+    /** Times each work was opened: the least done comes first. */
+    this.worksCount = new Int16Array(16);
+    this.roads = 0;
+    this.lastWork = -0x40000000;
+    this.beautyCounts = new Int32Array(8);
     /** @type {Project[]} */
     this.projects = [];
     for (let i = 0; i < cfg.projectSlots; i++) this.projects.push(new Project(goods));
@@ -568,6 +600,9 @@ export class Colony {
     h.uint32(this.encOpen).uint32(this.encTotal).uint32(this.encTick);
     h.uint32(this.encClosedTick).uint32(this.breaches).uint32(this.gleaning);
     h.uint32(this.canalLen).uint32(this.canalNext).uint32(this.canalTiles);
+    h.uint32(this.canalToCamp ? 1 : 0);
+    h.uint32(this.worksDone).uint32(this.roads).uint32(this.lastWork);
+    h.typedArray(this.beautyCounts).typedArray(this.worksCount);
     h.uint32(this.canalsPlanned).typedArray(this.canalX.subarray(0, this.canalLen));
     h.typedArray(this.canalY.subarray(0, this.canalLen));
   }

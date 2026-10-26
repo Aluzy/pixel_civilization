@@ -1,0 +1,125 @@
+{
+  "costs": {
+    "pavement": {
+      "cost": {
+        "stone": 1
+      },
+      "ticks": 20
+    },
+    "bridge": {
+      "cost": {
+        "stone": 1,
+        "wood": 1
+      },
+      "ticks": 30
+    },
+    "house_wall_stone": {
+      "cost": {
+        "stone": 2
+      },
+      "ticks": 30
+    },
+    "stone_wall": {
+      "cost": {
+        "stone": 2
+      },
+      "ticks": 30
+    },
+    "temple": {
+      "cost": {
+        "stone": 2,
+        "clay": 1
+      },
+      "ticks": 40
+    },
+    "granary": {
+      "cost": {
+        "wood": 2
+      },
+      "ticks": 30
+    },
+    "market": {
+      "cost": {
+        "wood": 1,
+        "fiber": 1
+      },
+      "ticks": 20
+    },
+    "monument": {
+      "cost": {
+        "stone": 3
+      },
+      "ticks": 40
+    },
+    "statue": {
+      "cost": {
+        "stone": 3
+      },
+      "ticks": 60
+    },
+    "tree": {
+      "cost": {
+        "wood": 1
+      },
+      "ticks": 20
+    },
+    "plain": {
+      "cost": {
+        "wood": 1
+      },
+      "ticks": 40
+    }
+  },
+  "works": [
+    {
+      "id": "plaza",
+      "name": "Place pavée",
+      "feminine": true
+    },
+    {
+      "id": "streets",
+      "name": "Rues pavées",
+      "feminine": true,
+      "plural": true
+    },
+    {
+      "id": "temple",
+      "name": "Temple"
+    },
+    {
+      "id": "granary",
+      "name": "Grenier"
+    },
+    {
+      "id": "market",
+      "name": "Marché"
+    },
+    {
+      "id": "monument",
+      "name": "Monument"
+    },
+    {
+      "id": "stone_house",
+      "name": "Maison de pierre",
+      "feminine": true
+    },
+    {
+      "id": "stone_wall",
+      "name": "Mur de pierre"
+    },
+    {
+      "id": "avenue",
+      "name": "Allée d'arbres",
+      "feminine": true
+    },
+    {
+      "id": "road",
+      "name": "Route pavée",
+      "feminine": true
+    },
+    {
+      "id": "drain",
+      "name": "Assèchement d'un marais"
+    }
+  ]
+}

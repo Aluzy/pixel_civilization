@@ -2,7 +2,7 @@
 const PRICES_PER_LINE = 4;
 
 /** Harmony components, in the order of the simulation. */
-const COMPONENTS = ['stabilité', 'durabilité', 'ordre spatial', 'savoir', 'bien-être'];
+const COMPONENTS = ['stabilité', 'durabilité', 'ordre spatial', 'savoir', 'bien-être', 'beauté'];
 
 /**
  * Lines of the colony panel (from Simulation#describeColony): population, beds, stock, the

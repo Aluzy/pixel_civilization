@@ -44,4 +44,17 @@ Implémenté dans `src/sim/colony/harmony.js` (mesure), `src/sim/colony/field.js
 
 - Les poids sont dans `data/balance.json` : les modifier change la « philosophie » de la civilisation.
 - Le tableau noir crée des tâches qui ciblent la composante la plus faible.
-- L'interface affiche le score et ses cinq composantes sous forme de courbes dans le temps.
+- L'interface affiche le score et ses composantes sous forme de courbes dans le temps.
+
+## Beauté (décision 0028)
+
+- Une sixième composante, la **beauté**, mesure ce que la colonie a fait de son territoire. Le détail est dans [17](17-architecture.md) :
+  - le pavage ;
+  - les maisons de pierre ;
+  - les édifices publics ;
+  - les arbres plantés ;
+  - une fontaine ;
+  - les murs de pierre.
+- Poids : stabilité 0,2 ; durabilité 0,2 ; ordre spatial 0,15 ; savoir 0,15 ; bien-être 0,15 ; beauté 0,15.
+- La beauté ne devient le point faible que d'une colonie qui va bien : stabilité et bien-être d'au moins 0,5. Une colonie qui a faim vise d'abord ses réserves.
+- Le bois coupé pour défricher à portée des champs ne compte pas contre la durabilité.

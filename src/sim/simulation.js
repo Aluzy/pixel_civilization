@@ -6,6 +6,7 @@ import projectData from '../../data/ai-projects.json' with { type: 'json' };
 import recipeData from '../../data/recipes.json' with { type: 'json' };
 import resourceData from '../../data/resources.json' with { type: 'json' };
 import worldData from '../../data/world.json' with { type: 'json' };
+import worksData from '../../data/works.json' with { type: 'json' };
 import { ACTION_NAMES, Action } from './agents/action-types.js';
 import { AgentStore } from './agents/agent-store.js';
 import { describeExperience } from './agents/experience.js';
@@ -19,8 +20,9 @@ import { describeTick, phaseIndexAt } from './core/clock.js';
 import { EventLog, EventType } from './core/events.js';
 import { createHasher, hashCoords } from './core/hash.js';
 import { createRng, seedToKey } from './core/rng.js';
-import { Colony, Enclosure, Expedition, MAX_COLONIES } from './colony/colony-store.js';
+import { Colony, Enclosure, Expedition, MAX_COLONIES, ProjectKind } from './colony/colony-store.js';
 import { treasureValue } from './colony/fortress.js';
+import { buildWorks } from './colony/works.js';
 import { History } from './colony/history.js';
 import { lifespanOf } from './colony/replication.js';
 import { buildCatalog } from './crafting/catalog.js';
@@ -139,7 +141,24 @@ export const RNG_STREAMS = Object.freeze([
  * @property {Int32Array} houseStep - Scratch: the tile before a door.
  * @property {Int32Array} encBox - Scratch: the box an enclosure is drawn around.
  * @property {Uint8Array} housePart - 1 for structures not remembered as places: a house's wall
- *   and door (the house is remembered by its beds), a canal (remembered as water).
+ *   and door (the house is remembered by its beds), water works (remembered as water), the
+ *   town's paving, buildings and trees.
+ * @property {Uint8Array} ringWall - 1 for the walls of an enclosure (palisade, stone wall).
+ * @property {Uint8Array} wet - 1 for the structures holding water (canal, bridge, fountain).
+ * @property {number} pavementCode
+ * @property {number} bridgeCode
+ * @property {number} fountainCode
+ * @property {number} treeCode
+ * @property {number} quarryCode
+ * @property {Record<string, number>} structureCode - Structure code per structure id.
+ * @property {string[]} structureKind - Kind per structure code ('' for 0).
+ * @property {number} marshBiome
+ * @property {number} plainBiome
+ * @property {number} forestBiome
+ * @property {number} woodResource - Resource id of wood.
+ * @property {Uint8Array} quarryBiome - 1 per biome where a resource dug out leaves a quarry.
+ * @property {ReturnType<typeof buildWorks>} works - Works of architecture (data/works.json).
+ * @property {Int32Array} worksOrder - Scratch: works in the order they are tried.
  * @property {Float64Array} structureSpeed - Walking speed factor per structure code.
  * @property {number} canalCode - Structure code of a canal (0 if none).
  * @property {Int32Array} siteOut - Scratch: x, y, direction of a planned house.
@@ -361,15 +380,17 @@ function buildContext(balance, tables, agents, seedKey) {
   const blocksPredator = new Uint8Array(catalog.structures.length + 1);
   // Passages (gates, doors): someone standing there steps aside for those who go through.
   const passage = new Uint8Array(catalog.structures.length + 1);
+  // Walls of a ring (palisade, stone wall): they close an enclosure.
+  const ringWall = new Uint8Array(catalog.structures.length + 1);
+  const solid = new Set(['wall', 'house_wall', 'edifice', 'tree', 'fountain']);
   for (const st of catalog.structures) {
-    if (st.kind === 'wall' || st.kind === 'house_wall') {
-      blocksAgent[st.code] = blocksPredator[st.code] = 1;
-    }
+    if (solid.has(st.kind)) blocksAgent[st.code] = blocksPredator[st.code] = 1;
     // Predators do not swim across a canal either.
     if (st.kind === 'gate' || st.kind === 'tower' || st.kind === 'door' || st.kind === 'canal') {
       blocksPredator[st.code] = 1;
     }
     if (st.kind === 'gate' || st.kind === 'door') passage[st.code] = 1;
+    if (st.kind === 'wall') ringWall[st.code] = 1;
   }
   // The house: its walls, its door and its beds (docs/design/03-individu.md, « Abri »).
   const shelterDef = catalog.structures.find((st) => st.kind === 'shelter');
@@ -380,9 +401,13 @@ function buildContext(balance, tables, agents, seedKey) {
     c > 0 ? catalog.structures[c - 1].speed : 1,
   );
   const canalCode = codeOf('canal');
+  const wetKinds = new Set(['canal', 'bridge', 'fountain']);
   const wet = Uint8Array.from({ length: catalog.structures.length + 1 }, (_, c) =>
-    c > 0 && c === canalCode ? 1 : 0,
+    c > 0 && wetKinds.has(catalog.structures[c - 1].kind) ? 1 : 0,
   );
+  // What is remembered as a place (the rest is part of a house, of the town, or water).
+  const placeKinds = new Set(['station', 'shelter', 'library', 'treasury', 'den', 'plot']);
+  placeKinds.add('wall').add('gate').add('tower');
   const treasureGoods = Uint8Array.from({ length: catalog.goodCount }, (_, g) =>
     g > 0 && g <= R && tables.resources[g - 1].treasure ? 1 : 0,
   );
@@ -447,8 +472,26 @@ function buildContext(balance, tables, agents, seedKey) {
     blocksAgent,
     blocksPredator,
     passage,
+    ringWall,
+    wet,
     structureSpeed,
     canalCode,
+    pavementCode: idCode('pavement'),
+    bridgeCode: idCode('bridge'),
+    fountainCode: idCode('fountain'),
+    treeCode: idCode('tree'),
+    quarryCode: idCode('quarry'),
+    structureCode: Object.fromEntries(catalog.structures.map((st) => [st.id, st.code])),
+    structureKind: ['', ...catalog.structures.map((st) => st.kind)],
+    marshBiome: tables.biomes.findIndex((b) => b.id === 'marsh'),
+    plainBiome: tables.biomes.findIndex((b) => b.id === 'plain'),
+    forestBiome: tables.biomes.findIndex((b) => b.id === 'forest'),
+    woodResource: tables.resources.findIndex((r) => r.id === 'wood') + 1,
+    quarryBiome: Uint8Array.from(tables.biomes, (b) =>
+      b.id === 'mountain' || b.id === 'desert' ? 1 : 0,
+    ),
+    works: buildWorks(worksData, catalog, tables),
+    worksOrder: new Int32Array(16),
     treasureGoods,
     wallCode: codeOf('wall'),
     gateCode: codeOf('gate'),
@@ -519,9 +562,7 @@ function buildContext(balance, tables, agents, seedKey) {
     houseStep: new Int32Array(2),
     encBox: new Int32Array(4),
     housePart: Uint8Array.from({ length: catalog.structures.length + 1 }, (_, c) =>
-      c > 0 && (c === idCode(shelterDef?.wall) || c === idCode(shelterDef?.door) || c === canalCode)
-        ? 1
-        : 0,
+      c > 0 && !placeKinds.has(catalog.structures[c - 1].kind) ? 1 : 0,
     ),
     siteOut: new Int32Array(3),
     newBeds: new Int32Array(2 * (houseSize[0] - 2) * (houseSize[1] - 2)),
@@ -632,6 +673,7 @@ const PROJECT_KINDS = [
   'enclosure',
   'tower',
   'canal',
+  'works',
 ];
 const PROJECT_NAMES = [
   '',
@@ -643,6 +685,7 @@ const PROJECT_NAMES = [
   'Enceinte',
   'Tour',
   'Canal',
+  'Ouvrage',
 ];
 
 /**
@@ -676,7 +719,11 @@ function describeProject(ctx, colony, p, cfg) {
   }
   return {
     kind: PROJECT_KINDS[p.kind],
-    name: pantry ? 'Réserve de nourriture' : `${PROJECT_NAMES[p.kind]} n°${p.number}`,
+    name: pantry
+      ? 'Réserve de nourriture'
+      : p.kind === ProjectKind.WORKS
+        ? `${ctx.works.works[p.work].name} (${p.tileNext}/${p.tileLen} cases)`
+        : `${PROJECT_NAMES[p.kind]} n°${p.number}`,
     goods,
     contributors: [...p.contributors].filter((id) => id >= 0),
     builder: p.builder,
@@ -1403,7 +1450,7 @@ export class Simulation {
     h.uint32(s.spawn.x).uint32(s.spawn.y);
     for (const name of RNG_STREAMS) h.string(name).typedArray(s.rng[name].s);
     for (const c of s.world.modifiedChunks()) {
-      h.uint32(c.cx).uint32(c.cy).typedArray(c.resource).typedArray(c.quantity);
+      h.uint32(c.cx).uint32(c.cy).typedArray(c.biome).typedArray(c.resource).typedArray(c.quantity);
       h.typedArray(c.structure).typedArray(c.wear);
     }
     s.agents.hashInto(h);

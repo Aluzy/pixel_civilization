@@ -166,9 +166,10 @@
     "boardInterval": 200,
     "boardMaxAgeDays": 6,
     "projectSlots": 8,
-    "houseCore": 2,
+    "houseCore": 5,
     "houseRange": 30,
     "membersPerShelterProject": 15,
+    "worksUrgency": 0.5,
     "bedMargin": 0.15,
     "reservationTicks": 2400,
     "taskChunk": 5,
@@ -226,12 +227,14 @@
   },
   "harmony": {
     "weights": {
-      "stability": 0.25,
-      "durability": 0.25,
-      "spatial": 0.2,
+      "stability": 0.2,
+      "durability": 0.2,
+      "spatial": 0.15,
       "knowledge": 0.15,
-      "wellbeing": 0.15
+      "wellbeing": 0.15,
+      "beauty": 0.15
     },
+    "calmAbove": 0.5,
     "territoryRadius": 24,
     "stabilityDays": 10,
     "durabilityDays": 5,
@@ -367,6 +370,19 @@
     "arriveRadius": 3
   },
   "canal": { "minMembers": 20, "reach": 6, "maxLength": 60, "batch": 10 },
+  "works": {
+    "minMembers": 30,
+    "everyDays": 2,
+    "foodPerMember": 2,
+    "batch": 10,
+    "plazaRadius": 2,
+    "streetLength": 18,
+    "avenueGap": 2,
+    "avenueStep": 3,
+    "roadTrees": 4,
+    "drainTiles": 40,
+    "treesWanted": 30
+  },
   "trails": { "steps": 60, "speed": 1.25 },
   "fortress": {
     "treasureMembers": 30,
