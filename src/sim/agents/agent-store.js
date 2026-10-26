@@ -16,6 +16,9 @@ export const PATH_MAX = 2048;
  * Components of all agents, as typed arrays indexed by entity id (light ECS). Ids are reused
  * after death, lowest first, so iteration in id order is deterministic.
  */
+/** Beds an agent remembers it found taken, to look elsewhere for the night. */
+export const BED_SLOTS = 4;
+
 export class AgentStore {
   /**
    * @param {object} options
@@ -55,6 +58,10 @@ export class AgentStore {
     this.sail = new Float32Array(max);
     /** Speed of the craft under way (a quarter of like stations makes it faster). */
     this.craftSpeed = new Float32Array(max);
+    /** Beds of its colony it last found taken (a ring of BED_SLOTS), and when. */
+    this.bedTaken = new Int16Array(max * BED_SLOTS).fill(-1);
+    this.bedTakenTick = new Int32Array(max * BED_SLOTS);
+    this.bedTakenNext = new Uint8Array(max);
     this.geneStart = geneStart;
     this.geneCount = geneStart.length;
     /** Decision genome, `geneCount` per agent (docs/design/06-ia.md, couche 8). */
@@ -304,6 +311,8 @@ export class AgentStore {
     this.bornTick[id] = tick;
     this.weary.fill(0, id * this.goalCount, (id + 1) * this.goalCount);
     this.sail[id] = 0;
+    this.bedTaken.fill(-1, id * BED_SLOTS, (id + 1) * BED_SLOTS);
+    this.bedTakenNext[id] = 0;
     this.wearyTick[id] = tick;
     this.x[id] = x;
     this.y[id] = y;
@@ -578,6 +587,9 @@ export class AgentStore {
       h.typedArray(this.weary.subarray(id * this.goalCount, (id + 1) * this.goalCount));
       h.uint32(this.wearyTick[id]).uint32(Math.round(this.sail[id] * 1000));
       h.uint32(Math.round(this.craftSpeed[id] * 1000));
+      h.typedArray(this.bedTaken.subarray(id * BED_SLOTS, (id + 1) * BED_SLOTS));
+      h.typedArray(this.bedTakenTick.subarray(id * BED_SLOTS, (id + 1) * BED_SLOTS));
+      h.uint32(this.bedTakenNext[id]);
       const d0 = id * this.dangerSlots;
       const d1 = d0 + this.dangerCount[id];
       h.uint32(this.dangerCount[id]).uint32(this.zoneX[id]).uint32(this.zoneY[id]);

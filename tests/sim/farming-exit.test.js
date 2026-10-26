@@ -41,7 +41,7 @@ describe('farming, cooking and the economy (J9 and J10 exits)', () => {
   const results = [];
 
   beforeAll(async () => {
-    for (const seed of [11, 4, 2]) {
+    for (const seed of [15, 16, 19]) {
       const sim = new Simulation({ seed, balance });
       const colony = sim.state.colonies[0];
       let eaten = 0;

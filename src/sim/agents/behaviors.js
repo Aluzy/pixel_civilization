@@ -1,3 +1,4 @@
+import { BED_SLOTS } from './agent-store.js';
 import { learnBehaviour, lessonFor, teachBehaviour } from './teach-work.js';
 import { has, or } from '../core/bits.js';
 import { Action } from './action-types.js';
@@ -447,7 +448,7 @@ function goToSleep(state, ctx, id, plan) {
     startHere(ctx, id, Action.SLEEP);
     return;
   }
-  if (colony && colony.bedCount > 0 && goHome(ctx, colony, id, plan)) return;
+  if (colony && colony.bedCount > 0 && goHome(state, ctx, colony, id, plan)) return;
   const memory = agents.memory[id];
   const i = memory.nearest(ctx.shelterSubjects, agents.x[id], agents.y[id]);
   const range = ctx.balance.ai.shelterRange;
@@ -461,21 +462,61 @@ function goToSleep(state, ctx, id, plan) {
 }
 
 /**
+ * Remembers the beds of its colony it sees taken (a sleeper in them): looking for a bed out of
+ * sight, it will not go back to them, but on to the others.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} colony
+ * @param {number} id
+ * @returns {void}
+ */
+function noteTakenBeds(state, ctx, colony, id) {
+  const a = ctx.agents;
+  const nav = ctx.nav;
+  for (let k = 0; k < colony.bedCount; k++) {
+    const cell = nav.cellAt(colony.bedX[k], colony.bedY[k]);
+    if (cell < 0 || nav.held[cell] !== 1 || foundTaken(state, ctx, id, k)) continue;
+    const slot = id * BED_SLOTS + a.bedTakenNext[id];
+    a.bedTaken[slot] = k;
+    a.bedTakenTick[slot] = state.tick;
+    a.bedTakenNext[id] = (a.bedTakenNext[id] + 1) % BED_SLOTS;
+  }
+}
+
+/**
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {number} k - Bed index in its colony.
+ * @returns {boolean} True if it found bed `k` taken in the last half day.
+ */
+function foundTaken(state, ctx, id, k) {
+  const a = ctx.agents;
+  const recent = ctx.balance.time.ticksPerDay / 2;
+  for (let s = id * BED_SLOTS; s < (id + 1) * BED_SLOTS; s++) {
+    if (a.bedTaken[s] === k && state.tick - a.bedTakenTick[s] < recent) return true;
+  }
+  return false;
+}
+
+/**
  * Heads for the nearest bed of the colony out of sight, if within `homeRange`, to sleep there
  * (the beds in sight are all taken, or there are none).
+ * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
  * @param {import('../colony/colony-store.js').Colony} colony
  * @param {number} id
  * @param {import('./movement.js').Plan} plan
  * @returns {boolean}
  */
-export function goHome(ctx, colony, id, plan) {
+export function goHome(state, ctx, colony, id, plan) {
   const a = ctx.agents;
   const nav = ctx.nav;
+  noteTakenBeds(state, ctx, colony, id);
   let best = -1;
   let bestD = Infinity;
   for (let k = 0; k < colony.bedCount; k++) {
-    if (nav.cellAt(colony.bedX[k], colony.bedY[k]) >= 0) continue;
+    if (nav.cellAt(colony.bedX[k], colony.bedY[k]) >= 0 || foundTaken(state, ctx, id, k)) continue;
     const d = Math.max(Math.abs(colony.bedX[k] - a.x[id]), Math.abs(colony.bedY[k] - a.y[id]));
     if (d < bestD) {
       bestD = d;

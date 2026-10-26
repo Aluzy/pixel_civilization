@@ -152,7 +152,8 @@ export function teachTick(state, ctx, id) {
   const c = a.colony[id];
   if (c < 0) return false;
   const colony = state.colonies[c];
-  if (colony.teacher !== id) return false;
+  // No school at night: the master goes to bed like everyone.
+  if (colony.teacher !== id || ctx.dark) return false;
   const book = a.recipes[id];
   let mask = 0;
   for (let r = 0; r < book.recipeCount; r++) {

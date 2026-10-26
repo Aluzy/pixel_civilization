@@ -38,7 +38,7 @@ export function hideBehaviour(state, ctx, id, plan) {
     plan.y = ctx.nav.cellY(cell);
     return;
   }
-  if (goHome(ctx, colony, id, plan)) {
+  if (goHome(state, ctx, colony, id, plan)) {
     plan.note = PlanNote.HIDING;
     return;
   }
