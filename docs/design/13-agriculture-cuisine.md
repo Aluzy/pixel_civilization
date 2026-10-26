@@ -161,6 +161,11 @@ Une fois l'enceinte décidée, aucune parcelle nouvelle ne se fait à l'intérie
 - Les parcelles se font hors les murs, à 20 cases au plus de l'enceinte (au lieu de 20 cases du camp). Le garde-champ (« dans les champs ») se compte de la même façon.
 - Une parcelle restée dans les murs cède la place à une maison quand le plan du village en a besoin.
 
+## Vergers en rangées (décision 0028)
+
+- Un champ de baies se plante sur une rangée sur deux à partir du camp : trois buissons côte à côte, une rangée vide entre deux.
+- Défrichage : le bois coupé jusqu'au dernier en forêt, à portée des champs, laisse une plaine où l'on peut cultiver ([17](17-architecture.md)).
+
 ## Irrigation (décision 0027)
 
 - Une parcelle à côté d'un canal (8 voisins) est arrosée d'elle-même chaque jour, à l'aube. Personne n'a à porter l'eau, et le travail d'arroser ne lui est plus proposé.

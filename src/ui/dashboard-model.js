@@ -1,6 +1,13 @@
 // Texts of the dashboard (pure, tested): the harmony summary and the strongest gene drift.
 
-const COMPONENT_NAMES = ['stabilité', 'durabilité', 'ordre spatial', 'savoir', 'bien-être'];
+const COMPONENT_NAMES = [
+  'stabilité',
+  'durabilité',
+  'ordre spatial',
+  'savoir',
+  'bien-être',
+  'beauté',
+];
 
 /**
  * "Harmonie 62 (J40 : 45) · point faible : savoir 0,10".

@@ -111,6 +111,7 @@ Pour chaque tâche :
 | Économie, métiers, richesses (vision v2) | `docs/design/14-economie.md` |
 | Migration, colonies multiples (vision v2) | `docs/design/15-colonies-et-migration.md` |
 | Menaces, combattants, forteresses, conflits (vision v2) | `docs/design/16-guerre-et-forteresses.md` |
+| Architecture : plan de ville, édifices, paysage, grands travaux, beauté | `docs/design/17-architecture.md` |
 | Glossaire | `docs/design/glossaire.md` |
 
 ## Ce qu'il ne faut pas faire

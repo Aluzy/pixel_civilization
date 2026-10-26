@@ -25,8 +25,15 @@ const STYLE = `
 `;
 
 /** Okabe–Ito colours (readable with colour-blindness), harmony first. */
-const COLORS = ['#f4f1e8', '#e69f00', '#56b4e9', '#009e73', '#f0e442', '#cc79a7'];
-const COMPONENT_NAMES = ['Stabilité', 'Durabilité', 'Ordre spatial', 'Savoir', 'Bien-être'];
+const COLORS = ['#f4f1e8', '#e69f00', '#56b4e9', '#009e73', '#f0e442', '#cc79a7', '#d55e00'];
+const COMPONENT_NAMES = [
+  'Stabilité',
+  'Durabilité',
+  'Ordre spatial',
+  'Savoir',
+  'Bien-être',
+  'Beauté',
+];
 
 export class Dashboard {
   /**

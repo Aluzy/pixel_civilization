@@ -2,8 +2,8 @@
 // bord »): harmony and its components, population, and the mean and spread of each gene. Kept
 // in the state (it cannot be recomputed from the present) and hashed; preallocated.
 
-/** Values per day before the genes: tick, harmony, 5 components, population. */
-const HEAD = 8;
+/** Values per day before the genes: tick, harmony, 6 components, population. */
+const HEAD = 9;
 
 export class History {
   /**
@@ -22,7 +22,7 @@ export class History {
   /**
    * Records today: harmony (score then components), population, genes (mean, spread).
    * @param {number} tick
-   * @param {Float64Array} harmony - Score then the 5 components.
+   * @param {Float64Array} harmony - Score then the 6 components.
    * @param {number} population
    * @param {Float64Array} geneMean
    * @param {Float64Array} geneSpread
@@ -32,8 +32,8 @@ export class History {
     const o = (this.count % this.capacity) * this.stride;
     const d = this.data;
     d[o] = tick;
-    for (let k = 0; k < 6; k++) d[o + 1 + k] = harmony[k];
-    d[o + 7] = population;
+    for (let k = 0; k < 7; k++) d[o + 1 + k] = harmony[k];
+    d[o + 8] = population;
     for (let g = 0; g < this.genes; g++) {
       d[o + HEAD + g] = geneMean[g];
       d[o + HEAD + this.genes + g] = geneSpread[g];
@@ -55,8 +55,8 @@ export class History {
       out.push({
         tick: d[o],
         harmony: d[o + 1],
-        components: Array.from(d.subarray(o + 2, o + 7)),
-        population: d[o + 7],
+        components: Array.from(d.subarray(o + 2, o + 8)),
+        population: d[o + 8],
         geneMean: Array.from(d.subarray(o + HEAD, o + HEAD + this.genes)),
         geneSpread: Array.from(d.subarray(o + HEAD + this.genes, o + HEAD + 2 * this.genes)),
       });

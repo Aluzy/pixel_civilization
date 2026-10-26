@@ -1,6 +1,7 @@
 import { releaseTask } from '../colony/colony-logic.js';
 import { nextSegment } from '../colony/fortress.js';
 import { nextCanal } from '../colony/canal.js';
+import { WORKS_RECIPE, nextTile, tileCost } from '../colony/works.js';
 import { ProjectKind } from '../colony/colony-store.js';
 import { Action } from './action-types.js';
 import { goToCamp } from './colony-work.js';
@@ -75,6 +76,80 @@ export function wallWork(state, ctx, colony, project, id, plan) {
     return;
   }
   // Nowhere to stand: the segment waits for another builder.
+  releaseTask(state, ctx, id);
+  startHere(ctx, id, Action.IDLE);
+}
+
+/**
+ * The builder of a work of architecture (docs/design/17-architecture.md): with the materials of
+ * the next tile in hand, it walks beside it and lays it from there; out of materials, it fetches
+ * the next batch at the camp.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} colony
+ * @param {import('../colony/colony-store.js').Project} project
+ * @param {number} id
+ * @param {import('./movement.js').Plan} plan
+ * @returns {void}
+ */
+export function worksWork(state, ctx, colony, project, id, plan) {
+  const a = ctx.agents;
+  const out = ctx.recallTarget;
+  if (!nextTile(state, ctx, project, out)) {
+    releaseTask(state, ctx, id);
+    startHere(ctx, id, Action.IDLE);
+    return;
+  }
+  const cost = tileCost(ctx, project.tileCode[project.tileNext]);
+  const holds = cost !== null && cost.inputs.every((i) => a.carried(id, i.good) >= i.count);
+  if (!holds) {
+    if (!goToCamp(ctx, colony, id, Action.DEPOSIT, plan)) explore(state, ctx, id, plan);
+    return;
+  }
+  besideSite(state, ctx, id, out[0], out[1], WORKS_RECIPE, plan);
+}
+
+/**
+ * Stands beside (x, y), the tile to build, and builds it from there (`siteX`, `siteY`).
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {number} x
+ * @param {number} y
+ * @param {number} r - Recipe, or {@link WORKS_RECIPE}.
+ * @param {import('./movement.js').Plan} plan
+ * @returns {void}
+ */
+function besideSite(state, ctx, id, x, y, r, plan) {
+  const a = ctx.agents;
+  a.siteX[id] = x;
+  a.siteY[id] = y;
+  a.craftRecipe[id] = r;
+  plan.x = x;
+  plan.y = y;
+  const gap = Math.max(Math.abs(a.x[id] - x), Math.abs(a.y[id] - y));
+  if (gap === 1) {
+    startHere(ctx, id, Action.BUILD);
+    plan.action = Action.BUILD;
+    return;
+  }
+  const nav = ctx.nav;
+  let best = -1;
+  for (let k = 0; k < 8; k++) {
+    const cell = nav.cellAt(x + DX[k], y + DY[k]);
+    if (cell < 0 || !nav.reachable(cell)) continue;
+    if (best < 0 || nav.dist[cell] < nav.dist[best]) best = cell;
+  }
+  if (best >= 0 && moveTo(ctx, id, best, Action.BUILD)) {
+    plan.action = Action.MOVE;
+    return;
+  }
+  const cell = nav.toward(x, y);
+  if (cell >= 0 && moveTo(ctx, id, cell, Action.NONE)) {
+    plan.action = Action.MOVE;
+    return;
+  }
+  // Nowhere to stand: the tile waits for another builder.
   releaseTask(state, ctx, id);
   startHere(ctx, id, Action.IDLE);
 }

@@ -1,7 +1,8 @@
 import { popcount } from '../knowledge/document-store.js';
 import { PACK } from '../world/chunk-store.js';
+import { beauty, clearing } from './works.js';
 
-// Harmony (docs/design/07-harmonie.md): a score from 0 to 100 per colony, from five components
+// Harmony (docs/design/07-harmonie.md): a score from 0 to 100 per colony, from six components
 // each between 0 and 1. It is a measure: the colony reads only its weakest component (the
 // focus, posted on the blackboard), which steers the tasks it opens.
 
@@ -12,6 +13,7 @@ export const Component = Object.freeze({
   SPATIAL: 2,
   KNOWLEDGE: 3,
   WELLBEING: 4,
+  BEAUTY: 5,
 });
 
 export const COMPONENT_IDS = Object.freeze([
@@ -20,6 +22,7 @@ export const COMPONENT_IDS = Object.freeze([
   'spatial',
   'knowledge',
   'wellbeing',
+  'beauty',
 ]);
 
 /** Structure categories for the specialisation of zones. */
@@ -41,7 +44,7 @@ export function noteHarvest(state, ctx, id, x, y, resource) {
   // A crop harvested on its plot is sown again: it does not wear the land out.
   if (c < 0 || ctx.regrowTicks[resource] <= 0 || state.crops.at(x, y) >= 0) return;
   const colony = state.colonies[c];
-  if (!inTerritory(ctx, colony, x, y)) return;
+  if (!inTerritory(ctx, colony, x, y) || clearing(state, ctx, colony, x, y, resource)) return;
   colony.harvested[bucketIndex(state, ctx, colony, resource)]++;
 }
 
@@ -115,12 +118,17 @@ export function computeHarmony(state, ctx, colony) {
   s[1 + Component.SPATIAL] = spatial(state, ctx, colony);
   s[1 + Component.KNOWLEDGE] = knowledge(state);
   s[1 + Component.WELLBEING] = wellbeing(ctx, colony);
+  s[1 + Component.BEAUTY] = beauty(state, ctx, colony);
   let total = 0;
   let weakest = 0;
   for (let k = 0; k < COMPONENT_IDS.length; k++) {
     total += h.weights[COMPONENT_IDS[k]] * s[1 + k];
-    if (s[1 + k] < s[1 + weakest]) weakest = k;
+    if (k !== Component.BEAUTY && s[1 + k] < s[1 + weakest]) weakest = k;
   }
+  // One embellishes only a colony that is well: fed and stable.
+  const well =
+    s[1 + Component.STABILITY] >= h.calmAbove && s[1 + Component.WELLBEING] >= h.calmAbove;
+  if (well && s[1 + Component.BEAUTY] < s[1 + weakest]) weakest = Component.BEAUTY;
   s[0] = 100 * total;
   colony.focus = weakest;
   const hungry = weakest === Component.STABILITY || weakest === Component.WELLBEING;

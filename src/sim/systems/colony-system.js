@@ -1,4 +1,5 @@
 import { canalProject } from '../colony/canal.js';
+import { worksProject } from '../colony/works.js';
 import { claimFreeStock, openTasks, releaseTask } from '../colony/colony-logic.js';
 import { Enclosure, ProjectKind } from '../colony/colony-store.js';
 import { planEnclosure, updateDanger, wallNeeds, wantsEnclosure } from '../colony/fortress.js';
@@ -67,6 +68,7 @@ export function colonySystem(state, ctx) {
     }
     fortress(state, ctx, colony);
     canalProject(state, ctx, colony);
+    worksProject(state, ctx, colony);
     // Plant what is over-harvested near the camp when durability or spatial order is the weakest
     // point, and berries when stability or well-being is (food to spare is what lets it grow).
     const focus = colony.focus;
@@ -147,7 +149,7 @@ function fortress(state, ctx, colony) {
   for (let i = 0; i < colony.towerCount; i++) {
     if ((colony.towersBuilt & (1 << i)) !== 0) continue;
     const tile = state.world.packedAt(colony.towerX[i], colony.towerY[i]) >>> PACK.STRUCTURE_SHIFT;
-    if (tile === ctx.wallCode) towerDue = true;
+    if (ctx.ringWall[tile] === 1) towerDue = true;
   }
   if (
     colony.encState === Enclosure.CLOSED &&

@@ -98,3 +98,7 @@
 | Sentier | Case foulée 60 fois, devenue pour de bon plus rapide à parcourir | `wear`, `trails` |
 | Occupant | L'individu qui se tient sur une case : deux individus ne partagent jamais une case | `occupant` |
 | Canal | Case creusée depuis l'eau, où l'eau coule : on y boit, on y patauge, il irrigue les parcelles voisines ; les prédateurs ne le traversent pas (décision 0027) | `canal`, `canal.js` |
+| Ouvrage | Projet de colonie fait d'une liste de cases à poser (pavé, mur de pierre, arbre, nouveau sol), posées une à une par n'importe quel membre (décision 0028) | `ProjectKind.WORKS`, `works.js` |
+| Place, rues | Carré pavé au camp et pavés le long des quatre axes qui passent par lui | `plaza`, `streets` |
+| Édifice | Bâtiment public de 3 × 3 aux coins de la place : temple, grenier, marché, monument | `edifice` |
+| Beauté | Sixième composante de l'harmonie : pavage, pierre, édifices, arbres, fontaine | `Component.BEAUTY` |

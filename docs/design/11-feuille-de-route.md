@@ -323,6 +323,52 @@ Réalisé :
   - l'usure des sentiers abandonnés ;
   - les prédateurs qui occupent une case.
 
+### Mise à jour — L'architecture (`v0.15.0`)
+
+Demandée avant le J13 (décision 0028, [17](17-architecture.md)). Les individus sont des bâtisseurs qui transforment profondément la carte, pour que ce soit beau, par quatre ensembles de règles :
+
+- plan de ville ;
+- matériaux et édifices ;
+- paysage aménagé ;
+- grands travaux.
+
+Et une composante Beauté dans l'harmonie.
+
+Réalisé :
+
+- **Mesures**, sur 10 graines et 150 jours :
+  - la première colonie pave sa place et ses rues sur 9 graines (24 à 88 cases de pavé) ;
+  - elle élève au moins un édifice public sur 8 graines (les quatre sur 3) ;
+  - elle plante une allée d'arbres sur 6 graines (20 à 39 arbres) ;
+  - elle rebâtit son enceinte en pierre sur 5 graines ;
+  - elle rebâtit des maisons en pierre sur 8 graines ;
+  - la beauté atteint 0,40 à 0,58 sur 7 graines. Les colonies en difficulté (famines) embellissent peu ou pas : elles vont d'abord à leurs réserves ;
+  - l'enceinte se ferme sur 6 graines sur 10, et il y a au moins deux colonies sur 7 graines sur 10 ;
+  - population totale au jour 150 : 15 à 237.
+  - Avec et sans ouvrages, sur les mêmes 10 graines :
+    - population totale au jour 150 : 1 030 et 1 074 ;
+    - harmonie moyenne : 46 et 40.
+- **Tenu** :
+  - les sorties des J2 à J12 passent ;
+  - graines de démonstration : J3 9 ; J6 9 ; J9 et J10 11, 4 et 2 ; J11 2 et 4 ; J12 1 et 7.
+- **Assoupli** :
+  - la sortie du J9 demande, sur 2 des 3 parties, que les cultures donnent plus de la moitié de la nourriture ou qu'un plat soit mangé 8 jours sur 10 (« ou » au lieu de « et ») ;
+  - les deux à la fois ne tiennent plus que sur peu de graines : les bras partent aussi aux ouvrages.
+- **Ajouts** :
+  - moteur des ouvrages ;
+  - place, rues, ponts et fontaine ;
+  - temple, grenier, marché, monument ;
+  - maisons et murs de pierre ;
+  - vergers en rangées, allée d'arbres, arbres d'alignement ;
+  - routes entre colonies, défrichage, assèchement, carrières ;
+  - beauté dans l'harmonie et le tableau de bord ;
+  - chronique des ouvrages.
+- **Reporté** :
+  - second anneau de murs ;
+  - quartiers ;
+  - styles propres aux colonies ;
+  - entretien des bâtiments.
+
 ### J13 — Conflits (`v1.0.0`)
 
 - Incidents et rancunes, raids décidés par simulation mentale (butin, chances, pertes), alerte et défense, bonus des murs, butin, paix, absorption.

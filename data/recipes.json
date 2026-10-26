@@ -54,7 +54,37 @@
       "kind": "door",
       "feminine": true
     },
-    { "id": "canal", "name": "Canal", "color": "#3f7fc4", "kind": "canal", "speed": 0.5 }
+    { "id": "canal", "name": "Canal", "color": "#3f7fc4", "kind": "canal", "speed": 0.5 },
+    { "id": "pavement", "name": "Pavé", "color": "#b4a58a", "kind": "pavement", "speed": 1.4 },
+    { "id": "bridge", "name": "Pont", "color": "#8e7558", "kind": "bridge", "speed": 1.4 },
+    {
+      "id": "fountain",
+      "name": "Fontaine",
+      "color": "#7fc4e8",
+      "kind": "fountain",
+      "feminine": true
+    },
+    {
+      "id": "house_wall_stone",
+      "name": "Mur d'abri en pierre",
+      "color": "#8f8a84",
+      "kind": "house_wall"
+    },
+    { "id": "stone_wall", "name": "Mur de pierre", "color": "#6f6d72", "kind": "wall" },
+    { "id": "temple", "name": "Temple", "color": "#ece2c6", "kind": "edifice" },
+    { "id": "granary", "name": "Grenier", "color": "#b5813f", "kind": "edifice" },
+    { "id": "market", "name": "Marché", "color": "#d9a95b", "kind": "market" },
+    { "id": "monument", "name": "Monument", "color": "#c9c1a3", "kind": "edifice" },
+    { "id": "statue", "name": "Statue", "color": "#e3bf3c", "kind": "edifice", "feminine": true },
+    { "id": "tree", "name": "Arbre planté", "color": "#2e6b34", "kind": "tree" },
+    {
+      "id": "quarry",
+      "name": "Carrière",
+      "color": "#5e554c",
+      "kind": "quarry",
+      "speed": 0.7,
+      "feminine": true
+    }
   ],
   "items": [
     { "id": "spear", "name": "Lance", "kind": "weapon", "attack": 2 },

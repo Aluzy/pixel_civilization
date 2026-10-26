@@ -94,7 +94,8 @@ export function claimFreeStock(colony, project) {
  * @returns {boolean}
  */
 export function readyToBuild(colony, project) {
-  if ((project.recipe < 0 && project.kind !== ProjectKind.FIELD) || project.builder >= 0) {
+  const free = project.kind === ProjectKind.FIELD || project.kind === ProjectKind.WORKS;
+  if ((project.recipe < 0 && !free) || project.builder >= 0) {
     return false;
   }
   for (let g = 1; g < project.needs.length; g++) {
@@ -197,7 +198,8 @@ export function chooseTask(state, ctx, colony, id) {
     const p = colony.projects[s];
     // Anyone can plant; only those who know the recipe build.
     if (!readyToBuild(colony, p)) continue;
-    if (p.kind !== ProjectKind.FIELD && !book.knows(p.recipe)) continue;
+    const anyone = p.kind === ProjectKind.FIELD || p.kind === ProjectKind.WORKS;
+    if (!anyone && !book.knows(p.recipe)) continue;
     p.builder = id;
     reserve(state, a, id, s, 0, 0, true);
     return true;
@@ -232,7 +234,9 @@ export function chooseTask(state, ctx, colony, id) {
           : Math.max(Math.abs(memory.x[i] - colony.campX), Math.abs(memory.y[i] - colony.campY));
       const speed = (1 + a.force[id] / ctx.harvestForceScale) * harvestMultiplier(ctx, id, g);
       const habit = total > 0 ? a.gathered[id * a.goodSlots + g] / total : 0;
-      const urgency = p.kind === ProjectKind.PANTRY ? 1 : 1.2;
+      // Food before buildings, and embellishment after both.
+      const urgency =
+        p.kind === ProjectKind.PANTRY ? 1 : p.kind === ProjectKind.WORKS ? cfg.worksUrgency : 1.2;
       // What it learnt a unit of this good really costs it, once it has brought some.
       const learnt = a.costPerUnit[id * a.goodSlots + g] / ctx.balance.learning.costScale;
       // Goods of its job come first.

@@ -218,6 +218,19 @@ export class ChunkStore {
   }
 
   /**
+   * Changes the ground of a tile for good (a marsh drained, a forest cleared).
+   * @param {number} x
+   * @param {number} y
+   * @param {number} biome
+   * @returns {void}
+   */
+  setBiome(x, y, biome) {
+    const chunk = this.get(toChunk(x), toChunk(y));
+    chunk.biome[Chunk.index(toLocal(x), toLocal(y))] = biome;
+    this.markChanged(chunk);
+  }
+
+  /**
    * @param {Chunk} chunk
    * @returns {void}
    */

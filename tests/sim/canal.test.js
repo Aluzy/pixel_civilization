@@ -96,7 +96,8 @@ describe('canals', () => {
     const first = [colony.canalX[0], colony.canalY[0]];
     expect(waterDistance(sim.state, sim.ctx, first[0], first[1], 1)).toBe(1);
     const n = colony.canalLen;
-    expect([colony.canalX[n - 1], colony.canalY[n - 1]]).toEqual([x, y]);
+    // It ends on the camp's square, beside the camp (a fountain).
+    expect([colony.canalX[n - 1], colony.canalY[n - 1]]).toEqual([x + 1, y + 1]);
     for (let k = 0; k < n; k++) {
       expect(diggable(sim.state, sim.ctx, colony.canalX[k], colony.canalY[k])).toBe(true);
       if (k === 0) continue;
@@ -120,8 +121,9 @@ describe('canals', () => {
     a.siteY[0] = colony.canalY[n - 1];
     expect(digCanal(sim.state, sim.ctx, 0)).toBe(false);
     expect(digAll(sim)).toBe(n);
-    expect(wetAt(sim.state, sim.ctx, x, y)).toBe(true);
-    expect(waterDistance(sim.state, sim.ctx, x, y, 10)).toBe(0);
+    expect(wetAt(sim.state, sim.ctx, x + 1, y + 1)).toBe(true);
+    expect(sim.world.packedAt(x + 1, y + 1) >>> PACK.STRUCTURE_SHIFT).toBe(sim.ctx.fountainCode);
+    expect(waterDistance(sim.state, sim.ctx, x, y, 10)).toBe(1);
     expect(colony.canalTiles).toBe(n);
     // Done: the project is cleared and the event tells it.
     expect(colony.findProject(ProjectKind.CANAL)).toBe(-1);

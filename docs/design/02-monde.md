@@ -85,6 +85,19 @@ Les individus modifient durablement le monde : ils bâtissent, défrichent, cult
   - les allées du village, les portes et les chemins vers l'eau se creusent d'eux-mêmes.
 - Le sentier se voit sur la carte : le sol prend une teinte plus terreuse.
 
+## Terre bâtie et grands travaux (décision 0028)
+
+Les colonies transforment le sol pour de bon ([17](17-architecture.md)) :
+
+- clairières là où elles ont coupé la forêt ;
+- marais asséchés ;
+- carrières en montagne et au désert ;
+- places, rues et routes pavées ;
+- murs et édifices de pierre ;
+- allées d'arbres.
+
+Le biome d'une case peut donc changer en cours de partie (`ChunkStore#setBiome`).
+
 ## Canaux (décision 0027)
 
 Les individus amènent l'eau jusqu'à leurs maisons.

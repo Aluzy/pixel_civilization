@@ -133,14 +133,14 @@ describe('harmony', () => {
 
   it('keeps a daily history with the genes', () => {
     const history = new History(3, 2);
-    const harmony = Float64Array.of(50, 0.1, 0.2, 0.3, 0.4, 0.5);
+    const harmony = Float64Array.of(50, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6);
     for (let d = 1; d <= 4; d++) {
       history.record(d * DAY, harmony, d, Float64Array.of(d, 1), Float64Array.of(0, 0));
     }
     const rows = history.rows();
     expect(rows.map((r) => r.population)).toEqual([2, 3, 4]);
     expect(history.rows(3).map((r) => r.population)).toEqual([4]);
-    expect(rows[0].components).toEqual([0.1, 0.2, 0.3, 0.4, 0.5]);
+    expect(rows[0].components).toEqual([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]);
     const sim = new Simulation({ seed: 1, balance });
     const mean = new Float64Array(GENE_TABLE.genes.length);
     const spread = new Float64Array(GENE_TABLE.genes.length);

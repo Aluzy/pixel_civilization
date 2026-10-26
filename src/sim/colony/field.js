@@ -95,6 +95,8 @@ export function chooseFieldSite(state, ctx, colony, id) {
       // Keep the camp itself clear.
       const d = Math.max(Math.abs(x - colony.campX), Math.abs(y - colony.campY));
       if (d < 2 || !plantable(state, ctx, x, y)) continue;
+      // Orchards in rows: every other row from the camp, an empty one between (decision 0028).
+      if ((y - colony.campY) % 2 !== 0) continue;
       const cell = nav.cellAt(x, y);
       if (cell < 0 || !nav.reachable(cell)) continue;
       let free = 0;
@@ -114,7 +116,8 @@ export function chooseFieldSite(state, ctx, colony, id) {
 }
 
 /**
- * The planter plants what it carries for its field on its tile and the free tiles around it,
+ * The planter plants what it carries for its field on its tile and the free tiles beside it in
+ * its row,
  * `plantCost` units per new source, then the project is complete.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
@@ -135,7 +138,8 @@ export function plant(state, ctx, id) {
   if (resource === 0) return 0;
   const m = ctx.balance.memory;
   let planted = 0;
-  for (let k = 0; k < 9 && a.carried(id, resource) >= h.plantCost; k++) {
+  // Along its row: its tile and the two beside it.
+  for (let k = 3; k < 6 && a.carried(id, resource) >= h.plantCost; k++) {
     const x = a.x[id] + (k % 3) - 1;
     const y = a.y[id] + Math.floor(k / 3) - 1;
     if (!plantable(state, ctx, x, y)) continue;
