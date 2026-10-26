@@ -368,7 +368,8 @@
     "provisionPortions": 6,
     "scoutTicks": 24000,
     "scoutLeg": [40, 70],
-    "arriveRadius": 3
+    "arriveRadius": 3,
+    "maxColonies": 24
   },
   "canal": { "minMembers": 20, "reach": 6, "maxLength": 60, "batch": 10 },
   "works": {

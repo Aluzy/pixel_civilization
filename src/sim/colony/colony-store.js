@@ -37,7 +37,8 @@ export const MAX_GUARDS = 12;
 export const MAX_COOKS = 8;
 
 /** Most colonies in a game (relation sheets are preallocated for each). */
-export const MAX_COLONIES = 16;
+/** Colonies a game can hold, living or dead (the living are capped by migration.maxColonies). */
+export const MAX_COLONIES = 32;
 
 /** Most members of an expedition. */
 export const MAX_EXPEDITION = 12;

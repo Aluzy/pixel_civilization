@@ -32,6 +32,20 @@ export function migrationPressure(ctx, id) {
 }
 
 /**
+ * True if one more colony may be founded: fewer living colonies than `maxColonies` (a dead colony
+ * frees its place, decision 0029), and room left in the game's table of colonies.
+ * @param {import('../simulation.js').SimState} state
+ * @param {{ maxColonies: number }} cfg
+ * @returns {boolean}
+ */
+export function roomForColony(state, cfg) {
+  if (state.colonies.length >= MAX_COLONIES) return false;
+  let living = 0;
+  for (const c of state.colonies) if (c.members > 0) living++;
+  return living < cfg.maxColonies;
+}
+
+/**
  * Whether (x, y) is far enough from every camp the colony knows of (its own included).
  * @param {import('../simulation.js').SimContext} ctx
  * @param {Colony} colony
@@ -194,7 +208,7 @@ export function senseMigration(state, ctx, id, home, atHome) {
   if (home.expState !== Expedition.NONE) return 0;
   const day = ctx.balance.time.ticksPerDay;
   const ready =
-    state.colonies.length < MAX_COLONIES && state.tick - home.lastExpedition >= cfg.everyDays * day;
+    roomForColony(state, cfg) && state.tick - home.lastExpedition >= cfg.everyDays * day;
   if (!ready) return 0;
   const current = home.scout >= 0 && a.alive[home.scout] === 1 ? home.scout : -1;
   if (current === id) {
@@ -270,7 +284,7 @@ export function foundColony(state, ctx, id, x, y) {
   if (mother.expState !== Expedition.TRAVELLING || !mother.inExpedition(id)) return false;
   const cfg = ctx.balance.migration;
   const near = Math.max(Math.abs(x - mother.expX), Math.abs(y - mother.expY));
-  if (near > cfg.siteRadius || state.colonies.length >= MAX_COLONIES) return false;
+  if (near > cfg.siteRadius || !roomForColony(state, cfg)) return false;
   const d = state.colonies.length;
   const b = ctx.balance;
   const colony = new Colony(d, ctx.catalog.goodCount, b.colony, b.harmony, ctx.jobs.jobs.length);
