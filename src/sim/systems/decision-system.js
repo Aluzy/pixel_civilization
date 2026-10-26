@@ -23,6 +23,7 @@ import { FarmJob, releaseFarm } from '../farming/farm-jobs.js';
 import { considerJob, saleGood } from '../economy/jobs.js';
 import { senseMigration } from '../colony/migration.js';
 import { senseTrade } from '../agents/trade-work.js';
+import { lessonFor, mastery, teachPlace } from '../agents/teach-work.js';
 
 /** Inputs of the colony's work, silenced for a member who leaves on an expedition. */
 const AWAY_INPUTS = Object.freeze([
@@ -30,6 +31,7 @@ const AWAY_INPUTS = Object.freeze([
   INPUT.canReplicate,
   INPUT.unwritten,
   INPUT.unread,
+  INPUT.teachDuty,
   INPUT.guardDuty,
   INPUT.huntDuty,
   INPUT.farmWork,
@@ -218,6 +220,43 @@ function senseInputs(state, ctx, id) {
   const unread =
     a.libraryVisited[id] === 0 || andNot(a.librarySeen[id], a.recipes[id].knownMask()) !== 0;
   input[INPUT.unread] = library && unread ? (young ? 1 : 0.7) : 0;
+  // A lesson given now with a recipe it lacks: learning from the master comes first.
+  if (lessonFor(state, ctx, home, id)) input[INPUT.unread] = 1;
+  input[INPUT.teachDuty] = senseTeaching(state, ctx, id, home) ? 1 : 0;
+  if (home !== null && (home.scout === id || home.inExpedition(id))) input[INPUT.teachDuty] = 0;
+}
+
+/**
+ * The master's post (decision 0029): one at a time, in a colony large enough, with a school or a
+ * library, for a member who masters a recipe well. When its time is up, the first member at the
+ * camp who masters as well takes over.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {import('../colony/colony-store.js').Colony | null} home
+ * @returns {boolean} True if the agent is the master.
+ */
+function senseTeaching(state, ctx, id, home) {
+  if (home === null) return false;
+  const cfg = ctx.balance.teaching;
+  const a = ctx.agents;
+  const own = home.members >= cfg.members && teachPlace(state, ctx, home, ctx.siteOut);
+  const skill = own ? mastery(state, ctx, id) : 0;
+  if (skill < cfg.mastery) {
+    if (home.teacher === id) home.teacher = -1;
+    return false;
+  }
+  if (home.teacher === id) return true;
+  const t = home.teacher;
+  const current = t >= 0 && a.alive[t] === 1 && a.colony[t] === home.id ? t : -1;
+  const expired = state.tick - home.teacherTick > cfg.roleTicks;
+  if (!atCamp(ctx, home, id)) return false;
+  if (current < 0 || (expired && skill >= mastery(state, ctx, current))) {
+    home.teacher = id;
+    home.teacherTick = state.tick;
+    return true;
+  }
+  return false;
 }
 
 /**

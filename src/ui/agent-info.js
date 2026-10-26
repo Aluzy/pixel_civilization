@@ -27,6 +27,7 @@ const NOTE_TEXT = {
   [PlanNote.COOKING]: 'cuisine',
   [PlanNote.MIGRATING]: 'migration',
   [PlanNote.TRADING]: 'caravane',
+  [PlanNote.TEACHING]: 'école',
 };
 
 /**

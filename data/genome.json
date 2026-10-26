@@ -49,7 +49,13 @@
       "start": 0.5,
       "goals": ["colony", "replicate"]
     },
-    { "id": "foresight", "name": "Prévoyance", "range": [0, 1], "start": 0.5, "goals": ["tool"] },
+    {
+      "id": "foresight",
+      "name": "Prévoyance",
+      "range": [0, 1],
+      "start": 0.5,
+      "goals": ["tool"]
+    },
     {
       "id": "learning",
       "name": "Vitesse d'apprentissage",
@@ -63,6 +69,13 @@
       "range": [0, 1],
       "start": 0.5,
       "goals": ["write", "read"]
+    },
+    {
+      "id": "teaching",
+      "name": "Goût d'enseigner",
+      "range": [0, 1],
+      "start": 0.5,
+      "goals": ["teach"]
     }
   ]
 }

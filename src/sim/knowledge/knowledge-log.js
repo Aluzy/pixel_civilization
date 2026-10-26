@@ -1,3 +1,4 @@
+import { hashBits } from '../core/bits.js';
 /**
  * Collective knowledge over time (docs/design/05-savoir.md, « Savoir collectif »): for each
  * recipe, who first discovered it, whether it survived that individual through a book, and when
@@ -22,6 +23,8 @@ export class KnowledgeLog {
     this.known = 0;
     this.written = 0;
     this.lostMask = 0;
+    /** Taught at a school (known by enough members of a colony that has one), decision 0029. */
+    this.taught = 0;
   }
 
   /**
@@ -63,6 +66,7 @@ export class KnowledgeLog {
   hashInto(h) {
     h.typedArray(this.discovered).typedArray(this.discoverer).typedArray(this.discovererDied);
     h.typedArray(this.savedByBook).typedArray(this.lost).typedArray(this.recovered);
-    h.typedArray(this.losses).uint32(this.known).uint32(this.written).uint32(this.lostMask);
+    h.typedArray(this.losses);
+    for (const m of [this.known, this.written, this.lostMask, this.taught]) hashBits(h, m);
   }
 }

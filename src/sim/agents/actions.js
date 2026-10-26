@@ -1,3 +1,4 @@
+import { learnTick, teachTick } from './teach-work.js';
 import { groundSpeed } from './sailing.js';
 import { refresh, tire } from '../ai/weariness.js';
 import { withBit } from '../core/bits.js';
@@ -43,6 +44,7 @@ import {
   readOne,
   storeDocuments,
   writeOne,
+  writable,
 } from '../knowledge/writing.js';
 
 /** Bits of AgentStore.flags: first experiences, reported once each in the chronicle. */
@@ -449,6 +451,12 @@ export function stepAction(state, ctx, id) {
       finish(ctx, id);
       return;
     }
+    case Action.TEACH:
+      if (!teachTick(state, ctx, id)) finish(ctx, id);
+      return;
+    case Action.LEARN:
+      if (!learnTick(state, ctx, id)) finish(ctx, id);
+      return;
     case Action.WRITE:
     case Action.READ: {
       // One recipe (or map entry) at a time, at the library.
@@ -459,8 +467,7 @@ export function stepAction(state, ctx, id) {
       }
       const w = ctx.balance.writing;
       const writing = agents.action[id] === Action.WRITE;
-      const docs = state.documents;
-      const book = docs.carried(id, DocKind.BOOK, w.bookRecipes);
+      const book = writable(state, ctx, id);
       const onMap = writing && (book < 0 || nextToWrite(state, ctx, id, book) < 0);
       const need = writing ? (onMap ? w.writeEntryTicks : w.writeRecipeTicks) : w.readRecipeTicks;
       agents.actionProgress[id] += 1;
@@ -735,6 +742,8 @@ function craft(state, ctx, id) {
     // A book or a map is an object with its own (blank) content.
     if (recipe.output === ctx.docGood[DocKind.BOOK])
       state.documents.create(DocKind.BOOK, id, state.tick);
+    if (recipe.output === ctx.docGood[DocKind.TABLET])
+      state.documents.create(DocKind.TABLET, id, state.tick);
     if (recipe.output === ctx.docGood[DocKind.MAP])
       state.documents.create(DocKind.MAP, id, state.tick);
     state.events.push(state.tick, EventType.CRAFTED, id, x, y, r);

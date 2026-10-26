@@ -302,22 +302,24 @@ function goodVector(catalog, tables, counts) {
  * @returns {Int32Array} Good id per {@link DocKind}.
  */
 function docGoods(catalog) {
-  const out = new Int32Array(3);
+  const out = new Int32Array(4);
   out[DocKind.BOOK] = catalog.items.find((i) => i.kind === 'book')?.good ?? 0;
   out[DocKind.MAP] = catalog.items.find((i) => i.kind === 'map')?.good ?? 0;
+  out[DocKind.TABLET] = catalog.items.find((i) => i.kind === 'tablet')?.good ?? 0;
   return out;
 }
 
 /**
  * Planning target "have an item of this kind".
  * @param {import('./crafting/catalog.js').Catalog} catalog
- * @param {string} kind
+ * @param {string | string[]} kind - Item kind, or kinds
  * @param {number} id
  * @returns {import('./ai/planner.js').PlanTarget}
  */
 function itemTarget(catalog, kind, id) {
+  const kinds = Array.isArray(kind) ? kind : [kind];
   const goods = new Uint8Array(catalog.goodCount);
-  for (const item of catalog.items) if (item.kind === kind) goods[item.good] = 1;
+  for (const item of catalog.items) if (kinds.includes(item.kind)) goods[item.good] = 1;
   return { id, goods, structures: new Uint8Array(catalog.structures.length + 1) };
 }
 
@@ -503,6 +505,7 @@ function buildContext(balance, tables, agents, seedKey) {
     forestBiome: tables.biomes.findIndex((b) => b.id === 'forest'),
     woodResource: tables.resources.findIndex((r) => r.id === 'wood') + 1,
     fishResource: tables.resources.findIndex((r) => r.id === 'fish') + 1,
+    schoolCode: idCode('school'),
     quarryBiome: Uint8Array.from(tables.biomes, (b) =>
       b.id === 'mountain' || b.id === 'desert' ? 1 : 0,
     ),
@@ -604,9 +607,11 @@ function buildContext(balance, tables, agents, seedKey) {
     costOut: new Int32Array(2),
     imagined: { hp: 0, maxHp: 0, attack: 0, defense: 0 },
     contentOut: new Float64Array(3),
+    taughtCounts: new Int16Array(MAX_COLONIES * catalog.recipes.length),
     /** Good id of each document kind. */
     docGood: docGoods(catalog),
-    bookTarget: itemTarget(catalog, 'book', 70),
+    // Something to write recipes in: a book, or a clay tablet (decision 0029).
+    bookTarget: itemTarget(catalog, ['book', 'tablet'], 70),
     mapTarget: itemTarget(catalog, 'map', 71),
     weaponTarget: itemTarget(catalog, 'weapon', 72),
     armorTarget: itemTarget(catalog, 'armor', 73),
@@ -1207,7 +1212,7 @@ export class Simulation {
     for (let d = 0; d < docs.max; d++) {
       if (docs.kind[d] === DocKind.NONE || docs.holder[d] !== id) continue;
       out.push({
-        kind: docs.kind[d] === DocKind.BOOK ? 'book' : 'map',
+        kind: ['', 'book', 'map', 'tablet'][docs.kind[d]],
         recipes: this.recipeNames(docs.recipes[d]),
         places: docs.entryCount[d],
       });

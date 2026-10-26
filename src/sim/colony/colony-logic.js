@@ -379,6 +379,10 @@ export function onBuilt(state, ctx, id, code, x, y) {
     colony.sheltersBuilt++;
   } else if (ctx.catalog.structures[code - 1].kind === 'library') {
     colony.addLibrary(x, y, state.tick);
+  } else if (code === ctx.schoolCode && !colony.hasSchool) {
+    colony.hasSchool = true;
+    colony.schoolX = x;
+    colony.schoolY = y;
   } else if (code === ctx.treasuryCode && !colony.hasTreasure) {
     colony.hasTreasure = true;
     colony.treasureX = x;

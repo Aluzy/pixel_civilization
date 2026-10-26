@@ -37,6 +37,7 @@ export const PlanNote = Object.freeze({
   COOKING: 19, // A batch for the colony's kitchen.
   MIGRATING: 20, // Scouting for a site, or on an expedition to found a colony.
   TRADING: 21, // A caravan to another colony's counter.
+  TEACHING: 22, // Teaching at the school, or learning from the master.
 });
 
 /**

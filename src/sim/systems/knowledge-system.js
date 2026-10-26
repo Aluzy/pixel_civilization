@@ -43,13 +43,17 @@ export function knowledgeSystem(state, ctx) {
         colony.libraryAbandoned[li] = 1;
         state.events.push(state.tick, EventType.ABANDONED, -1, lx, ly, colony.id);
       }
-      if (daily && state.rng.threats.next() < w.fireChancePerDay) burn(state, colony, li);
+      // A great library is of stone: it does not burn (the draw is made all the same, so that
+      // the stream of chances stays the same).
+      const fire = daily && state.rng.threats.next() < w.fireChancePerDay;
+      if (fire && colony.libraryGreat[li] !== 1) burn(state, colony, li);
     }
   }
   const k = state.knowledge;
   collectiveKnowledge(state, ctx, ctx.contentOut);
   k.known = ctx.contentOut[0];
   k.written = ctx.contentOut[1];
+  k.taught = ctx.contentOut[2];
   for (let r = 0; r < k.recipes; r++) {
     if (k.discovered[r] < 0) continue;
     const alive = has(k.known, r) || has(k.written, r);

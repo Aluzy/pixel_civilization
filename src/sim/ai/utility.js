@@ -28,6 +28,7 @@ export const INPUT = Object.freeze({
   inventDuty: 20,
   migrateDuty: 21,
   tradeDuty: 22,
+  teachDuty: 23,
 });
 
 const INPUT_COUNT = Object.keys(INPUT).length;

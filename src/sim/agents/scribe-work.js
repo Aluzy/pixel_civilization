@@ -1,6 +1,12 @@
 import { campOf } from '../colony/colony-logic.js';
 import { DocKind } from '../knowledge/document-store.js';
-import { carriesWriting, libraryBeside, nextToWrite, wantsMap } from '../knowledge/writing.js';
+import {
+  carriesWriting,
+  libraryBeside,
+  nextToWrite,
+  wantsMap,
+  writable,
+} from '../knowledge/writing.js';
 import { Action } from './action-types.js';
 import { PlanNote } from './journal.js';
 import { explore, moveTo, startHere } from './movement.js';
@@ -56,7 +62,7 @@ export function writeBehaviour(state, ctx, id, plan) {
   const w = ctx.balance.writing;
   const docs = state.documents;
   plan.note = PlanNote.WRITING;
-  const book = docs.carried(id, DocKind.BOOK, w.bookRecipes);
+  const book = writable(state, ctx, id);
   const toWrite = nextToWrite(state, ctx, id, book);
   if (toWrite >= 0) {
     if (book >= 0) {

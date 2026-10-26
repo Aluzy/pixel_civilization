@@ -1,3 +1,4 @@
+import { learnBehaviour, lessonFor, teachBehaviour } from './teach-work.js';
 import { has, or } from '../core/bits.js';
 import { Action } from './action-types.js';
 import { PlanNote } from './journal.js';
@@ -246,7 +247,12 @@ export function planGoal(state, ctx, id, goal, plan) {
       writeBehaviour(state, ctx, id, plan);
       return;
     case 'read':
-      readBehaviour(state, ctx, id, plan);
+      // A lesson at the school before the books.
+      if (lessonFor(state, ctx, campOf(state, ctx, id), id)) learnBehaviour(state, ctx, id, plan);
+      else readBehaviour(state, ctx, id, plan);
+      return;
+    case 'teach':
+      teachBehaviour(state, ctx, id, plan);
       return;
     case 'hide':
       hideBehaviour(state, ctx, id, plan);

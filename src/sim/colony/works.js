@@ -22,6 +22,8 @@ const EDIFICES = Object.freeze([
   { id: 'granary', dx: -4, dy: -4, edge: 'granary', centre: 'granary' },
   { id: 'market', dx: 4, dy: 4, edge: 'market', centre: 'market' },
   { id: 'monument', dx: -4, dy: 4, edge: 'monument', centre: 'statue' },
+  // North of the square, past the temple and the granary (decision 0029).
+  { id: 'great_library', dx: 0, dy: -8, edge: 'great_library', centre: 'great_library' },
 ]);
 
 const DX4 = Int8Array.from([1, -1, 0, 0]);
@@ -273,6 +275,10 @@ export function completeWork(state, ctx, colony, p, id, x, y) {
     colony.lastProject.set(p.contributors);
   }
   if (!ctx.works.works[p.work].repeat) colony.worksDone |= 1 << p.work;
+  // A great library is a library: its centre is where one reads and stores.
+  if (ctx.works.works[p.work].id === 'great_library' && p.tileLen > 0) {
+    colony.addLibrary(p.tileX[0], p.tileY[0], state.tick, true);
+  }
   if (id >= 0) {
     const a = ctx.agents;
     a.taskProject[id] = -1;
@@ -712,17 +718,6 @@ function planPaths(state, ctx, colony, p) {
 }
 
 /**
- * The great library: a 3 × 3 block of stone near the square (planned in the knowledge chapter).
- * @param {import('../simulation.js').SimState} state
- * @param {import('../simulation.js').SimContext} ctx
- * @param {import('./colony-store.js').Colony} colony
- * @param {import('./colony-store.js').Project} p
- * @returns {void}
- */
-// eslint-disable-next-line no-unused-vars
-function planGreatLibrary(state, ctx, colony, p) {}
-
-/**
  * Fills the work's tiles for the work `w` (index in data/works.json).
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
@@ -739,9 +734,6 @@ function planWork(state, ctx, colony, p, w) {
       break;
     case 'paths':
       planPaths(state, ctx, colony, p);
-      break;
-    case 'great_library':
-      planGreatLibrary(state, ctx, colony, p);
       break;
     case 'plaza':
       planPlaza(state, ctx, colony, p);

@@ -1,7 +1,7 @@
 import { hashBits, or, popcount } from '../core/bits.js';
 
 /** Kinds of written documents. */
-export const DocKind = Object.freeze({ NONE: 0, BOOK: 1, MAP: 2 });
+export const DocKind = Object.freeze({ NONE: 0, BOOK: 1, MAP: 2, TABLET: 3 });
 
 /**
  * Books and maps (docs/design/05-savoir.md): each one is an object with its own content, carried
@@ -82,7 +82,7 @@ export class DocumentStore {
   carried(holder, kind, room) {
     for (let id = 0; id < this.max; id++) {
       if (this.kind[id] !== kind || this.holder[id] !== holder) continue;
-      if (kind === DocKind.BOOK && popcount(this.recipes[id]) >= room) continue;
+      if (kind !== DocKind.MAP && popcount(this.recipes[id]) >= room) continue;
       if (kind === DocKind.MAP && this.entryCount[id] >= room) continue;
       return id;
     }

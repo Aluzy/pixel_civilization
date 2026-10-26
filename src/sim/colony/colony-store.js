@@ -1,3 +1,4 @@
+import { hashBits } from '../core/bits.js';
 import { TrialNotebook } from '../crafting/notebook.js';
 
 /** Kinds of colony projects. */
@@ -181,11 +182,24 @@ export class Colony {
     this.libraryY = new Int32Array(MAX_LIBRARIES);
     this.libraryStanding = new Uint8Array(MAX_LIBRARIES);
     this.libraryAbandoned = new Uint8Array(MAX_LIBRARIES);
+    /** 1 for a great library (decision 0029): more room, it does not burn, one learns better. */
+    this.libraryGreat = new Uint8Array(MAX_LIBRARIES);
     this.libraryVisit = new Int32Array(MAX_LIBRARIES);
     this.libraryCount = 0;
     /** Member who took the task of writing (one scribe at a time), and since when. */
     this.scribe = -1;
     this.scribeTick = 0;
+    // Teaching (decision 0029): the master (one at a time), since when, the last tick it taught,
+    // where, what it teaches (53-bit set), and the school.
+    this.teacher = -1;
+    this.teacherTick = 0;
+    this.teachTick = -0x40000000;
+    this.teachX = 0;
+    this.teachY = 0;
+    this.lessonMask = 0;
+    this.hasSchool = false;
+    this.schoolX = 0;
+    this.schoolY = 0;
     /** Guards (docs/design/16-guerre-et-forteresses.md): -1 for a free post, and since when. */
     this.guards = new Int32Array(MAX_GUARDS).fill(-1);
     this.guardTick = new Int32Array(MAX_GUARDS);
@@ -424,11 +438,13 @@ export class Colony {
    * @param {number} x
    * @param {number} y
    * @param {number} tick
+   * @param {boolean} [great=false] - A great library.
    * @returns {number} Library index, -1 if the colony has too many.
    */
-  addLibrary(x, y, tick) {
+  addLibrary(x, y, tick, great = false) {
     if (this.libraryCount >= MAX_LIBRARIES) return -1;
     const i = this.libraryCount++;
+    this.libraryGreat[i] = great ? 1 : 0;
     this.libraryX[i] = x;
     this.libraryY[i] = y;
     this.libraryStanding[i] = 1;
@@ -554,13 +570,18 @@ export class Colony {
       .typedArray(this.boardTick.subarray(0, n));
     h.typedArray(this.boardX.subarray(0, n)).typedArray(this.boardY.subarray(0, n));
     h.uint32(this.scribe).uint32(this.scribeTick).uint32(this.inventor).uint32(this.inventorTick);
+    h.uint32(this.teacher).uint32(this.teacherTick).uint32(this.teachTick);
+    hashBits(h.uint32(this.teachX).uint32(this.teachY), this.lessonMask);
+    h.uint32(this.hasSchool ? 1 : 0)
+      .uint32(this.schoolX)
+      .uint32(this.schoolY);
     this.notebook.hashInto(h);
     h.typedArray(this.guards).typedArray(this.guardTick);
     h.uint32(this.lastThreat).uint32(this.denQuietUntil);
     const L = this.libraryCount;
     h.uint32(L).typedArray(this.libraryX.subarray(0, L)).typedArray(this.libraryY.subarray(0, L));
     h.typedArray(this.libraryStanding.subarray(0, L));
-    h.typedArray(this.libraryAbandoned.subarray(0, L));
+    h.typedArray(this.libraryAbandoned.subarray(0, L)).typedArray(this.libraryGreat.subarray(0, L));
     h.typedArray(this.libraryVisit.subarray(0, L));
     for (const p of this.projects) p.hashInto(h);
     h.typedArray(this.harmony).uint32(this.focus & 0xff);

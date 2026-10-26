@@ -209,6 +209,9 @@
   "imagination": { "rollouts": 12, "predatorSpread": 0.3, "riskHealth": 0.3 },
   "writing": {
     "bookRecipes": 10,
+    "tabletRecipes": 3,
+    "greatRoom": 4,
+    "greatTau": 2,
     "mapEntries": 100,
     "writeRecipeTicks": 50,
     "writeEntryTicks": 5,
@@ -389,6 +392,16 @@
     "pathTiles": 40
   },
   "trails": { "steps": 60, "speed": 1.25 },
+  "teaching": {
+    "members": 12,
+    "mastery": 0.6,
+    "roleTicks": 2400,
+    "sessionTicks": 400,
+    "lessonTicks": 40,
+    "reach": 2,
+    "schoolTau": 1.5,
+    "taughtCopies": 3
+  },
   "sailing": { "boatSpeed": 0.8, "shipSpeed": 1.2, "swimSpeed": 0.3 },
   "fortress": {
     "treasureMembers": 30,

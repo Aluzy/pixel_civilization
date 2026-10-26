@@ -1,4 +1,4 @@
-import { and, popcount, withBit } from '../core/bits.js';
+import { and, or, popcount, withBit } from '../core/bits.js';
 import { PACK } from '../world/chunk-store.js';
 import { beauty, clearing } from './works.js';
 
@@ -364,7 +364,7 @@ function knowledge(state) {
   let discovered = 0;
   for (let r = 0; r < k.recipes; r++) if (k.discovered[r] >= 0) discovered = withBit(discovered, r);
   const total = popcount(discovered);
-  return total === 0 ? 0 : popcount(and(k.written, discovered)) / total;
+  return total === 0 ? 0 : popcount(and(or(k.written, k.taught), discovered)) / total;
 }
 
 /**
