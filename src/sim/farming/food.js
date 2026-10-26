@@ -103,6 +103,7 @@ export function stockPortions(tables, stock, portion) {
 export function noteMeal(state, ctx, id, good) {
   const t = ctx.foodTables;
   const a = ctx.agents;
+  a.mealTick[id] = state.tick;
   const pleasure = t.pleasure[good];
   if (pleasure > 0) {
     const relief = pleasure * ctx.balance.cooking.pleasureRelief;

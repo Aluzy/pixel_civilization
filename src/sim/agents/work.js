@@ -8,6 +8,13 @@ import { PlanNote } from './journal.js';
 import { explore, goToRemembered, moveTo, search, startHere } from './movement.js';
 import { atCamp, campOf } from '../colony/colony-logic.js';
 import { goToCamp } from './colony-work.js';
+import { houseDir, planHouse } from '../colony/house.js';
+import { Expedition } from '../colony/colony-store.js';
+
+/** No building site chosen yet. */
+export const NO_SITE = -0x80000000;
+/** Distance of a lone builder's house from what it anchors on. */
+const HOUSE_DISTANCE = 4;
 
 // Behaviours of the crafting goals (shelter, weapon, tool): the GOAP plan says what to do next,
 // these functions turn its first step into movement and an action. Without a plan (an unknown
@@ -179,6 +186,10 @@ export function useRecipe(state, ctx, id, r, plan) {
   const nav = ctx.nav;
   ctx.agents.craftRecipe[id] = r;
   plan.note = PlanNote.PLAN;
+  if (recipe.outputKind === 'structure' && recipe.output === ctx.shelterCode) {
+    buildHouse(state, ctx, id, plan);
+    return;
+  }
   if (recipe.outputKind === 'structure') {
     // A colony's station is built at its camp, where everyone sees and uses it.
     const kind = ctx.catalog.structures[recipe.output - 1].kind;
@@ -206,13 +217,82 @@ export function useRecipe(state, ctx, id, r, plan) {
 }
 
 /**
+ * Builds a house (docs/design/03-individu.md, « Abri »): a colony member on the site of the
+ * colony's town plan (near the camp, inside its enclosure if it has one); anyone else on a site
+ * in sight, about three tiles from what it has built or from water. The builder stands on the
+ * door tile.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {import('./movement.js').Plan} plan
+ * @returns {void}
+ */
+function buildHouse(state, ctx, id, plan) {
+  const a = ctx.agents;
+  const nav = ctx.nav;
+  let colony = campOf(state, ctx, id);
+  // On an expedition, the first house of the new colony goes up on the site, as it sees it.
+  if (colony !== null && colony.expState === Expedition.TRAVELLING && colony.inExpedition(id)) {
+    colony = null;
+  }
+  if (colony === null) {
+    const cell = chooseSite(ctx, state);
+    if (cell === nav.center) {
+      startHere(ctx, id, Action.CRAFT);
+      plan.action = Action.CRAFT;
+    } else if (cell >= 0 && moveTo(ctx, id, cell, Action.CRAFT)) {
+      plan.action = Action.MOVE;
+      plan.x = nav.cellX(cell);
+      plan.y = nav.cellY(cell);
+    } else {
+      explore(state, ctx, id, plan);
+    }
+    return;
+  }
+  // The site it was given, while it still fits; else the next one on the plan.
+  const far =
+    Math.max(Math.abs(a.siteX[id] - colony.campX), Math.abs(a.siteY[id] - colony.campY)) >
+    ctx.balance.colony.houseRange;
+  if (far || houseDir(state, ctx, a.siteX[id], a.siteY[id], colony) < 0) {
+    const out = ctx.siteOut;
+    if (!planHouse(state, ctx, colony, out)) {
+      explore(state, ctx, id, plan);
+      return;
+    }
+    a.siteX[id] = out[0];
+    a.siteY[id] = out[1];
+  }
+  const x = a.siteX[id];
+  const y = a.siteY[id];
+  if (a.x[id] === x && a.y[id] === y) {
+    startHere(ctx, id, Action.CRAFT);
+    plan.action = Action.CRAFT;
+    return;
+  }
+  const cell = nav.cellAt(x, y);
+  const onto = cell >= 0 && nav.reachable(cell);
+  const step = onto ? cell : nav.toward(x, y);
+  if (step >= 0 && moveTo(ctx, id, step, onto ? Action.CRAFT : Action.NONE)) {
+    plan.action = Action.MOVE;
+    plan.x = x;
+    plan.y = y;
+    return;
+  }
+  // No way there from here: another site next time.
+  a.siteX[id] = NO_SITE;
+  explore(state, ctx, id, plan);
+}
+
+/**
  * Building site (docs/design/06-ia.md, couche 3, simplified): a free reachable tile about two
  * tiles from the camp — the nearest structure in sight, else the nearest water — so that the
- * shelter, the workbench and the water end up together.
+ * shelter, the workbench and the water end up together. With `state`, a door tile where a house
+ * fits.
  * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../simulation.js').SimState | null} [state=null] - Given for a house.
  * @returns {number} Window cell, or -1.
  */
-export function chooseSite(ctx) {
+export function chooseSite(ctx, state = null) {
   const nav = ctx.nav;
   const n = nav.side * nav.side;
   let anchor = -1;
@@ -231,11 +311,12 @@ export function chooseSite(ctx) {
     if (!nav.buildable(i)) continue;
     const d = Math.max(Math.abs(nav.cellX(i) - ax), Math.abs(nav.cellY(i) - ay));
     if (d === 0 && !anchorFree) continue;
-    const score = Math.abs(d - 2) * 10 + nav.dist[i];
-    if (score < bestScore) {
-      bestScore = score;
-      best = i;
-    }
+    // A house keeps a little farther, its walls clear of the rest.
+    const score = Math.abs(d - (state === null ? 2 : HOUSE_DISTANCE)) * 10 + nav.dist[i];
+    if (score >= bestScore) continue;
+    if (state !== null && houseDir(state, ctx, nav.cellX(i), nav.cellY(i), null) < 0) continue;
+    bestScore = score;
+    best = i;
   }
   return best;
 }

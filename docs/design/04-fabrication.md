@@ -114,6 +114,17 @@ L'arbre du J7 devient atteignable (décision 0023, détail dans [14](14-economie
 - **Stations au camp** ; l'inventeur prend à la réserve les matériaux de la station qu'il sait faire et ceux de ses ingrédients.
 - **Mesures** (10 graines, 100 jours) : voir [11](11-feuille-de-route.md), J10.
 
+## Bâtir une maison (décision 0026)
+
+L'abri n'est plus une case mais une **maison** : un anneau de murs d'abri, une porte et des lits ([03](03-individu.md), « Le village »).
+
+- Recette : 8 bois + 4 fibres + 2 pierres, mains nues. L'ensemble d'ingrédients reste celui de l'abri, donc sa découverte ne change pas.
+- La maison se bâtit d'un coup, à la fin de la fabrication.
+  - Le bâtisseur se tient sur la case de la future porte.
+  - Les murs s'élèvent autour de lui dans la première orientation qui tient (porte au sud, au nord, à l'est, à l'ouest).
+  - Si rien ne tient (quelqu'un s'est mis sur un mur, une construction est apparue), il garde ses matériaux et cherche un autre site.
+- Les murs et la porte d'abri n'ont pas de recette propre : ils sont des pièces de la maison (`wall`, `door` dans `data/recipes.json`).
+
 ## Imitation
 
 Un individu qui voit un autre individu réaliser une recette (dans son rayon de perception, pendant toute la durée de fabrication) a 50 % de chances de l'apprendre, à force 0,6.

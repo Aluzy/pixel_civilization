@@ -6,6 +6,7 @@ import { ProjectKind } from './colony-store.js';
 import { stockPortions } from '../farming/food.js';
 import { sell, take } from '../economy/market.js';
 import { foundColony } from './migration.js';
+import { registerHouse } from './house.js';
 
 // Rules of collective work (docs/design/06-ia.md, couche 4): the blackboard is read and written
 // at the camp only; projects are split into tasks ("bring 10 wood"), reserved by members, and
@@ -370,7 +371,7 @@ export function onBuilt(state, ctx, id, code, x, y) {
   }
   const colony = state.colonies[c];
   if (ctx.shelterCodes[code] === 1) {
-    colony.addShelter(x, y);
+    registerHouse(ctx, colony, x, y);
     colony.sheltersBuilt++;
   } else if (ctx.catalog.structures[code - 1].kind === 'library') {
     colony.addLibrary(x, y, state.tick);

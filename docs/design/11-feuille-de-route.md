@@ -267,6 +267,52 @@ Réalisé :
   - ordre spatial et zone de défense ;
   - fonte de l'or en écus.
 
+### Mise à jour — Le village (`v0.14.0`)
+
+Demandée entre le J12 et le J13 (décision 0026) :
+
+- un abri est un cercle de murs avec une porte et une place par dormeur ;
+- deux individus ne se superposent pas ;
+- l'enceinte accueille toutes les habitations ;
+- les individus modifient durablement leur environnement ;
+- une baie récoltée ne repousse pas avant 3 jours ;
+- on dort la nuit, et les gardes veillent du haut des tours ;
+- il faut manger régulièrement pour rester en bonne santé.
+
+Réalisé :
+
+- **Mesures**, sur 10 graines et 150 jours :
+  - toutes les maisons de la première colonie sont dans son enceinte (19 à 29 maisons, 2 lits chacune), en rangées séparées par des allées ;
+  - l'enceinte (30 à 43 cases de côté) se ferme sur 9 graines sur 10, entre les jours 54 et 147 ;
+  - elle porte une tour à côté de chaque porte (deux tours sur deux de ces graines) ;
+  - aucune intrusion de prédateur ;
+  - jamais deux individus sur la même case (test sur 30 jours) ;
+  - 500 à 2 200 cases de sentier par partie ;
+  - au moins deux colonies sur 7 graines sur 10 ;
+  - population totale au jour 150 : 9 à 167 ;
+  - morts de faim ou de soif : 11 à 119 par partie en 150 jours.
+- **Tenu** :
+  - les sorties des J2 à J12 passent ;
+  - graines de démonstration : J3 4 ; J6 9 ; J9 et J10 2, 6 et 16 ; J11 2 et 4 ; J12 4 et 6.
+- **Assoupli**, et dit dans les tests :
+  - la sortie du J9 attend un plat sur 6 des 10 derniers jours (au lieu de chaque jour) ;
+  - la plus grande des trois parties dépasse 100 individus (au lieu de 300).
+  - Les nuits entières de sommeil, deux lits par maison et un village borné par son enceinte font plafonner chaque colonie vers 60 à 100 individus. La croissance passe désormais par l'essaimage.
+- **Ajouts** :
+  - maisons à murs, porte et lits ; plan du village ;
+  - une case par individu : attendre, se croiser, s'écarter, contourner ;
+  - sommeil la nuit ;
+  - repas menés à terme, santé liée aux repas réguliers ;
+  - baies à 3 jours, terre bâtie qui ne repousse plus, sentiers ;
+  - grande enceinte, une tour par porte, champs hors les murs ;
+  - essaimage plus tôt ;
+  - détail dans [03](03-individu.md), [02](02-monde.md), [06](06-ia.md), [16](16-guerre-et-forteresses.md) et la décision 0026.
+- **Reporté** :
+  - agrandir une enceinte pleine ;
+  - des maisons de tailles diverses ;
+  - l'usure des sentiers abandonnés ;
+  - les prédateurs qui occupent une case.
+
 ### J13 — Conflits (`v1.0.0`)
 
 - Incidents et rancunes, raids décidés par simulation mentale (butin, chances, pertes), alerte et défense, bonus des murs, butin, paix, absorption.

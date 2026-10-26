@@ -9,10 +9,14 @@ const WATER = 1;
  * Fake world from ASCII rows: "." land, "~" water, "m" mud, "b" berries (resource 1) on land.
  * Row 0 is y = 0; outside the drawing is land.
  * @param {string[]} rows
- * @returns {{ packedAt: (x: number, y: number) => number }}
+ * @returns {{ packedAt: (x: number, y: number) => number, lastWear: () => number,
+ *   lastOccupant: () => number }}
  */
 function worldFrom(rows) {
   return {
+    // Nobody stands anywhere, no trail.
+    lastWear: () => 0,
+    lastOccupant: () => -1,
     packedAt(x, y) {
       const ch = rows[y]?.[x] ?? '.';
       if (ch === '~') return WATER;

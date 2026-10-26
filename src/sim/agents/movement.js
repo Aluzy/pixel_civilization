@@ -34,6 +34,7 @@ export function moveTo(ctx, id, cell, then) {
   if (steps === 0) return false;
   agents.pathLength[id] = steps;
   agents.pathIndex[id] = 0;
+  agents.blocked[id] = 0;
   agents.action[id] = Action.MOVE;
   agents.thenAction[id] = then;
   agents.actionX[id] = ctx.nav.cellX(cell);
@@ -79,6 +80,15 @@ export function goToRemembered(state, ctx, id, subjects, plan) {
     const tx = target[0];
     const ty = target[1];
     const gap = Math.max(Math.abs(tx - agents.x[id]), Math.abs(ty - agents.y[id]));
+    if (gap <= EXPLORE_REACHED && ctx.nav.lastHeld) {
+      // There, but others stand on every spot: it waits its turn.
+      startHere(ctx, id, Action.IDLE);
+      plan.action = Action.IDLE;
+      plan.x = tx;
+      plan.y = ty;
+      plan.note = PlanNote.REMEMBERED;
+      return true;
+    }
     if (gap <= EXPLORE_REACHED) {
       // Standing where it believed the place was, and it is not in sight: the memory failed.
       memoryEvent(state, ctx, id, EventType.NOT_FOUND, tx, ty, memory.subject[i]);
@@ -91,6 +101,13 @@ export function goToRemembered(state, ctx, id, subjects, plan) {
       plan.x = tx;
       plan.y = ty;
       plan.note = PlanNote.REMEMBERED;
+      return true;
+    }
+    // Shut in for now (a sleeper in the doorway), or held up by a crowd: it waits, the belief
+    // still good.
+    if (!ctx.nav.canMove() || ctx.nav.heldCount > 0) {
+      startHere(ctx, id, Action.IDLE);
+      plan.action = Action.IDLE;
       return true;
     }
     // No way to get closer from here: the belief is useless, drop it.

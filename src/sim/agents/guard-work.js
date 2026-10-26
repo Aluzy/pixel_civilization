@@ -2,7 +2,8 @@ import { atCamp, campOf } from '../colony/colony-logic.js';
 import { Action } from './action-types.js';
 import { PlanNote } from './journal.js';
 import { approach, explore, moveTo, startHere } from './movement.js';
-import { carriesKind } from './equipment.js';
+import { carriesKind, inShelter } from './equipment.js';
+import { goHome, shelterInSight } from './behaviors.js';
 import { perceptionRadius } from './perception.js';
 import { pursue } from './work.js';
 
@@ -10,7 +11,7 @@ import { pursue } from './work.js';
 // afraid, keep watch over the camp at night, hunt a known den by day.
 
 /**
- * Takes cover: into the nearest shelter of its colony, else among the others at the camp.
+ * Takes cover: into a free bed of a house, else among the others at the camp.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
  * @param {number} id
@@ -25,32 +26,21 @@ export function hideBehaviour(state, ctx, id, plan) {
     startHere(ctx, id, Action.IDLE);
     return;
   }
-  let best = -1;
-  let bestD = Infinity;
-  for (let i = 0; i < colony.shelterCount; i++) {
-    const d = Math.max(
-      Math.abs(colony.shelterX[i] - a.x[id]),
-      Math.abs(colony.shelterY[i] - a.y[id]),
-    );
-    if (d < bestD) {
-      bestD = d;
-      best = i;
-    }
+  if (inShelter(state, ctx, a.x[id], a.y[id])) {
+    startHere(ctx, id, Action.IDLE);
+    return;
   }
-  if (best >= 0) {
-    const x = colony.shelterX[best];
-    const y = colony.shelterY[best];
-    if (a.x[id] === x && a.y[id] === y) {
-      startHere(ctx, id, Action.IDLE);
-      return;
-    }
-    const cell = ctx.nav.cellAt(x, y);
-    if (cell >= 0 && ctx.nav.reachable(cell) && moveTo(ctx, id, cell, Action.IDLE)) {
-      plan.action = Action.MOVE;
-      plan.x = x;
-      plan.y = y;
-      return;
-    }
+  // Into a free bed in sight, else towards one of the colony's beds.
+  const cell = shelterInSight(ctx);
+  if (cell >= 0 && moveTo(ctx, id, cell, Action.IDLE)) {
+    plan.action = Action.MOVE;
+    plan.x = ctx.nav.cellX(cell);
+    plan.y = ctx.nav.cellY(cell);
+    return;
+  }
+  if (goHome(ctx, colony, id, plan)) {
+    plan.note = PlanNote.HIDING;
+    return;
   }
   if (atCamp(ctx, colony, id)) startHere(ctx, id, Action.IDLE);
   else if (!approach(ctx, id, colony.campX, colony.campY, Action.IDLE, plan)) {
@@ -92,28 +82,58 @@ export function guardBehaviour(state, ctx, id, plan) {
       if (approach(ctx, id, t.x[p], t.y[p], Action.ATTACK, plan)) return;
     }
   }
-  // With a tower on the wall, the watch is kept from its top.
-  if (colony.hasTower) {
-    if (a.x[id] === colony.towerX && a.y[id] === colony.towerY) {
-      startHere(ctx, id, Action.IDLE);
-      plan.action = Action.IDLE;
-      return;
-    }
-    const cell = ctx.nav.cellAt(colony.towerX, colony.towerY);
-    if (cell >= 0 && ctx.nav.reachable(cell) && moveTo(ctx, id, cell, Action.IDLE)) {
-      plan.action = Action.MOVE;
-      plan.x = colony.towerX;
-      plan.y = colony.towerY;
-      return;
-    }
-    if (approach(ctx, id, colony.towerX, colony.towerY, Action.IDLE, plan)) return;
-  }
+  // With towers on the wall, the watch is kept from the top of the nearest free one.
+  if (climbTower(ctx, colony, id, plan)) return;
   // A round: a point on a ring around the camp, drawn from the agent's own stream.
   const ring = ctx.balance.colony.campRadius + s.guardRing;
   const rng = a.rng[id];
   const x = colony.campX + rng.int(-ring, ring);
   const y = colony.campY + rng.int(-ring, ring);
   if (!approach(ctx, id, x, y, Action.IDLE, plan)) startHere(ctx, id, Action.IDLE);
+}
+
+/**
+ * Up the nearest tower of the colony nobody stands on (in sight), or towards the nearest tower.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} colony
+ * @param {number} id
+ * @param {import('./movement.js').Plan} plan
+ * @returns {boolean} False if the colony has no tower to climb.
+ */
+function climbTower(ctx, colony, id, plan) {
+  const a = ctx.agents;
+  const nav = ctx.nav;
+  let best = -1;
+  let bestD = Infinity;
+  for (let i = 0; i < colony.towerCount; i++) {
+    if ((colony.towersBuilt & (1 << i)) === 0) continue;
+    const x = colony.towerX[i];
+    const y = colony.towerY[i];
+    if (a.x[id] === x && a.y[id] === y) {
+      startHere(ctx, id, Action.IDLE);
+      plan.action = Action.IDLE;
+      return true;
+    }
+    const cell = nav.cellAt(x, y);
+    // Another guard already up there: the next one.
+    if (cell >= 0 && !nav.reachable(cell)) continue;
+    const d = Math.max(Math.abs(x - a.x[id]), Math.abs(y - a.y[id]));
+    if (d < bestD) {
+      bestD = d;
+      best = i;
+    }
+  }
+  if (best < 0) return false;
+  const x = colony.towerX[best];
+  const y = colony.towerY[best];
+  const cell = nav.cellAt(x, y);
+  if (cell >= 0 && moveTo(ctx, id, cell, Action.IDLE)) {
+    plan.action = Action.MOVE;
+    plan.x = x;
+    plan.y = y;
+    return true;
+  }
+  return approach(ctx, id, x, y, Action.IDLE, plan);
 }
 
 /**

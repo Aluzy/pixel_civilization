@@ -222,6 +222,7 @@ export function planGoal(state, ctx, id, goal, plan) {
         return;
       }
       if (goToRemembered(state, ctx, id, ctx.waterSubjects, plan)) return;
+      if (askBoard(state, ctx, id, ctx.waterSubjects, plan)) return;
       search(state, ctx, id, WATER_SUBJECT, plan);
       return;
     }
@@ -332,22 +333,71 @@ export function eatBehaviour(state, ctx, id, plan) {
     }
   }
   if (goToRemembered(state, ctx, id, ctx.edible, plan)) return;
+  if (askBoard(state, ctx, id, ctx.edible, plan)) return;
   search(state, ctx, id, ctx.firstEdible, plan);
 }
 
 /**
- * Cheapest reachable shelter tile in sight, or -1.
+ * A member who knows no place for a need asks the colony before wandering: back to the camp
+ * (not far), where the blackboard tells it where others found it.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {Uint8Array} subjects
+ * @param {import('./movement.js').Plan} plan
+ * @returns {boolean} False if it is no member, too far, or the blackboard knows nothing either.
+ */
+function askBoard(state, ctx, id, subjects, plan) {
+  const colony = campOf(state, ctx, id);
+  if (colony === null) return false;
+  const a = ctx.agents;
+  if (!atCamp(ctx, colony, id)) {
+    const far = Math.max(Math.abs(colony.campX - a.x[id]), Math.abs(colony.campY - a.y[id]));
+    if (far > ctx.balance.colony.homeRange) return false;
+    if (!goToCamp(ctx, colony, id, Action.NONE, plan)) return false;
+    plan.note = PlanNote.REMEMBERED;
+    return true;
+  }
+  shareBoard(state, ctx, colony, id);
+  return goToRemembered(state, ctx, id, subjects, plan);
+}
+
+/**
+ * Cheapest free bed in sight (the deeper one of its house), or -1.
  * @param {import('../simulation.js').SimContext} ctx
  * @returns {number}
  */
-function shelterInSight(ctx) {
+export function shelterInSight(ctx) {
   let best = -1;
   for (let code = 1; code < ctx.shelterCodes.length; code++) {
     if (ctx.shelterCodes[code] !== 1) continue;
     const cell = ctx.nav.nearestStructure(code);
     if (cell >= 0 && (best < 0 || ctx.nav.dist[cell] < ctx.nav.dist[best])) best = cell;
   }
-  return best;
+  return best < 0 ? -1 : deeperBed(ctx, best);
+}
+
+/**
+ * The free bed behind `cell` in the same house, if any: the first sleeper takes the far bed, so
+ * that the near one stays free for the next.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} cell
+ * @returns {number}
+ */
+function deeperBed(ctx, cell) {
+  const nav = ctx.nav;
+  const side = nav.side;
+  const col = cell % side;
+  const row = (cell - col) / side;
+  for (let k = 0; k < 4; k++) {
+    const nc = col + (k === 0 ? 1 : k === 1 ? -1 : 0);
+    const nr = row + (k === 2 ? 1 : k === 3 ? -1 : 0);
+    if (nc < 0 || nr < 0 || nc >= side || nr >= side) continue;
+    const n = nr * side + nc;
+    if (ctx.shelterCodes[nav.structure[n]] !== 1 || !nav.reachable(n)) continue;
+    if (nav.dist[n] > nav.dist[cell]) return n;
+  }
+  return cell;
 }
 
 /**
@@ -387,7 +437,7 @@ function goToSleep(state, ctx, id, plan) {
     startHere(ctx, id, Action.SLEEP);
     return;
   }
-  if (colony && colony.shelterCount > 0 && goHome(ctx, colony, id, plan)) return;
+  if (colony && colony.bedCount > 0 && goHome(ctx, colony, id, plan)) return;
   const memory = agents.memory[id];
   const i = memory.nearest(ctx.shelterSubjects, agents.x[id], agents.y[id]);
   const range = ctx.balance.ai.shelterRange;
@@ -401,35 +451,33 @@ function goToSleep(state, ctx, id, plan) {
 }
 
 /**
- * Heads for the nearest shelter of the colony, if within `homeRange`, to sleep there.
+ * Heads for the nearest bed of the colony out of sight, if within `homeRange`, to sleep there
+ * (the beds in sight are all taken, or there are none).
  * @param {import('../simulation.js').SimContext} ctx
  * @param {import('../colony/colony-store.js').Colony} colony
  * @param {number} id
  * @param {import('./movement.js').Plan} plan
  * @returns {boolean}
  */
-function goHome(ctx, colony, id, plan) {
+export function goHome(ctx, colony, id, plan) {
   const a = ctx.agents;
+  const nav = ctx.nav;
   let best = -1;
   let bestD = Infinity;
-  for (let k = 0; k < colony.shelterCount; k++) {
-    const d = Math.max(
-      Math.abs(colony.shelterX[k] - a.x[id]),
-      Math.abs(colony.shelterY[k] - a.y[id]),
-    );
+  for (let k = 0; k < colony.bedCount; k++) {
+    if (nav.cellAt(colony.bedX[k], colony.bedY[k]) >= 0) continue;
+    const d = Math.max(Math.abs(colony.bedX[k] - a.x[id]), Math.abs(colony.bedY[k] - a.y[id]));
     if (d < bestD) {
       bestD = d;
       best = k;
     }
   }
   if (best < 0 || bestD > ctx.balance.colony.homeRange) return false;
-  const cell = ctx.nav.toward(colony.shelterX[best], colony.shelterY[best]);
-  if (cell < 0 || !moveTo(ctx, id, cell, bestD <= ctx.nav.radius ? Action.SLEEP : Action.NONE)) {
-    return false;
-  }
+  const cell = nav.toward(colony.bedX[best], colony.bedY[best]);
+  if (cell < 0 || !moveTo(ctx, id, cell, Action.NONE)) return false;
   plan.action = Action.MOVE;
-  plan.x = colony.shelterX[best];
-  plan.y = colony.shelterY[best];
+  plan.x = colony.bedX[best];
+  plan.y = colony.bedY[best];
   plan.note = PlanNote.SHELTER;
   return true;
 }

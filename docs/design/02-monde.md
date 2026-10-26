@@ -70,6 +70,21 @@ Au J5, les baies sont plus nombreuses (forêt : seuil 0,64 et densité 0,35 au l
 
 Implémentation actuelle (J2) : une case renouvelable vidée repousse **au même endroit** après `regrowTicks` cycles (`data/resources.json` : baies 2 jours, fibre 3 jours, bois 10 jours), avec une quantité tirée dans sa plage. La propagation vers les cases voisines viendra avec l'agriculture.
 
+Au village (décision 0026) :
+
+- une baie récoltée jusqu'au bout ne repousse pas avant **3 jours** ;
+- rien ne repousse sous une construction (maison, mur) : la terre bâtie est changée pour de bon.
+
+## Terre transformée : sentiers (décision 0026)
+
+Les individus modifient durablement le monde : ils bâtissent, défrichent, cultivent, et leurs pas tracent des chemins.
+
+- Chaque case compte les passages (`wear` dans les blocs, `balance.trails`).
+- Au 60e passage, elle devient un **sentier**, pour de bon :
+  - on y marche 1,25 fois plus vite, et la recherche de chemin le préfère ;
+  - les allées du village, les portes et les chemins vers l'eau se creusent d'eux-mêmes.
+- Le sentier se voit sur la carte : le sol prend une teinte plus terreuse.
+
 ## Cycle jour/nuit
 
 - Un jour dure 1 200 cycles (120 s à ×1, à 10 cycles/s).

@@ -1,3 +1,4 @@
+import { insideAny } from '../colony/fortress.js';
 import { noteDelivery } from '../agents/experience.js';
 import { EventType } from '../core/events.js';
 import { buy, sell, take } from '../economy/market.js';
@@ -376,7 +377,8 @@ export function paysFor(ctx, id, r) {
 }
 
 /**
- * True if a tile can become a plot: plantable biome, nothing on it, water within reach.
+ * True if a tile can become a plot: plantable biome, nothing on it, outside any enclosure, water
+ * within reach.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
  * @param {number} x
@@ -388,6 +390,8 @@ export function tillable(state, ctx, x, y) {
   if (p >>> PACK.STRUCTURE_SHIFT !== 0) return false;
   if (((p >> PACK.RESOURCE_SHIFT) & PACK.MASK) !== 0) return false;
   if (ctx.plantBiome[p & PACK.MASK] !== 1) return false;
+  // Fields lie outside the walls: inside is kept for the houses.
+  if (insideAny(ctx.colonies, x, y)) return false;
   const reach = ctx.balance.agriculture.waterReach;
   for (let dy = -reach; dy <= reach; dy++) {
     for (let dx = -reach; dx <= reach; dx++) {
@@ -398,7 +402,8 @@ export function tillable(state, ctx, x, y) {
 }
 
 /**
- * Where to make a new plot, among the tiles the agent sees within `farmRadius` of the camp: next
+ * Where to make a new plot, among the tiles the agent sees within `farmRadius` of the camp (of the
+ * walls, for a colony with an enclosure): next
  * to other plots if possible (a field), else the closest to the camp. Writes x, y in
  * `ctx.recallTarget`.
  * @param {import('../simulation.js').SimState} state
@@ -417,8 +422,9 @@ export function chooseTillSite(state, ctx, colony) {
     if (!nav.reachable(i)) continue;
     const x = nav.cellX(i);
     const y = nav.cellY(i);
-    const d = Math.max(Math.abs(x - colony.campX), Math.abs(y - colony.campY));
-    if (d > far || d < keep || !tillable(state, ctx, x, y)) continue;
+    const d = colony.fieldDistance(x, y);
+    const core = Math.max(Math.abs(x - colony.campX), Math.abs(y - colony.campY));
+    if (d > far || core < keep || !tillable(state, ctx, x, y)) continue;
     let plots = 0;
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {

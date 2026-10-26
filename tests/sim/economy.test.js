@@ -219,6 +219,8 @@ describe('counter', () => {
     const a = sim.agents;
     const colony = sim.state.colonies[0];
     colony.addShelter(a.x[0], a.y[0]);
+    colony.addBed(a.x[0] + 5, a.y[0]);
+    colony.addBed(a.x[0] + 6, a.y[0]);
     a.pantrySeen[0] = 1000;
     a.addCarried(0, good('fiber'), 3);
     a.addCarried(0, good('berries'), 10);

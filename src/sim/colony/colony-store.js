@@ -9,7 +9,7 @@ export const ProjectKind = Object.freeze({
   FIELD: 4, // Gather berries, then plant them as bushes near the camp.
   TREASURE: 5, // Gather the materials of a treasure room, then build it at the camp.
   ENCLOSURE: 6, // Gather wood (and clay for the gate), then build the wall segment by segment.
-  TOWER: 7, // Raise a tower on the wall, opposite the gate.
+  TOWER: 7, // Raise a tower on the wall, beside a gate (one project per tower).
 });
 
 /** Most gates of an enclosure (one per side). */
@@ -142,6 +142,10 @@ export class Colony {
     this.shelterY = new Int32Array(256);
     this.shelterCount = 0;
     this.sheltersBuilt = 0;
+    // The beds inside the houses: one sleeper each.
+    this.bedX = new Int32Array(1024);
+    this.bedY = new Int32Array(1024);
+    this.bedCount = 0;
     // Places deposited by members (one per subject and area, the latest sighting wins).
     const n = cfg.boardCapacity;
     this.boardSubject = new Int16Array(n);
@@ -280,9 +284,11 @@ export class Colony {
     this.gatesBuilt = 0;
     /** True once every gate stands (then the wall goes up). */
     this.gateBuilt = false;
-    this.towerX = 0;
-    this.towerY = 0;
-    this.hasTower = false;
+    /** Towers: one beside each gate, on the wall; bit i set once tower i stands. */
+    this.towerX = new Int32Array(MAX_GATES);
+    this.towerY = new Int32Array(MAX_GATES);
+    this.towerCount = 0;
+    this.towersBuilt = 0;
     this.encOpen = 0;
     this.encTotal = 0;
     this.encTick = 0;
@@ -303,11 +309,61 @@ export class Colony {
   }
 
   /**
-   * @param {number} bedsPerShelter
-   * @returns {number}
+   * How far (x, y) lies from the colony's home, for its fields: from the camp, or from its walls
+   * once it has an enclosure (the fields lie around it).
+   * @param {number} x
+   * @param {number} y
+   * @returns {number} Chebyshev distance.
    */
-  beds(bedsPerShelter) {
-    return this.shelterCount * bedsPerShelter;
+  fieldDistance(x, y) {
+    if (this.encState === Enclosure.NONE) {
+      return Math.max(Math.abs(x - this.campX), Math.abs(y - this.campY));
+    }
+    const dx = x < this.encX0 ? this.encX0 - x : x > this.encX1 ? x - this.encX1 : 0;
+    const dy = y < this.encY0 ? this.encY0 - y : y > this.encY1 ? y - this.encY1 : 0;
+    return Math.max(dx, dy);
+  }
+
+  /** @returns {boolean} True once a tower stands on the wall. */
+  get hasTower() {
+    return this.towersBuilt !== 0;
+  }
+
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @returns {number} Index of the tower planned on (x, y), or -1.
+   */
+  towerAt(x, y) {
+    for (let i = 0; i < this.towerCount; i++) {
+      if (this.towerX[i] === x && this.towerY[i] === y) return i;
+    }
+    return -1;
+  }
+
+  /** @returns {number} Beds in the colony's houses. */
+  beds() {
+    return this.bedCount;
+  }
+
+  /**
+   * A house, by its door; the first one sets the camp, at (campX, campY) before its door.
+   * @param {number} x
+   * @param {number} y
+   * @param {number} [campX=x]
+   * @param {number} [campY=y]
+   * @returns {void}
+   */
+  addShelter(x, y, campX = x, campY = y) {
+    if (this.shelterCount >= this.shelterX.length) return;
+    this.shelterX[this.shelterCount] = x;
+    this.shelterY[this.shelterCount] = y;
+    this.shelterCount++;
+    if (!this.hasCamp) {
+      this.hasCamp = true;
+      this.campX = campX;
+      this.campY = campY;
+    }
   }
 
   /**
@@ -315,16 +371,11 @@ export class Colony {
    * @param {number} y
    * @returns {void}
    */
-  addShelter(x, y) {
-    if (this.shelterCount >= this.shelterX.length) return;
-    this.shelterX[this.shelterCount] = x;
-    this.shelterY[this.shelterCount] = y;
-    this.shelterCount++;
-    if (!this.hasCamp) {
-      this.hasCamp = true;
-      this.campX = x;
-      this.campY = y;
-    }
+  addBed(x, y) {
+    if (this.bedCount >= this.bedX.length) return;
+    this.bedX[this.bedCount] = x;
+    this.bedY[this.bedCount] = y;
+    this.bedCount++;
   }
 
   /**
@@ -453,6 +504,8 @@ export class Colony {
     h.uint32(this.shelterCount).uint32(this.sheltersBuilt);
     h.typedArray(this.shelterX.subarray(0, this.shelterCount));
     h.typedArray(this.shelterY.subarray(0, this.shelterCount));
+    h.uint32(this.bedCount).typedArray(this.bedX.subarray(0, this.bedCount));
+    h.typedArray(this.bedY.subarray(0, this.bedCount));
     const n = this.boardCount;
     h.uint32(n)
       .typedArray(this.boardSubject.subarray(0, n))
@@ -501,9 +554,8 @@ export class Colony {
     h.uint32(this.encX0).uint32(this.encY0).uint32(this.encX1).uint32(this.encY1);
     h.typedArray(this.gateX).typedArray(this.gateY).uint32(this.gateCount);
     h.uint32(this.gatesBuilt).uint32(this.gateBuilt ? 1 : 0);
-    h.uint32(this.towerX)
-      .uint32(this.towerY)
-      .uint32(this.hasTower ? 1 : 0);
+    h.typedArray(this.towerX).typedArray(this.towerY);
+    h.uint32(this.towerCount).uint32(this.towersBuilt);
     h.uint32(this.encOpen).uint32(this.encTotal).uint32(this.encTick);
     h.uint32(this.encClosedTick).uint32(this.breaches).uint32(this.gleaning);
   }

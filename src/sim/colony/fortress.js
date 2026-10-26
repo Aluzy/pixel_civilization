@@ -4,9 +4,10 @@ import { Enclosure, ProjectKind } from './colony-store.js';
 
 // Treasures and fortresses (docs/design/16-guerre-et-forteresses.md, « Trésors et forteresses »):
 // a colony keeps its gold, gems and écus in a treasure room; when the danger felt at the camp or
-// the worth of the treasure calls for it, it rings the treasure room and its shelters with a wall
-// (a rectangle one tile beyond its buildings) with gates, built segment by segment, then raises a
-// tower on it. Walls stop everyone, gates let agents through but not predators.
+// the worth of the treasure calls for it, it rings the treasure room and all its houses with a
+// wall (a rectangle with room inside for the houses to come) with gates, built segment by segment,
+// then raises a tower beside each gate. Walls stop everyone, gates let agents through but not
+// predators.
 
 /** Sides of the ring, for the gates. */
 const Side = Object.freeze({ NORTH: 0, SOUTH: 1, WEST: 2, EAST: 3 });
@@ -130,10 +131,12 @@ function sideMiddle(colony, side, out) {
 }
 
 /**
- * The colony draws its enclosure: the bounding box of its treasure room and of the shelters,
- * stations and libraries within `radius` of it, widened by the margin (1 to 3 tiles) whose ring
- * crosses the fewest buildings; a gate in the middle of each side where one can stand, a tower
- * beside the first gate. False if it would be too large.
+ * The colony draws its enclosure (docs/design/16-guerre-et-forteresses.md, « Tracé »): around its
+ * treasure room, all its houses, and the stations and libraries within `radius` of the treasure,
+ * then grown, a side at a time, until there is room inside for the houses of `homesFor` members
+ * (no side beyond `maxSide`); widened by the margin (1 to 3 tiles) whose ring crosses the fewest
+ * buildings. A gate in the middle of each side where one can stand, a tower beside each gate.
+ * False if even the buildings alone would not fit.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
  * @param {import('./colony-store.js').Colony} colony
@@ -143,23 +146,44 @@ export function planEnclosure(state, ctx, colony) {
   const cfg = ctx.balance.fortress;
   const tx = colony.treasureX;
   const ty = colony.treasureY;
-  let minX = tx;
-  let maxX = tx;
-  let minY = ty;
-  let maxY = ty;
+  const box = ctx.encBox;
+  box[0] = box[2] = tx;
+  box[1] = box[3] = ty;
   const kinds = ctx.catalog.structures;
   for (let dy = -cfg.radius; dy <= cfg.radius; dy++) {
     for (let dx = -cfg.radius; dx <= cfg.radius; dx++) {
       const code = state.world.packedAt(tx + dx, ty + dy) >>> PACK.STRUCTURE_SHIFT;
       if (code === 0) continue;
       const kind = kinds[code - 1].kind;
-      if (kind !== 'shelter' && kind !== 'station' && kind !== 'library') continue;
-      if (tx + dx < minX) minX = tx + dx;
-      if (tx + dx > maxX) maxX = tx + dx;
-      if (ty + dy < minY) minY = ty + dy;
-      if (ty + dy > maxY) maxY = ty + dy;
+      if (kind !== 'station' && kind !== 'library') continue;
+      cover(box, tx + dx, ty + dy, 0);
     }
   }
+  // Every house of the colony, walls included (a bed and the tiles around it).
+  for (let k = 0; k < colony.bedCount; k++) cover(box, colony.bedX[k], colony.bedY[k], 1);
+  const limit = cfg.maxSide - 2 * cfg.margin[1];
+  if (box[2] - box[0] + 1 > limit || box[3] - box[1] + 1 > limit) return false;
+  // Room for the houses still to come: each takes its footprint and a lane.
+  const perHouse = (ctx.houseSize[0] + 1) * (ctx.houseSize[1] + 1);
+  const houses = Math.ceil(cfg.homesFor / ctx.bedsPerHouse) - colony.shelterCount;
+  const target = (box[2] - box[0] + 1) * (box[3] - box[1] + 1) + Math.max(0, houses) * perHouse;
+  for (
+    let side = 0;
+    (box[2] - box[0] + 1) * (box[3] - box[1] + 1) < target;
+    side = (side + 1) % 4
+  ) {
+    const wide = box[2] - box[0] + 1 >= limit;
+    const tall = box[3] - box[1] + 1 >= limit;
+    if (wide && tall) break;
+    if (side === 0 && !wide) box[0]--;
+    else if (side === 1 && !tall) box[1]--;
+    else if (side === 2 && !wide) box[2]++;
+    else if (side === 3 && !tall) box[3]++;
+  }
+  const minX = box[0];
+  const minY = box[1];
+  const maxX = box[2];
+  const maxY = box[3];
   let best = -1;
   let bestBlocked = Infinity;
   const out = ctx.recallTarget;
@@ -190,7 +214,8 @@ export function planEnclosure(state, ctx, colony) {
   colony.gateCount = 0;
   colony.gatesBuilt = 0;
   colony.gateBuilt = false;
-  colony.hasTower = false;
+  colony.towerCount = 0;
+  colony.towersBuilt = 0;
   colony.breaches = 0;
   // A gate in the middle of each side where one can stand, so that no trip goes far round.
   for (let side = 0; side < 4; side++) {
@@ -206,16 +231,22 @@ export function planEnclosure(state, ctx, colony) {
     colony.gateY[0] = out[1];
     colony.gateCount = 1;
   }
-  // The tower beside the first gate, on the wall: climbed from inside, it watches the way in.
+  // A tower beside each gate, on the wall: climbed from inside, it watches the way in.
   // (A corner could not be climbed: both its neighbours on the ring are walls.)
-  const gx = colony.gateX[0];
-  const gy = colony.gateY[0];
-  const along = gx === colony.encX0 || gx === colony.encX1;
-  colony.towerX = along ? gx : gx + 1;
-  colony.towerY = along ? gy + 1 : gy;
-  if (!standable(state, ctx, colony.towerX, colony.towerY)) {
-    colony.towerX = along ? gx : gx - 1;
-    colony.towerY = along ? gy - 1 : gy;
+  for (let i = 0; i < colony.gateCount; i++) {
+    const gx = colony.gateX[i];
+    const gy = colony.gateY[i];
+    const along = gx === colony.encX0 || gx === colony.encX1;
+    let x = along ? gx : gx + 1;
+    let y = along ? gy + 1 : gy;
+    if (!standable(state, ctx, x, y)) {
+      x = along ? gx : gx - 1;
+      y = along ? gy - 1 : gy;
+      if (!standable(state, ctx, x, y)) continue;
+    }
+    colony.towerX[colony.towerCount] = x;
+    colony.towerY[colony.towerCount] = y;
+    colony.towerCount++;
   }
   colony.encTotal = ringLength(colony.encX0, colony.encY0, colony.encX1, colony.encY1);
   colony.encOpen = countOpen(state, ctx, colony);
@@ -229,6 +260,21 @@ export function planEnclosure(state, ctx, colony) {
     colony.danger >= cfg.dangerLevel ? 0 : 1,
   );
   return true;
+}
+
+/**
+ * Grows the box x0, y0, x1, y1 to cover (x, y) and the tiles within `r` of it.
+ * @param {Int32Array} box
+ * @param {number} x
+ * @param {number} y
+ * @param {number} r
+ * @returns {void}
+ */
+function cover(box, x, y, r) {
+  if (x - r < box[0]) box[0] = x - r;
+  if (y - r < box[1]) box[1] = y - r;
+  if (x + r > box[2]) box[2] = x + r;
+  if (y + r > box[3]) box[3] = y + r;
 }
 
 /**
@@ -288,16 +334,26 @@ export function countOpen(state, ctx, colony) {
  * @returns {boolean} False if nothing is left to build.
  */
 export function nextSegment(state, ctx, colony, project, id, out) {
-  if (project.kind === ProjectKind.TOWER) {
-    out[0] = colony.towerX;
-    out[1] = colony.towerY;
-    const code = state.world.packedAt(out[0], out[1]) >>> PACK.STRUCTURE_SHIFT;
-    return code === ctx.wallCode;
-  }
   const a = ctx.agents;
   const x = a.x[id];
   const y = a.y[id];
   let bestD = Infinity;
+  if (project.kind === ProjectKind.TOWER) {
+    // The nearest tower still to raise (its wall segment stands).
+    for (let i = 0; i < colony.towerCount; i++) {
+      if ((colony.towersBuilt & (1 << i)) !== 0) continue;
+      const tx = colony.towerX[i];
+      const ty = colony.towerY[i];
+      if (state.world.packedAt(tx, ty) >>> PACK.STRUCTURE_SHIFT !== ctx.wallCode) continue;
+      const d = Math.max(Math.abs(tx - x), Math.abs(ty - y));
+      if (d < bestD) {
+        bestD = d;
+        out[0] = tx;
+        out[1] = ty;
+      }
+    }
+    return bestD !== Infinity;
+  }
   if (!colony.gateBuilt) {
     // The gates first, the nearest one.
     for (let i = 0; i < colony.gateCount; i++) {
@@ -386,7 +442,8 @@ export function buildSegment(state, ctx, id) {
   const code = recipe.output;
   const here = state.world.packedAt(x, y) >>> PACK.STRUCTURE_SHIFT;
   if (code === ctx.towerCode) {
-    if (x !== colony.towerX || y !== colony.towerY || here !== ctx.wallCode) return false;
+    const t = colony.towerAt(x, y);
+    if (t < 0 || (colony.towersBuilt & (1 << t)) !== 0 || here !== ctx.wallCode) return false;
   } else {
     if (!colony.onRing(x, y) || !openTile(state, ctx, x, y)) return false;
     const gate = colony.gateAt(x, y);
@@ -414,7 +471,7 @@ export function buildSegment(state, ctx, id) {
   const slot = a.taskProject[id];
   const project = slot >= 0 ? colony.projects[slot] : null;
   if (code === ctx.towerCode) {
-    colony.hasTower = true;
+    colony.towersBuilt |= 1 << colony.towerAt(x, y);
     state.events.push(state.tick, EventType.BUILT, id, x, y, r);
     if (project) completeProject(state, ctx, colony, project, id, x, y);
     return true;
@@ -502,6 +559,18 @@ export function noteBreach(state, px, py, x, y) {
     if (colony.encState !== Enclosure.CLOSED) continue;
     if (colony.inside(x, y) && !colony.inside(px, py)) colony.breaches++;
   }
+}
+
+/**
+ * True if (x, y) is inside an enclosure, planned or closed.
+ * @param {import('./colony-store.js').Colony[]} colonies
+ * @param {number} x
+ * @param {number} y
+ * @returns {boolean}
+ */
+export function insideAny(colonies, x, y) {
+  for (const colony of colonies) if (colony.inside(x, y)) return true;
+  return false;
 }
 
 /**

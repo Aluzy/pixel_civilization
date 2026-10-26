@@ -417,8 +417,17 @@ export function decisionSystem(state, ctx) {
     let goal = scoreGoals(ctx.goals, input, current, scores, a.rng[id], favoured, bonus, weights);
     // Exhaustion overrides choice: the body falls asleep.
     if (a.fatigue[id] >= critical) goal = ctx.goalIndex.sleep;
+    // Night is for sleeping: all but a guard on watch, one who flees, one who goes to drink or
+    // eat first.
+    const watch =
+      goal === ctx.goalIndex.guard ||
+      goal === ctx.goalIndex.flee ||
+      goal === ctx.goalIndex.drink ||
+      goal === ctx.goalIndex.eat;
+    if (ctx.dark && !watch && !starving(ctx, id)) goal = ctx.goalIndex.sleep;
 
-    const idle = a.action[id] === Action.NONE;
+    // Resting is no plan: one who stands idle looks again (the way may be free now).
+    const idle = a.action[id] === Action.NONE || a.action[id] === Action.IDLE;
     if (goal === current && !idle && a.needsDecision[id] === 0) continue;
     a.needsDecision[id] = 0;
     if (goal !== current) a.goalSince[id] = state.tick;

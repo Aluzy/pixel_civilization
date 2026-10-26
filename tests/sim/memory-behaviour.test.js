@@ -35,11 +35,12 @@ describe('memory in play', () => {
     expect(drift).toBeLessThanOrEqual(balance.memory.maxBlur);
   });
 
-  // Seed 2 tells the J3 story: an individual forgets a place, looks for it from a blurred memory,
+  // Seed 4 tells the J3 story: an individual forgets a place, looks for it from a blurred memory,
   // misses it ("not found"), then rediscovers it. (The seed changes when behaviour does: seed 20
-  // told it until J6, 16 until J8, 10 until J9, 25 until J10, 1 until J11, 27 until J12.)
-  it('forgets a place, fails to find it, then rediscovers it (J3 exit, seed 2)', async () => {
-    const sim = new Simulation({ seed: 2, balance });
+  // told it until J6, 16 until J8, 10 until J9, 25 until J10, 1 until J11, 27 until J12, 2 until
+  // the village.)
+  it('forgets a place, fails to find it, then rediscovers it (J3 exit, seed 4)', async () => {
+    const sim = new Simulation({ seed: 4, balance });
     // The log keeps only the latest events: gather them as time goes by.
     const events = [];
     const slice = 100;

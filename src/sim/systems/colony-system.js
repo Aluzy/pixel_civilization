@@ -41,14 +41,19 @@ export function colonySystem(state, ctx) {
     let building = 0;
     for (const p of colony.projects) if (p.kind === ProjectKind.SHELTER) building++;
     const atOnce = 1 + Math.floor(colony.members / cfg.membersPerShelterProject);
-    const missingBeds = colony.members + 1 - colony.beds(cfg.bedsPerShelter);
-    if (
-      missingBeds > 0 &&
-      building < atOnce &&
-      building * cfg.bedsPerShelter < missingBeds + cfg.bedsPerShelter
-    ) {
+    // Beds ahead of the births: a share of the members more, at least one.
+    const ahead = Math.max(1, Math.ceil(colony.members * cfg.bedMargin));
+    const missingBeds = colony.members + ahead - colony.beds();
+    const perHouse = ctx.bedsPerHouse;
+    if (missingBeds > 0 && building < atOnce && building * perHouse < missingBeds + perHouse) {
       const slot = colony.freeSlot();
       if (slot >= 0) openBuildProject(state, ctx, colony, slot, ProjectKind.SHELTER, 'shelter');
+    } else if (missingBeds + perHouse <= 0) {
+      // Fewer mouths than beds now: houses nobody has started building are given up (their
+      // materials stay in the stock).
+      for (const p of colony.projects) {
+        if (p.kind === ProjectKind.SHELTER && p.builder < 0) dropProject(state, ctx, colony, p);
+      }
     }
     // A library once the colony is large enough to have knowledge worth keeping.
     if (
@@ -104,7 +109,7 @@ export function colonySystem(state, ctx) {
 /**
  * Treasures and fortresses (docs/design/16-guerre-et-forteresses.md): a treasure room once the
  * colony is large enough, an enclosure around it when danger or wealth calls for it, then a tower
- * on the wall.
+ * beside each gate.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
  * @param {import('../colony/colony-store.js').Colony} colony
@@ -135,16 +140,40 @@ function fortress(state, ctx, colony) {
     if (colony.encState === Enclosure.BUILDING) wallNeeds(ctx, colony, colony.projects[s]);
     else colony.projects[s].clear();
   }
-  const towerTile = state.world.packedAt(colony.towerX, colony.towerY) >>> PACK.STRUCTURE_SHIFT;
+  // A tower beside each gate, one after the other.
+  let towerDue = false;
+  for (let i = 0; i < colony.towerCount; i++) {
+    if ((colony.towersBuilt & (1 << i)) !== 0) continue;
+    const tile = state.world.packedAt(colony.towerX[i], colony.towerY[i]) >>> PACK.STRUCTURE_SHIFT;
+    if (tile === ctx.wallCode) towerDue = true;
+  }
   if (
     colony.encState === Enclosure.CLOSED &&
-    !colony.hasTower &&
-    towerTile === ctx.wallCode &&
+    towerDue &&
     colony.findProject(ProjectKind.TOWER) < 0
   ) {
     const slot = colony.freeSlot();
     if (slot >= 0) openBuildProject(state, ctx, colony, slot, ProjectKind.TOWER, 'tower');
   }
+}
+
+/**
+ * Gives a project up: the members working for it are freed, what they brought stays in the stock.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} colony
+ * @param {import('../colony/colony-store.js').Project} project
+ * @returns {void}
+ */
+function dropProject(state, ctx, colony, project) {
+  const a = ctx.agents;
+  const slot = colony.projects.indexOf(project);
+  for (let id = 0; id < a.highWater; id++) {
+    if (a.alive[id] === 1 && a.colony[id] === colony.id && a.taskProject[id] === slot) {
+      releaseTask(state, ctx, id);
+    }
+  }
+  project.clear();
 }
 
 /**

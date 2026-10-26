@@ -49,6 +49,8 @@ export class ChunkStore {
     this.dirty = new Set();
     /** @type {Chunk | null} Last chunk accessed, to skip the map lookup on runs of tiles. */
     this.last = null;
+    /** Tile index in {@link ChunkStore#last} of the last {@link ChunkStore#packedAt}. */
+    this.lastIndex = 0;
     /** Set by {@link ChunkStore#takeUnit}: true if the last take emptied its tile. */
     this.lastTakeDepleted = false;
   }
@@ -98,12 +100,70 @@ export class ChunkStore {
     const cy = Math.floor(y / CHUNK_SIZE);
     const chunk = this.get(cx, cy);
     const i = (y - cy * CHUNK_SIZE) * CHUNK_SIZE + (x - cx * CHUNK_SIZE);
+    this.lastIndex = i;
     return (
       chunk.biome[i] |
       (chunk.resource[i] << 8) |
       (chunk.quantity[i] << 16) |
       (chunk.structure[i] << 24)
     );
+  }
+
+  /**
+   * Agent standing on the tile of the last {@link ChunkStore#packedAt}, or -1 (no lookup).
+   * @returns {number}
+   */
+  lastOccupant() {
+    return this.last.occupant[this.lastIndex] - 1;
+  }
+
+  /**
+   * Footsteps worn on the tile of the last {@link ChunkStore#packedAt} (no lookup).
+   * @returns {number}
+   */
+  lastWear() {
+    return this.last.wear[this.lastIndex];
+  }
+
+  /**
+   * One more footstep on (x, y), up to `steps`: at `steps` the tile is a trail for good (and sent
+   * again to the renderer).
+   * @param {number} x
+   * @param {number} y
+   * @param {number} steps
+   * @returns {void}
+   */
+  tread(x, y, steps) {
+    const chunk = this.get(toChunk(x), toChunk(y));
+    const i = Chunk.index(toLocal(x), toLocal(y));
+    if (chunk.wear[i] >= steps) return;
+    chunk.wear[i]++;
+    chunk.modified = true;
+    if (chunk.wear[i] === steps) this.markChanged(chunk);
+  }
+
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @returns {number} Agent standing on (x, y), or -1.
+   */
+  occupantAt(x, y) {
+    const chunk = this.get(toChunk(x), toChunk(y));
+    return chunk.occupant[Chunk.index(toLocal(x), toLocal(y))] - 1;
+  }
+
+  /**
+   * Marks (x, y) as held by agent `id`, or frees it if it held `id` (id given as `-1 - id`).
+   * @param {number} x
+   * @param {number} y
+   * @param {number} id - Agent id, or `-1 - id` to leave the tile.
+   * @returns {void}
+   */
+  setOccupant(x, y, id) {
+    const chunk = this.get(toChunk(x), toChunk(y));
+    const i = Chunk.index(toLocal(x), toLocal(y));
+    if (id >= 0) chunk.occupant[i] = id + 1;
+    else if (chunk.occupant[i] === -id) chunk.occupant[i] = 0;
   }
 
   /**

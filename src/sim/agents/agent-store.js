@@ -121,6 +121,14 @@ export class AgentStore {
     this.x = i32();
     this.y = i32();
     this.moveProgress = f64();
+    /** Ticks spent waiting for the next tile of its path to be freed by another agent. */
+    this.blocked = u8();
+    /**
+     * World whose tiles record who stands where (set by the simulation): two agents never share
+     * a tile.
+     * @type {import('../world/chunk-store.js').ChunkStore | null}
+     */
+    this.world = null;
     // Health and needs, 0 (satisfied) to 100 (critical), health 0 to max.
     this.hp = f64();
     this.hunger = f64();
@@ -177,6 +185,8 @@ export class AgentStore {
     this.children = new Uint16Array(max);
     /** Last tick hunger was at or above the replication threshold. */
     this.hungryTick = i32();
+    /** Tick of its last meal: health holds only with regular meals. */
+    this.mealTick = i32();
     /** Last tick health went down. */
     this.hurtTick = i32();
     this.prevHp = f64();
@@ -281,7 +291,9 @@ export class AgentStore {
     this.bornTick[id] = tick;
     this.x[id] = x;
     this.y[id] = y;
+    if (this.world) this.world.setOccupant(x, y, id);
     this.moveProgress[id] = 0;
+    this.blocked[id] = 0;
     this.maxHp[id] = attributes.hp;
     this.hp[id] = attributes.hp;
     this.force[id] = attributes.force;
@@ -322,6 +334,7 @@ export class AgentStore {
     this.generation[id] = generation;
     this.children[id] = 0;
     this.hungryTick[id] = tick;
+    this.mealTick[id] = tick;
     this.hurtTick[id] = tick;
     this.prevHp[id] = attributes.hp;
     this.lastReplication[id] = tick;
@@ -377,7 +390,8 @@ export class AgentStore {
     this.caravanLeg[id] = 0;
     this.caravanGood[id] = 0;
     this.caravanPrice.fill(0, id * this.goodSlots, (id + 1) * this.goodSlots);
-    this.siteX[id] = 0;
+    // No building site yet (far from anything: never a real tile).
+    this.siteX[id] = -0x80000000;
     this.siteY[id] = 0;
     this.onTower[id] = 0;
     this.librarySeen[id] = 0;
@@ -403,8 +417,25 @@ export class AgentStore {
     if (this.alive[id] !== 1) return;
     this.alive[id] = 0;
     this.aliveCount--;
+    if (this.world) this.world.setOccupant(this.x[id], this.y[id], -1 - id);
     this.asleep[id] = 0;
     this.action[id] = Action.NONE;
+  }
+
+  /**
+   * Moves the agent to (x, y), which the caller found free.
+   * @param {number} id
+   * @param {number} x
+   * @param {number} y
+   * @returns {void}
+   */
+  place(id, x, y) {
+    if (this.world) {
+      this.world.setOccupant(this.x[id], this.y[id], -1 - id);
+      this.world.setOccupant(x, y, id);
+    }
+    this.x[id] = x;
+    this.y[id] = y;
   }
 
   /**
@@ -508,6 +539,7 @@ export class AgentStore {
         .uint32(this.parent[id])
         .uint32(this.generation[id]);
       h.uint32(this.children[id]).uint32(this.hungryTick[id]).uint32(this.hurtTick[id]);
+      h.uint32(this.mealTick[id]);
       h.uint32(this.lastReplication[id]).uint32(this.taskProject[id] & 0xff);
       h.uint32(this.taskGood[id]).uint32(this.taskAmount[id]).uint32(this.taskTick[id]);
       h.uint32(this.taskBuild[id]).uint32(this.boardTick[id]);

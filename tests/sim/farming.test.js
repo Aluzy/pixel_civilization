@@ -372,6 +372,8 @@ describe('replication with farming', () => {
     const a = sim.agents;
     const colony = sim.state.colonies[0];
     colony.addShelter(a.x[0], a.y[0]);
+    colony.addBed(a.x[0] + 5, a.y[0]);
+    colony.addBed(a.x[0] + 6, a.y[0]);
     a.pantrySeen[0] = 20;
     for (const [id, n] of Object.entries(balance.replication.cost)) a.addCarried(0, good(id), n);
     const out = new Int32Array(2);

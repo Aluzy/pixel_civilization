@@ -31,10 +31,14 @@ const BLOCKS = Uint8Array.from([0, 1, 0]);
 /**
  * Fake world from ASCII rows; outside the drawing is land.
  * @param {string[]} rows
- * @returns {{ packedAt: (x: number, y: number) => number }}
+ * @returns {{ packedAt: (x: number, y: number) => number, lastWear: () => number,
+ *   lastOccupant: () => number }}
  */
 function worldFrom(rows) {
   return {
+    // Nobody stands anywhere, no trail.
+    lastWear: () => 0,
+    lastOccupant: () => -1,
     packedAt(x, y) {
       const ch = rows[y]?.[x] ?? '.';
       if (ch === '~') return 1;
@@ -232,31 +236,40 @@ describe('treasure and enclosure', () => {
     expect(sim.events.events.some((e) => e.type === EventType.ENCLOSURE_PLANNED)).toBe(true);
   });
 
-  it('draws a ring one tile beyond its buildings, the gate on it', () => {
+  it('draws a ring around all its houses with room for those to come, a tower beside each gate', () => {
     const sim = treasureCamp();
     const colony = sim.state.colonies[0];
     const [x, y] = [sim.agents.x[0], sim.agents.y[0]];
+    // A house farther than the stations' radius is walled in too.
+    colony.addBed(x + 15, y - 3);
     expect(planEnclosure(sim.state, sim.ctx, colony)).toBe(true);
-    expect([colony.encX0, colony.encY0, colony.encX1, colony.encY1]).toEqual([
-      x - 1,
-      y - 1,
-      x + 1,
-      y + 2,
-    ]);
-    expect(colony.encTotal).toBe(10);
+    const cfg = balance.fortress;
+    const w = colony.encX1 - colony.encX0 + 1;
+    const h = colony.encY1 - colony.encY0 + 1;
+    expect(Math.max(w, h)).toBeLessThanOrEqual(cfg.maxSide);
+    // Room for the houses of `homesFor` members, or as large as allowed.
+    const ctx = sim.ctx;
+    const perHouse = (ctx.houseSize[0] + 1) * (ctx.houseSize[1] + 1);
+    const room = Math.ceil(cfg.homesFor / ctx.bedsPerHouse) * perHouse;
+    const capped = Math.max(w, h) >= cfg.maxSide - 2 * cfg.margin[1];
+    expect(capped || (w - 2) * (h - 2) >= room).toBe(true);
+    expect(colony.inside(x + 16, y - 3)).toBe(true);
+    expect(colony.inside(colony.treasureX, colony.treasureY)).toBe(true);
+    expect(colony.inside(x, y)).toBe(true);
     expect(colony.gateCount).toBeGreaterThan(0);
     for (let i = 0; i < colony.gateCount; i++) {
       expect(colony.onRing(colony.gateX[i], colony.gateY[i])).toBe(true);
     }
-    // The tower stands beside a gate, on the ring.
-    expect(colony.onRing(colony.towerX, colony.towerY)).toBe(true);
-    const fromGate = Math.max(
-      Math.abs(colony.towerX - colony.gateX[0]),
-      Math.abs(colony.towerY - colony.gateY[0]),
-    );
-    expect(fromGate).toBe(1);
-    expect(colony.inside(colony.treasureX, colony.treasureY)).toBe(true);
-    expect(colony.inside(x, y)).toBe(true);
+    // A tower on the ring beside each gate.
+    expect(colony.towerCount).toBe(colony.gateCount);
+    for (let i = 0; i < colony.towerCount; i++) {
+      expect(colony.onRing(colony.towerX[i], colony.towerY[i])).toBe(true);
+      const fromGate = Math.max(
+        Math.abs(colony.towerX[i] - colony.gateX[i]),
+        Math.abs(colony.towerY[i] - colony.gateY[i]),
+      );
+      expect(fromGate).toBe(1);
+    }
   });
 
   it('a builder lays the gate then the wall from beside it; the last one waits for the predator to leave', () => {

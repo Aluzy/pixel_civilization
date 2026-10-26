@@ -1,7 +1,16 @@
 {
   "structures": [
     { "id": "workbench", "name": "Établi", "color": "#d9c7a0", "kind": "station" },
-    { "id": "shelter", "name": "Abri", "color": "#9c6b45", "kind": "shelter", "sleepRecovery": 2 },
+    {
+      "id": "shelter",
+      "name": "Abri",
+      "color": "#9c6b45",
+      "kind": "shelter",
+      "sleepRecovery": 2,
+      "footprint": [4, 3],
+      "wall": "house_wall",
+      "door": "house_door"
+    },
     { "id": "scriptorium", "name": "Scriptorium", "color": "#ece4cf", "kind": "station" },
     {
       "id": "library",
@@ -36,7 +45,15 @@
       "feminine": true
     },
     { "id": "gate", "name": "Porte", "color": "#b07a3c", "kind": "gate", "feminine": true },
-    { "id": "tower", "name": "Tour", "color": "#8c8c94", "kind": "tower", "feminine": true }
+    { "id": "tower", "name": "Tour", "color": "#8c8c94", "kind": "tower", "feminine": true },
+    { "id": "house_wall", "name": "Mur d'abri", "color": "#6e4a2c", "kind": "house_wall" },
+    {
+      "id": "house_door",
+      "name": "Porte d'abri",
+      "color": "#c08850",
+      "kind": "door",
+      "feminine": true
+    }
   ],
   "items": [
     { "id": "spear", "name": "Lance", "kind": "weapon", "attack": 2 },
@@ -102,7 +119,7 @@
     {
       "id": "shelter",
       "station": null,
-      "inputs": { "wood": 10, "fiber": 5, "stone": 3 },
+      "inputs": { "wood": 8, "fiber": 4, "stone": 2 },
       "durationTicks": 150,
       "output": { "structure": "shelter" }
     },
