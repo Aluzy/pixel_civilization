@@ -8,7 +8,7 @@
       "quantity": [3, 12],
       "nutrition": 12,
       "harvestTicks": 8,
-      "regrowTicks": 2400
+      "regrowTicks": 3600
     },
     {
       "id": "wood",

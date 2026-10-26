@@ -54,13 +54,17 @@ export const ACTION_NAMES = Object.freeze([
 
 /**
  * Actions the agent sees through once started (unless a vital need or an attack interrupts):
- * reconsidering them every few ticks would waste the work done.
+ * reconsidering them every few ticks would waste the work done. A meal or a drink is taken in
+ * full, not by mouthfuls between errands.
  * @param {number} action
  * @returns {boolean}
  */
 export function isFocused(action) {
   return (
     action === Action.HARVEST ||
+    action === Action.DRINK ||
+    action === Action.EAT ||
+    action === Action.FORAGE ||
     action === Action.CRAFT ||
     action === Action.EXPERIMENT ||
     action === Action.REPLICATE ||

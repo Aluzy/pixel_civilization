@@ -3,6 +3,7 @@ import { geneLevel } from '../genome/genome.js';
 import { releaseFarm } from '../farming/farm-jobs.js';
 import { Colony, Expedition, MAX_COLONIES, MAX_EXPEDITION } from './colony-store.js';
 import { releaseTask } from './colony-logic.js';
+import { registerHouse } from './house.js';
 import { tauOf } from '../agents/beliefs.js';
 
 // Migration (docs/design/15-colonies-et-migration.md): in a crowded colony, a member scouts for a
@@ -277,7 +278,7 @@ export function foundColony(state, ctx, id, x, y) {
   colony.parent = c;
   colony.foundedTick = state.tick;
   state.colonies.push(colony);
-  colony.addShelter(x, y);
+  registerHouse(ctx, colony, x, y);
   colony.sheltersBuilt = 1;
   for (let k = 0; k < MAX_EXPEDITION; k++) {
     const m = mother.expMembers[k];
@@ -290,8 +291,8 @@ export function foundColony(state, ctx, id, x, y) {
   // Kin: each knows the other's camp.
   mother.relKnown[d] = 1;
   mother.relKin[d] = 1;
-  mother.relCampX[d] = x;
-  mother.relCampY[d] = y;
+  mother.relCampX[d] = colony.campX;
+  mother.relCampY[d] = colony.campY;
   colony.relKnown[c] = 1;
   colony.relKin[c] = 1;
   colony.relCampX[c] = mother.campX;

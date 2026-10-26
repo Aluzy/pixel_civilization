@@ -149,10 +149,19 @@ function streamChunks() {
     const quantity = chunk.quantity.slice();
     const structure = chunk.structure.slice();
     const altitude = chunk.altitude.slice();
+    const steps = sim.ctx.trailSteps;
+    const trail = chunk.wear.map((w) => (w >= steps ? 1 : 0));
     const { cx, cy } = chunk;
     self.postMessage(
-      { type: FromWorker.CHUNK, cx, cy, biome, resource, quantity, structure, altitude },
-      [biome.buffer, resource.buffer, quantity.buffer, structure.buffer, altitude.buffer],
+      { type: FromWorker.CHUNK, cx, cy, biome, resource, quantity, structure, altitude, trail },
+      [
+        biome.buffer,
+        resource.buffer,
+        quantity.buffer,
+        structure.buffer,
+        altitude.buffer,
+        trail.buffer,
+      ],
     );
   }
 }

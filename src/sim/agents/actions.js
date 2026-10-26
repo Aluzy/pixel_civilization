@@ -29,6 +29,9 @@ import { researcher } from './work.js';
 import { harvestedPlot } from '../systems/farm-system.js';
 import { fetchInputs, stockProduce, tillDone, waterPlot, sowPlot } from '../farming/farm-jobs.js';
 import { buildSegment } from '../colony/fortress.js';
+import { houseDir, raiseHouse } from '../colony/house.js';
+import { digCanal } from '../colony/canal.js';
+import { Expedition } from '../colony/colony-store.js';
 import {
   libraryBeside,
   lookAtLibrary,
@@ -78,6 +81,74 @@ function finish(ctx, id) {
 }
 
 /**
+ * True if agent `other` is walking and its next step is (x, y): it and the agent on (x, y) want
+ * each other's tile.
+ * @param {import('./agent-store.js').AgentStore} agents
+ * @param {number} other
+ * @param {number} x
+ * @param {number} y
+ * @returns {boolean}
+ */
+function headOn(agents, other, x, y) {
+  if (agents.action[other] !== Action.MOVE) return false;
+  const k = agents.pathIndex[other];
+  if (k >= agents.pathLength[other]) return false;
+  const path = agents.path[other];
+  return path[k * 2] === x && path[k * 2 + 1] === y;
+}
+
+const DX = Int8Array.from([1, -1, 0, 0, 1, 1, -1, -1]);
+const DY = Int8Array.from([0, 0, 1, -1, 1, -1, 1, -1]);
+
+/**
+ * An agent standing still in someone's way moves to a free neighbouring tile (not back onto the
+ * one who waits), preferring one that is not a passage (gate, door): one who stands about, or
+ * anyone in a passage. Not one asleep in a bed.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} other
+ * @param {number} wx - Tile of the one who waits.
+ * @param {number} wy
+ * @returns {boolean} True if it moved.
+ */
+export function stepAside(state, ctx, other, wx, wy) {
+  const a = ctx.agents;
+  const ox = a.x[other];
+  const oy = a.y[other];
+  // Only one who stands about, or who blocks a passage: not one at work on its tile.
+  const idle = a.action[other] === Action.NONE || a.action[other] === Action.IDLE;
+  if (a.action[other] === Action.MOVE) return false;
+  if (!idle && ctx.passage[structureAt(state, ctx, ox, oy)] !== 1) return false;
+  if (a.asleep[other] === 1 && inShelter(state, ctx, ox, oy)) return false;
+  let best = -1;
+  for (let k = 0; k < 8; k++) {
+    const x = ox + DX[k];
+    const y = oy + DY[k];
+    if (x === wx && y === wy) continue;
+    const p = state.world.packedAt(x, y);
+    if (state.world.lastOccupant() >= 0 || ctx.biomeSpeed[p & PACK.MASK] <= 0) continue;
+    const code = p >>> PACK.STRUCTURE_SHIFT;
+    if (ctx.blocksAgent[code] === 1) continue;
+    if (k >= 4) {
+      // No squeezing between two walls.
+      const c1 = state.world.packedAt(ox + DX[k], oy) >>> PACK.STRUCTURE_SHIFT;
+      const c2 = state.world.packedAt(ox, oy + DY[k]) >>> PACK.STRUCTURE_SHIFT;
+      if (ctx.blocksAgent[c1] === 1 || ctx.blocksAgent[c2] === 1) continue;
+    }
+    if (ctx.passage[code] !== 1) {
+      best = k;
+      break;
+    }
+    if (best < 0) best = k;
+  }
+  if (best < 0) return false;
+  a.place(other, ox + DX[best], oy + DY[best]);
+  a.actionX[other] = a.x[other];
+  a.actionY[other] = a.y[other];
+  return true;
+}
+
+/**
  * True if one of the 8 neighbours of (x, y) is water.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
@@ -89,7 +160,9 @@ function besideWater(state, ctx, x, y) {
   for (let dy = -1; dy <= 1; dy++) {
     for (let dx = -1; dx <= 1; dx++) {
       if (dx === 0 && dy === 0) continue;
-      if ((state.world.packedAt(x + dx, y + dy) & PACK.MASK) === ctx.waterBiome) return true;
+      const p = state.world.packedAt(x + dx, y + dy);
+      if ((p & PACK.MASK) === ctx.waterBiome) return true;
+      if (p >>> PACK.STRUCTURE_SHIFT === ctx.canalCode && ctx.canalCode !== 0) return true;
     }
   }
   return false;
@@ -142,19 +215,57 @@ export function stepAction(state, ctx, id) {
       const nx = path[index * 2];
       const ny = path[index * 2 + 1];
       const packed = state.world.packedAt(nx, ny);
-      const factor = ctx.biomeSpeed[packed & PACK.MASK];
+      const trail = state.world.lastWear() >= ctx.trailSteps;
+      const other = state.world.lastOccupant();
+      const wade = ctx.structureSpeed[packed >>> PACK.STRUCTURE_SHIFT];
+      const factor = ctx.biomeSpeed[packed & PACK.MASK] * (trail ? ctx.trailSpeed : 1) * wade;
       // A wall built across the path since it was planned: replan.
       if (factor <= 0 || ctx.blocksAgent[packed >>> PACK.STRUCTURE_SHIFT] === 1) {
         finish(ctx, id);
         return;
       }
       agents.moveProgress[id] += (agents.speed[id] * factor) / ctx.ticksPerSecond;
-      if (agents.moveProgress[id] >= 1) {
-        agents.moveProgress[id] -= 1;
-        agents.x[id] = nx;
-        agents.y[id] = ny;
-        agents.pathIndex[id] = index + 1;
+      if (agents.moveProgress[id] < 1) return;
+      // Two agents never share a tile: one in the way is passed head-on, else waited for, and
+      // after a while gone round (the new path avoids those who stand still).
+      if (other >= 0 && other !== id) {
+        // Inside a house, past a sleeper: they swap beds, the sleeper still asleep.
+        const swap =
+          headOn(agents, other, agents.x[id], agents.y[id]) ||
+          (agents.asleep[other] === 1 &&
+            inShelter(state, ctx, nx, ny) &&
+            inShelter(state, ctx, agents.x[id], agents.y[id]));
+        if (!swap) {
+          agents.moveProgress[id] = 1;
+          // One who stands in the way (not asleep in its bed) steps aside after a moment.
+          const wait = ctx.balance.actions.waitTicks;
+          const waited = ++agents.blocked[id];
+          if (waited === wait >> 1 && stepAside(state, ctx, other, agents.x[id], agents.y[id])) {
+            return;
+          }
+          if (waited >= wait) finish(ctx, id);
+          return;
+        }
+        // Head-on, in a gate or a lane: they slip past each other, both stepping at once.
+        const x0 = agents.x[id];
+        const y0 = agents.y[id];
+        agents.place(id, nx, ny);
+        agents.place(other, x0, y0);
+        if (agents.action[other] === Action.MOVE) {
+          agents.pathIndex[other]++;
+          agents.moveProgress[other] = 0;
+        } else {
+          agents.actionX[other] = x0;
+          agents.actionY[other] = y0;
+        }
+        agents.blocked[other] = 0;
       }
+      agents.moveProgress[id] -= 1;
+      agents.blocked[id] = 0;
+      agents.place(id, nx, ny);
+      agents.pathIndex[id] = index + 1;
+      // The ways most walked wear into trails.
+      state.world.tread(nx, ny, ctx.trailSteps);
       return;
     }
     case Action.DRINK: {
@@ -227,7 +338,8 @@ export function stepAction(state, ctx, id) {
           firstTime(state, ctx, id, Flag.SHELTERED, EventType.SHELTERED_SLEEP);
         }
       }
-      if (agents.fatigue[id] <= ctx.balance.needs.wakeFatigue) finish(ctx, id);
+      // Rested, it wakes, but not before the night is over.
+      if (agents.fatigue[id] <= ctx.balance.needs.wakeFatigue && !ctx.dark) finish(ctx, id);
       return;
     }
     case Action.HARVEST:
@@ -243,7 +355,11 @@ export function stepAction(state, ctx, id) {
     case Action.BUILD:
       agents.actionProgress[id] += 1;
       if (agents.actionProgress[id] >= ctx.catalog.recipes[agents.craftRecipe[id]].duration) {
-        buildSegment(state, ctx, id);
+        if (ctx.catalog.recipes[agents.craftRecipe[id]].output === ctx.canalCode) {
+          digCanal(state, ctx, id);
+        } else {
+          buildSegment(state, ctx, id);
+        }
         finish(ctx, id);
       }
       return;
@@ -509,7 +625,19 @@ function craft(state, ctx, id) {
   if (!canUse(state, ctx, id, recipe.station)) return;
   for (const input of recipe.inputs) if (agents.carried(id, input.good) < input.count) return;
   const building = recipe.outputKind === 'structure';
-  if (building) {
+  const house = building && recipe.output === ctx.shelterCode;
+  let dir = -1;
+  if (house) {
+    // A house rises around its door, where the builder stands, if it fits there.
+    // Within its colony's walls, unless it founds a new colony far away.
+    const c = agents.colony[id];
+    let colony = c >= 0 && state.colonies[c].hasCamp ? state.colonies[c] : null;
+    if (colony && colony.expState === Expedition.TRAVELLING && colony.inExpedition(id)) {
+      colony = null;
+    }
+    dir = houseDir(state, ctx, x, y, colony);
+    if (dir < 0) return;
+  } else if (building) {
     const p = state.world.packedAt(x, y);
     if (((p >> PACK.RESOURCE_SHIFT) & PACK.MASK) !== 0 || structureAt(state, ctx, x, y) !== 0) {
       return;
@@ -536,6 +664,15 @@ function craft(state, ctx, id) {
     // Sowing: a plot, its seed already in the ground.
     state.world.setStructure(x, y, recipe.output);
     tillDone(state, ctx, id, x, y);
+  } else if (house) {
+    raiseHouse(state, ctx, x, y, dir);
+    const bx = ctx.newBeds[0];
+    const by = ctx.newBeds[1];
+    notice(state, ctx, id, ctx.catalog.resourceCount + recipe.output, bx, by, 0);
+    state.events.push(state.tick, EventType.BUILT, id, x, y, r);
+    agents.builds[id]++;
+    onBuilt(state, ctx, id, recipe.output, x, y);
+    inspire(state, ctx, id, -1, recipe.output);
   } else if (building) {
     state.world.setStructure(x, y, recipe.output);
     notice(state, ctx, id, ctx.catalog.resourceCount + recipe.output, x, y, 0);

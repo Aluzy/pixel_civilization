@@ -83,7 +83,9 @@ export function colonyWork(state, ctx, id, plan) {
   }
   if (
     a.taskBuild[id] === 1 &&
-    (project.kind === ProjectKind.ENCLOSURE || project.kind === ProjectKind.TOWER)
+    (project.kind === ProjectKind.ENCLOSURE ||
+      project.kind === ProjectKind.TOWER ||
+      project.kind === ProjectKind.CANAL)
   ) {
     wallWork(state, ctx, colony, project, id, plan);
     plan.note = PlanNote.COLONY;
@@ -102,8 +104,9 @@ export function colonyWork(state, ctx, id, plan) {
       if (!goToCamp(ctx, colony, id, Action.DEPOSIT, plan)) explore(state, ctx, id, plan);
       return;
     }
-    // Build it at the camp: the site chooser anchors on the structures in sight.
-    if (!atCamp(ctx, colony, id)) {
+    // Build it at the camp: the site chooser anchors on the structures in sight (a house goes
+    // where the town plan puts it).
+    if (project.kind !== ProjectKind.SHELTER && !atCamp(ctx, colony, id)) {
       if (!goToCamp(ctx, colony, id, Action.NONE, plan)) explore(state, ctx, id, plan);
       return;
     }

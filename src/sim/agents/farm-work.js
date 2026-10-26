@@ -91,7 +91,7 @@ export function farmBehaviour(state, ctx, id, plan, fresh = false) {
       return;
     }
     // The jobs are on the blackboard: read at the camp, or today, out in the fields.
-    const far = Math.max(Math.abs(a.x[id] - colony.campX), Math.abs(a.y[id] - colony.campY));
+    const far = colony.fieldDistance(a.x[id], a.y[id]);
     const readToday = state.tick - a.boardTick[id] < ctx.balance.time.ticksPerDay;
     const inFields = far <= ctx.balance.agriculture.farmRadius && readToday;
     if (!atCamp(ctx, colony, id) && !inFields) {
@@ -197,9 +197,7 @@ function till(state, ctx, colony, id, plan) {
   const memory = a.memory[id];
   const w = memory.nearest(ctx.waterSubjects, colony.campX, colony.campY);
   const far = ctx.balance.agriculture.farmRadius;
-  const near =
-    w >= 0 &&
-    Math.max(Math.abs(memory.x[w] - colony.campX), Math.abs(memory.y[w] - colony.campY)) <= far;
+  const near = w >= 0 && colony.fieldDistance(memory.x[w], memory.y[w]) <= far;
   const there =
     near && Math.abs(memory.x[w] - a.x[id]) <= 2 && Math.abs(memory.y[w] - a.y[id]) <= 2;
   if (near && !there && goToRemembered(state, ctx, id, ctx.waterSubjects, plan)) return;

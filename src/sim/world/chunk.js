@@ -26,6 +26,16 @@ export class Chunk {
     this.structure = new Uint8Array(CHUNK_AREA);
     /** Altitude quantised to [0, 255]. */
     this.altitude = new Uint8Array(CHUNK_AREA);
+    /**
+     * Footsteps on each tile, up to the count that makes it a trail (faster to walk): the way the
+     * individuals go most wears a lasting path (balance.trails).
+     */
+    this.wear = new Uint8Array(CHUNK_AREA);
+    /**
+     * Agent standing on each tile, plus one (0 = none): two agents never share a tile. Derived
+     * from the agents' positions, so neither hashed nor saved.
+     */
+    this.occupant = new Uint16Array(CHUNK_AREA);
     /** True once the simulation has changed a tile, so the chunk belongs to the saved state. */
     this.modified = false;
   }

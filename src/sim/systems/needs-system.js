@@ -26,8 +26,8 @@ function fearDrift(state, ctx, id) {
 
 /**
  * Needs drift every tick: hunger, thirst and fatigue rise (faster during effort), fatigue falls
- * while asleep, curiosity rises when idle and falls while exploring. Critical needs hurt;
- * satisfied needs heal.
+ * while asleep, curiosity rises when idle and falls while exploring. Critical needs hurt, and so
+ * does going long without a meal; satisfied needs heal, if the last meal is recent.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
  * @returns {void}
@@ -61,9 +61,17 @@ export function needsSystem(state, ctx) {
     let critical = 0;
     if (a.hunger[id] >= n.critical) critical++;
     if (a.thirst[id] >= n.critical) critical++;
+    // Health holds with regular meals: long without one, the body weakens; it heals only fed.
+    const fasting = state.tick - a.mealTick[id];
     if (critical > 0) {
       a.hp[id] = Math.max(0, a.hp[id] - r.damage * critical);
-    } else if (a.hunger[id] < n.regenBelowNeed && a.thirst[id] < n.regenBelowNeed) {
+    } else if (fasting > r.fastTicks) {
+      a.hp[id] = Math.max(0, a.hp[id] - r.fastDamage);
+    } else if (
+      a.hunger[id] < n.regenBelowNeed &&
+      a.thirst[id] < n.regenBelowNeed &&
+      fasting <= r.mealTicks
+    ) {
       // A fresh wound heals slowly.
       const s = ctx.balance.safety;
       const wounded =

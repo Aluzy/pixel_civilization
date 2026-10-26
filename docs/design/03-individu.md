@@ -105,13 +105,67 @@ Une réplique reçoit 30 % des écus de son parent et fait son métier ses 5 pre
 
 | Action | Effet |
 | --- | --- |
-| Boire | Debout à côté d'une case d'eau : −2 de soif par cycle, jusqu'à 0 |
+| Boire | Debout à côté d'une case d'eau : −2 de soif par cycle, jusqu'à 0 (sans s'interrompre depuis le village) |
 | Cueillir | Sur une case de baies : une unité toutes les `harvestTicks / (1 + Force / 20)` cycles. Elle est mangée si la faim dépasse la moitié de sa valeur nutritive (12 pour les baies), sinon mise en réserve jusqu'à 6 unités |
 | Manger | Consomme une unité portée tous les 2 cycles, jusqu'à une faim de 5 |
-| Dormir | Sur place ; la fatigue baisse, l'individu se réveille à 5 |
+| Dormir | Sur place, ou dans un lit depuis le J4 ; la fatigue baisse, l'individu se réveille à 5 (pas avant la fin de la nuit depuis le village) |
 | Se déplacer | Le long d'un chemin calculé dans le champ de vision ; vitesse × facteur du biome (`speed` dans `data/world.json`) |
 
-Une case de ressource vidée disparaît ; si la ressource est renouvelable, elle repousse au même endroit après `regrowTicks` cycles (baies : 2 jours).
+Une case de ressource vidée disparaît ; si la ressource est renouvelable, elle repousse au même endroit après `regrowTicks` cycles (baies : 2 jours, 3 depuis le village).
+
+## Le village : maisons, nuits et repas (décision 0026)
+
+**Maison**. L'abri est une construction de plusieurs cases :
+
+- un anneau de **murs d'abri** et une **porte d'abri** ;
+- chaque case intérieure est un **lit**, une place pour un dormeur.
+
+Les tailles :
+
+- Le plus petit abri (3 × 3) est un cercle de 8 cases, 7 murs et la porte, autour d'un lit.
+- L'abri bâti par les colonies fait 4 × 3 : 9 murs, la porte et **2 lits**.
+- Taille et pièces viennent de `data/recipes.json` (`footprint`, `wall`, `door`).
+
+Murs et porte :
+
+- Les murs arrêtent tout le monde.
+- La porte laisse entrer les individus, pas les prédateurs : qui dort dans une maison est à l'abri.
+
+Bâtir :
+
+- Le bâtisseur se tient sur la case de la porte. La maison s'élève autour de lui, dans la première orientation qui tient.
+- Il faut :
+  - un sol praticable ;
+  - aucune construction (une parcelle cède la place) ;
+  - personne sur les murs ;
+  - une allée libre d'une case tout autour.
+- Ce qui poussait dessous est défriché pour de bon.
+- Les colonies placent leurs maisons en rangées autour du camp (le plan du village, [06](06-ia.md)).
+- Une colonie compte ses lits. Elle garde 15 % de lits d'avance : une naissance demande toujours un lit libre.
+
+**Dormir**. L'individu choisit un **lit libre** en vue :
+
+- dans une maison à deux lits, le premier arrivé prend celui du fond ;
+- sinon, il va vers le lit de sa colonie le plus proche ;
+- sinon, il dort dehors.
+
+Deux dormeurs n'occupent jamais le même lit. Celui qui se réveille au fond de la maison passe en échangeant sa place avec le dormeur de l'entrée, sans le réveiller.
+
+**La nuit est faite pour dormir**. La nuit, tout individu dort, sauf :
+
+- le garde de veille ;
+- celui qui fuit ;
+- celui qui va d'abord boire ou manger ;
+- celui que la soif ou la faim tenaille (85).
+
+Reposé, il ne se lève qu'au petit jour.
+
+**Une case par individu**. Deux individus ne se tiennent jamais sur la même case : ils se contournent ([06](06-ia.md), « Se contourner »). Une naissance demande une case libre à côté du parent.
+
+**Repas réguliers**. Boire, manger et cueillir se font jusqu'au bout, sans s'interrompre pour une autre envie. La santé dépend de repas réguliers :
+
+- elle ne remonte que si le dernier repas date de moins d'un jour ;
+- après 1,5 jour sans repas, elle baisse de 30 par jour, même si la faim n'est pas encore critique.
 
 ## Vieillissement et mort
 

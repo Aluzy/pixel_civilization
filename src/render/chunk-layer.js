@@ -11,6 +11,7 @@ import { paintChunk } from './palette.js';
  * @property {Uint8Array} quantity
  * @property {Uint8Array} structure
  * @property {Uint8Array} altitude
+ * @property {Uint8Array} [trail] - 1 where footsteps wore a trail.
  */
 
 /**

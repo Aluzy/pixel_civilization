@@ -96,7 +96,8 @@ export function perceive(state, ctx, id) {
   nav.prepare(state.world, ax, ay, radius);
   agents.explored[id].markArea(ax - radius, ay - radius, ax + radius, ay + radius, state.tick);
 
-  const water = nav.nearestWaterSide();
+  // What it sees is remembered, even where someone stands.
+  const water = nav.nearestWaterSide(true);
   if (water >= 0) notice(state, ctx, id, WATER_SUBJECT, nav.cellX(water), nav.cellY(water), 0);
 
   // Nearest reachable cell of each resource and each structure, in one pass over the window.
@@ -105,9 +106,15 @@ export function perceive(state, ctx, id) {
   best.fill(-1);
   const n = nav.side * nav.side;
   for (let i = 0; i < n; i++) {
-    if (!nav.reachable(i)) continue;
+    if (nav.dist[i] === Infinity) continue;
     const st = nav.structure[i];
-    if (st !== 0 && (best[R + st] < 0 || nav.dist[i] < nav.dist[best[R + st]])) best[R + st] = i;
+    // A house is remembered by its beds, not by its walls and door.
+    if (
+      st !== 0 &&
+      ctx.housePart[st] === 0 &&
+      (best[R + st] < 0 || nav.dist[i] < nav.dist[best[R + st]])
+    )
+      best[R + st] = i;
     const r = nav.resource[i];
     if (r === 0 || nav.quantity[i] === 0) continue;
     if (best[r] < 0 || nav.dist[i] < nav.dist[best[r]]) best[r] = i;

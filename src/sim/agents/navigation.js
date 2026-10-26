@@ -1,4 +1,5 @@
 import { PACK } from '../world/chunk-store.js';
+import { Action } from './action-types.js';
 
 /** Largest perception radius supported by the navigation window. */
 export const MAX_RADIUS = 22;
@@ -19,10 +20,46 @@ export class Navigator {
    * @param {Float64Array} options.biomeSpeed - Speed factor per biome index; 0 = impassable.
    * @param {number} options.waterBiome - Biome index of water.
    * @param {Uint8Array} [options.blocks] - 1 for each structure code that cannot be crossed.
+   * @param {Uint8Array} [options.passage] - 1 for each structure code one goes through (gate).
+   * @param {Uint8Array} [options.beds] - 1 for each structure code one sleeps in (shelter).
+   * @param {Uint8Array} [options.wet] - 1 for each structure code holding water (canal).
+   * @param {Float64Array | null} [options.structureSpeed] - Speed factor per structure code.
+   * @param {number} [options.crowdCost] - Extra cost of a tile where another agent walks.
+   * @param {number} [options.trailSteps] - Footsteps that make a trail.
+   * @param {number} [options.trailSpeed] - Speed factor on a trail.
    */
-  constructor({ biomeSpeed, waterBiome, blocks = new Uint8Array(256) }) {
+  constructor({
+    biomeSpeed,
+    waterBiome,
+    blocks = new Uint8Array(256),
+    passage = new Uint8Array(256),
+    beds = new Uint8Array(256),
+    wet = new Uint8Array(256),
+    structureSpeed = null,
+    crowdCost = 0,
+    trailSteps = 256,
+    trailSpeed = 1,
+  }) {
+    /** Footsteps that make a trail, and how much faster one walks on it. */
+    this.trailSteps = trailSteps;
+    this.trailSpeed = trailSpeed;
+    /** 1 for each structure code that holds water (a canal): one drinks beside it. */
+    this.wet = wet;
+    /** Walking speed factor per structure code, or null (all 1). */
+    this.structureSpeed = structureSpeed;
+    /** 1 for each structure code one sleeps in: a sleeper there does not step aside. */
+    this.beds = beds;
     this.biomeSpeed = biomeSpeed;
     this.blocks = blocks;
+    this.passage = passage;
+    /** Extra cost of a tile where someone walks: it will likely have moved on. */
+    this.crowdCost = crowdCost;
+    /**
+     * Agents, to see who stands in the way (set by the simulation): one who stands still is
+     * gone round, one who walks costs a little more to pass.
+     * @type {import('./agent-store.js').AgentStore | null}
+     */
+    this.agents = null;
     /**
      * Colonies whose enclosures are known to everyone who walks by them (set by the simulation):
      * a target across a wall is reached through its gate.
@@ -40,6 +77,12 @@ export class Navigator {
     this.quantity = new Uint8Array(MAX_CELLS);
     this.structure = new Uint8Array(MAX_CELLS);
     this.stepCost = new Float64Array(MAX_CELLS);
+    /** 1 where another agent stands still: a way through (it steps aside), not a destination. */
+    this.held = new Uint8Array(MAX_CELLS);
+    /** Cells of the window where someone stands still. */
+    this.heldCount = 0;
+    /** True if the last nearest-place query found only places someone stands on: wait a turn. */
+    this.lastHeld = false;
     this.dist = new Float64Array(MAX_CELLS);
     this.prev = new Int32Array(MAX_CELLS);
     // Binary heap with lazy deletion: up to 8 pushes per cell.
@@ -70,6 +113,9 @@ export class Navigator {
     this.originY = cy - r;
     this.center = r * side + r;
     const n = side * side;
+    // Inside a house, one gets past a sleeper by swapping beds with it.
+    const inBed = this.beds[world.packedAt(cx, cy) >>> PACK.STRUCTURE_SHIFT] === 1;
+    this.heldCount = 0;
     for (let row = 0; row < side; row++) {
       for (let col = 0; col < side; col++) {
         const i = row * side + col;
@@ -79,8 +125,27 @@ export class Navigator {
         this.resource[i] = (p >> PACK.RESOURCE_SHIFT) & PACK.MASK;
         this.quantity[i] = (p >> PACK.QUANTITY_SHIFT) & PACK.MASK;
         this.structure[i] = (p >>> PACK.STRUCTURE_SHIFT) & PACK.MASK;
-        const speed = this.blocks[this.structure[i]] === 1 ? 0 : this.biomeSpeed[biome];
+        const worn = world.lastWear() >= this.trailSteps ? this.trailSpeed : 1;
+        const wade = this.structureSpeed === null ? 1 : this.structureSpeed[this.structure[i]];
+        const speed =
+          this.blocks[this.structure[i]] === 1 ? 0 : this.biomeSpeed[biome] * worn * wade;
         this.stepCost[i] = speed > 0 ? 1 / speed : Infinity;
+        this.held[i] = 0;
+        const other = world.lastOccupant();
+        if (other >= 0 && i !== this.center && this.agents !== null && speed > 0) {
+          const a = this.agents;
+          // Someone walking will likely have moved on; someone standing still steps aside when
+          // asked, at the cost of a wait (gone round when there is room).
+          const walking = a.action[other] === Action.MOVE && a.blocked[other] === 0;
+          this.stepCost[i] += walking ? this.crowdCost : this.crowdCost * 3;
+          if (!walking) {
+            this.held[i] = 1;
+            this.heldCount++;
+          }
+          if (a.asleep[other] === 1 && this.beds[this.structure[i]] === 1 && !inBed) {
+            this.stepCost[i] = Infinity;
+          }
+        }
       }
     }
     this.dijkstra(n);
@@ -218,11 +283,24 @@ export class Navigator {
   }
 
   /**
+   * @returns {boolean} True if the agent can take a step: one of its neighbours is passable.
+   */
+  canMove() {
+    const side = this.side;
+    const col = this.center % side;
+    const row = (this.center - col) / side;
+    for (let k = 0; k < 8; k++) {
+      if (this.dist[(row + DY[k]) * side + col + DX[k]] !== Infinity) return true;
+    }
+    return false;
+  }
+
+  /**
    * @param {number} cell
    * @returns {boolean} True if a path from the agent reaches this cell.
    */
   reachable(cell) {
-    return this.dist[cell] !== Infinity;
+    return this.dist[cell] !== Infinity && this.held[cell] === 0;
   }
 
   /**
@@ -238,22 +316,27 @@ export class Navigator {
       const nc = col + DX[k];
       const nr = row + DY[k];
       if (nc < 0 || nr < 0 || nc >= side || nr >= side) continue;
-      if (this.biome[nr * side + nc] === this.waterBiome) return true;
+      const n = nr * side + nc;
+      if (this.biome[n] === this.waterBiome || this.wet[this.structure[n]] === 1) return true;
     }
     return false;
   }
 
   /**
-   * Cheapest reachable cell next to water, or -1.
+   * Cheapest reachable cell next to water, or -1; none where someone stands, unless `any`.
+   * @param {boolean} [any=false]
    * @returns {number}
    */
-  nearestWaterSide() {
+  nearestWaterSide(any = false) {
     let best = -1;
+    this.lastHeld = false;
     const n = this.side * this.side;
     for (let i = 0; i < n; i++) {
       if (this.dist[i] === Infinity) continue;
       if (best >= 0 && this.dist[i] >= this.dist[best]) continue;
-      if (this.besideWater(i)) best = i;
+      if (!this.besideWater(i)) continue;
+      if (this.held[i] === 1 && !any) this.lastHeld = true;
+      else best = i;
     }
     return best;
   }
@@ -265,11 +348,13 @@ export class Navigator {
    */
   nearestResource(wanted) {
     let best = -1;
+    this.lastHeld = false;
     const n = this.side * this.side;
     for (let i = 0; i < n; i++) {
       if (this.dist[i] === Infinity || wanted[this.resource[i]] !== 1) continue;
       if (this.quantity[i] === 0) continue;
-      if (best < 0 || this.dist[i] < this.dist[best]) best = i;
+      if (this.held[i] === 1) this.lastHeld = true;
+      else if (best < 0 || this.dist[i] < this.dist[best]) best = i;
     }
     return best;
   }
@@ -281,10 +366,12 @@ export class Navigator {
    */
   nearestStructure(code) {
     let best = -1;
+    this.lastHeld = false;
     const n = this.side * this.side;
     for (let i = 0; i < n; i++) {
       if (this.dist[i] === Infinity || this.structure[i] !== code) continue;
-      if (best < 0 || this.dist[i] < this.dist[best]) best = i;
+      if (this.held[i] === 1) this.lastHeld = true;
+      else if (best < 0 || this.dist[i] < this.dist[best]) best = i;
     }
     return best;
   }
@@ -298,6 +385,7 @@ export class Navigator {
     if (this.dist[cell] === Infinity || this.resource[cell] !== 0 || this.structure[cell] !== 0) {
       return false;
     }
+    if (this.held[cell] === 1) return false;
     // The ring of an enclosure is kept for its wall.
     const x = this.cellX(cell);
     const y = this.cellY(cell);
@@ -476,7 +564,7 @@ export class Navigator {
     let best = -1;
     const n = this.side * this.side;
     for (let i = 0; i < n; i++) {
-      if (this.dist[i] === Infinity) continue;
+      if (this.dist[i] === Infinity || this.held[i] === 1) continue;
       const dx = this.cellX(i) - tx;
       const dy = this.cellY(i) - ty;
       const d2 = dx * dx + dy * dy;

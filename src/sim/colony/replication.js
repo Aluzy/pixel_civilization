@@ -51,7 +51,7 @@ export function roomToReplicate(state, ctx, id) {
   ) {
     return false;
   }
-  return colony.beds(ctx.balance.colony.bedsPerShelter) > colony.members;
+  return colony.beds() > colony.members;
 }
 
 /**
@@ -163,15 +163,22 @@ export function replicate(state, ctx, id) {
   };
   let x = a.x[id];
   let y = a.y[id];
+  let found = false;
   for (let k = 0; k < 8; k++) {
     const nx = a.x[id] + DX[k];
     const ny = a.y[id] + DY[k];
-    if (ctx.biomeSpeed[state.world.packedAt(nx, ny) & PACK.MASK] > 0) {
+    const p = state.world.packedAt(nx, ny);
+    const free =
+      state.world.lastOccupant() < 0 && ctx.blocksAgent[p >>> PACK.STRUCTURE_SHIFT] !== 1;
+    if (ctx.biomeSpeed[p & PACK.MASK] > 0 && free) {
       x = nx;
       y = ny;
+      found = true;
       break;
     }
   }
+  // Nowhere free beside the parent: two never share a tile.
+  if (!found) return -1;
   const cost = ctx.replicationCost;
   for (let g = 1; g < cost.length; g++) if (cost[g] > 0) a.addCarried(id, g, -cost[g]);
   payFood(ctx, id);

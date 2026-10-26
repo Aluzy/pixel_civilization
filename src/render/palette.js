@@ -33,16 +33,20 @@ export function buildPalette(tables, structureDefs = []) {
   return { biomes, resources, structures, cropBeds };
 }
 
+/** Earth colour blended (a quarter) into the ground of a trail. */
+const TRAIL_RGB = Uint8Array.from([120, 92, 60]);
+
 /**
  * Fills an RGBA buffer with the colours of a chunk: the structure if any (but a ripe crop shows on
- * its plot), else the resource, else the biome.
+ * its plot), else the resource, else the biome (earthier on a trail).
  * @param {Uint8ClampedArray} rgba - Length = tiles × 4.
- * @param {{ biome: Uint8Array, resource: Uint8Array, structure?: Uint8Array }} chunk
+ * @param {{ biome: Uint8Array, resource: Uint8Array, structure?: Uint8Array,
+ *   trail?: Uint8Array }} chunk
  * @param {Palette} palette
  * @returns {void}
  */
 export function paintChunk(rgba, chunk, palette) {
-  const { biome, resource, structure } = chunk;
+  const { biome, resource, structure, trail } = chunk;
   for (let i = 0, o = 0; i < biome.length; i++, o += 4) {
     const s = structure ? structure[i] : 0;
     const r = resource[i];
@@ -55,9 +59,11 @@ export function paintChunk(rgba, chunk, palette) {
       table = palette.resources;
       c = r * 3;
     }
-    rgba[o] = table[c];
-    rgba[o + 1] = table[c + 1];
-    rgba[o + 2] = table[c + 2];
+    // A trail: the bare ground shows through, a darker, earthier shade.
+    const worn = table === palette.biomes && trail !== undefined && trail[i] === 1;
+    rgba[o] = worn ? (table[c] * 3 + TRAIL_RGB[0]) >> 2 : table[c];
+    rgba[o + 1] = worn ? (table[c + 1] * 3 + TRAIL_RGB[1]) >> 2 : table[c + 1];
+    rgba[o + 2] = worn ? (table[c + 2] * 3 + TRAIL_RGB[2]) >> 2 : table[c + 2];
     rgba[o + 3] = 255;
   }
 }

@@ -55,6 +55,8 @@ Implémenté au J11 (décision 0024). Là où il s'écarte des sections précéd
 **Pourquoi partir** : la seule raison retenue est la foule, telle que lue au tableau noir.
 
 - La pression vaut (membres − 100) / 150, bornée à [0, 1], × (1 + 0,5 × (curiosité − sociabilité)).
+  - Depuis le village (décision 0026), elle vaut (membres − 30) / 40.
+  - Un village enclos loge une centaine d'individus, et deux lits par maison et des nuits entières de sommeil font plafonner la population plus bas. Une colonie essaime donc plus tôt.
 - Saturation des lits, de la réserve, harmonie et danger ne comptent pas encore.
 
 **Trouver un site** : un **éclaireur** à la fois, au camp, dont la pression dépasse 0,3.

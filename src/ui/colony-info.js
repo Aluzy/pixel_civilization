@@ -30,6 +30,7 @@ export function formatColony(colony, colonies = []) {
   }
   lines.push(
     `${colony.shelters} abri(s), ${colony.beds} lit(s)` +
+      (colony.canalTiles ? ` · ${colony.canalTiles} case(s) de canal` : '') +
       (colony.fields ? ` · ${colony.fields} champ(s), ${colony.planted} plant(s)` : ''),
   );
   const h = colony.harmony;
@@ -146,7 +147,8 @@ export function formatFortress(f) {
       built.length > 0
         ? `porte(s) ${built.map((g) => `(${g.x}, ${g.y})`).join(' ')}`
         : `${e.gates.length} porte(s) à bâtir`;
-    const tower = e.tower ? ` · tour (${e.tower.x}, ${e.tower.y})` : '';
+    const up = (e.towers ?? []).filter((t) => t.built);
+    const tower = up.length > 0 ? ` · ${up.length}/${e.towers.length} tour(s) de guet` : '';
     lines.push(`Enceinte ${state} · ${gate}${tower}`);
     if (e.closed) lines.push(`Intrusions de prédateurs depuis : ${e.breaches}`);
   }

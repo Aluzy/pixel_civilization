@@ -153,3 +153,15 @@ Implémenté au J9 (décision 0022). Là où il s'écarte des sections précéde
 
 
 **Au J10** ([14](14-economie.md), décision 0023) : dans une colonie de 12 membres et plus, les fournées sont le métier des meuniers et des boulangers, qui achètent leurs ingrédients au comptoir et cuisinent ce qui rapporte. Les postes de cuisine ne servent plus qu'à chercher ce qui se cuisine. Le grain et les plats sont vendus au comptoir, et achetés par ceux qui ont faim.
+
+## Champs hors les murs (décision 0026)
+
+Une fois l'enceinte décidée, aucune parcelle nouvelle ne se fait à l'intérieur : la place est gardée pour les maisons.
+
+- Les parcelles se font hors les murs, à 20 cases au plus de l'enceinte (au lieu de 20 cases du camp). Le garde-champ (« dans les champs ») se compte de la même façon.
+- Une parcelle restée dans les murs cède la place à une maison quand le plan du village en a besoin.
+
+## Irrigation (décision 0027)
+
+- Une parcelle à côté d'un canal (8 voisins) est arrosée d'elle-même chaque jour, à l'aube. Personne n'a à porter l'eau, et le travail d'arroser ne lui est plus proposé.
+- Une case à 4 cases d'un canal peut devenir une parcelle, comme près d'un lac. Les canaux ouvrent donc des champs loin des rives.

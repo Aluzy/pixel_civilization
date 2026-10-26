@@ -117,6 +117,24 @@ Mesures (10 graines, 150 jours) :
 
 **Ce qui reste à faire** : agrandir l'enceinte quand la colonie déborde ses murs (les abris bâtis après restent dehors), murs de pierre et de brique, points de vie des murs, ordre spatial et zone de défense dans l'harmonie.
 
+### Le village dans les murs (décision 0026)
+
+L'enceinte doit loger toutes les habitations, elle est donc bien plus grande :
+
+- **Tracé** : elle entoure :
+  - la salle du trésor ;
+  - les stations et bibliothèques à 12 cases d'elle ;
+  - **toutes les maisons** de la colonie, murs compris.
+- Ce rectangle est ensuite agrandi d'un côté à la fois, jusqu'à loger les maisons de 80 membres. Une maison et son allée occupent 5 × 4 cases.
+- Pas plus de 64 cases de côté (au lieu de 40). En pratique, 30 à 43 cases de côté, soit 130 à 160 pans.
+- **Maisons** : une fois l'enceinte décidée, les maisons se bâtissent à l'intérieur, en rangées autour du camp. Une parcelle restée dedans cède la place à une maison.
+- **Champs** : les parcelles se font hors les murs, à 20 cases au plus de l'enceinte.
+- **Tours** : une tour à côté de chaque porte. Après la fermeture, un projet de tour par tour, l'une après l'autre.
+  - La nuit, chaque garde monte sur la tour libre la plus proche : il y voit 6 cases plus loin et frappe ×1,5.
+  - Le jour, il dort quand sa fatigue l'y pousse.
+- Les prédateurs ne passent ni les murs ni les portes des maisons : qui dort dans une maison est à l'abri, même hors de l'enceinte.
+- **Porte d'eau** (décision 0027) : un canal peut passer sous l'enceinte à la place d'un pan de palissade. Les prédateurs ne le traversent pas : le pan compte comme fermé.
+
 ## 4. Conflits entre colonies (J13)
 
 - **Pourquoi** : rivalité pour un territoire qui se chevauche, une ressource rare (or, pierres, tanière de gibier), un trésor connu ; rancune après un incident ; faim (une colonie affamée pille).

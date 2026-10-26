@@ -79,7 +79,7 @@
 | Marchand | Métier qui mène les caravanes (J11) | `merchant` |
 | Salle du trésor | Construction de la colonie qui garde ses écus, son or et ses pierres précieuses (J12) | `treasury`, `hasTreasure` |
 | Danger ressenti | Jours récents avec une attaque près du camp, qui s'effacent (×0,8 par jour) (J12) | `danger` |
-| Enceinte | Anneau rectangulaire de palissade autour de la salle du trésor et des abris, avec une porte et une tour (J12) | `encState`, `encX0`… |
+| Enceinte | Anneau rectangulaire de palissade autour de la salle du trésor et de toutes les maisons, avec une porte par côté et une tour à côté de chaque porte (J12, décision 0026) | `encState`, `encX0`… |
 | Porte | Pan de l'enceinte que les individus franchissent, pas les prédateurs (J12) | `gate` |
 | Intrusion | Entrée d'un prédateur dans une enceinte fermée (attendu : aucune) (J12) | `breaches` |
 | Raid | Troupe envoyée par une colonie piller une autre (vision v2) | `raid` |
@@ -92,3 +92,9 @@
 | Penseur | Worker secondaire qui calcule des décisions | `thinker` |
 | Graine | Nombre qui détermine tout le monde et les tirages | `seed` |
 | Bloc gelé | Bloc sans individu proche, non simulé en détail | `frozen` |
+| Maison | Abri de plusieurs cases : un anneau de murs d'abri, une porte d'abri, un lit par case intérieure (décision 0026) | `house.js`, `footprint` |
+| Lit | Case intérieure d'une maison : une place pour un dormeur ; une colonie compte ses lits | `bedX`, `bedY` |
+| Plan du village | Rangées de maisons séparées par des allées, autour du camp, dans l'enceinte s'il y en a une | `planHouse` |
+| Sentier | Case foulée 60 fois, devenue pour de bon plus rapide à parcourir | `wear`, `trails` |
+| Occupant | L'individu qui se tient sur une case : deux individus ne partagent jamais une case | `occupant` |
+| Canal | Case creusée depuis l'eau, où l'eau coule : on y boit, on y patauge, il irrigue les parcelles voisines ; les prédateurs ne le traversent pas (décision 0027) | `canal`, `canal.js` |

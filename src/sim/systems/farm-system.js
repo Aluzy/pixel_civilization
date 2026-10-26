@@ -2,6 +2,7 @@ import { EventType } from '../core/events.js';
 import { FALLOW } from '../farming/crop-store.js';
 import { stockPortions } from '../farming/food.js';
 import { PACK } from '../world/chunk-store.js';
+import { besideCanal } from '../colony/canal.js';
 
 /**
  * Once a day, at dawn of the new day, every plant grows (docs/design/13-agriculture-cuisine.md,
@@ -44,6 +45,8 @@ export function farmSystem(state, ctx) {
       crops.sow(p, crops.crop[p]);
       continue;
     }
+    // A plot beside a canal is watered by itself (irrigation).
+    if (besideCanal(state, ctx, x, y)) crops.watered[p] = day;
     if (crops.watered[p] === day - 1) {
       crops.dry[p] = 0;
       crops.stage[p] = stage + 1;
