@@ -369,7 +369,22 @@ Réalisé :
   - styles propres aux colonies ;
   - entretien des bâtiments.
 
-### J13 — Conflits (`v1.0.0`)
+### Mise à jour — L'expansion et le commerce (`v0.16.0`)
+
+Demandée à la place du J13 (décision 0029, [18](18-expansion-et-commerce.md)) : voir les colonies s'étendre et commercer plutôt que se faire la guerre. Six ensembles :
+
+- correctifs (recettes au-delà de 32, objectif qui échoue sans cesse, places des colonies éteintes, famines des grandes colonies) ;
+- la mer nourricière : pêche, ponton, fumoir, barque ;
+- le savoir durable : tablettes, grande bibliothèque, maîtres et école ;
+- sentiers, routes, relais et haltes des caravanes ;
+- quartiers spécialisés ;
+- navires et îles.
+
+Réalisé : à compléter avec les mesures.
+
+### J13 — Conflits (reporté)
+
+Reporté à la demande (décision 0029) : l'expansion et le commerce passent d'abord. Le contenu prévu reste valable.
 
 - Incidents et rancunes, raids décidés par simulation mentale (butin, chances, pertes), alerte et défense, bonus des murs, butin, paix, absorption.
 

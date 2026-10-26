@@ -112,6 +112,7 @@ Pour chaque tâche :
 | Migration, colonies multiples (vision v2) | `docs/design/15-colonies-et-migration.md` |
 | Menaces, combattants, forteresses, conflits (vision v2) | `docs/design/16-guerre-et-forteresses.md` |
 | Architecture : plan de ville, édifices, paysage, grands travaux, beauté | `docs/design/17-architecture.md` |
+| Expansion et commerce : pêche, savoir durable, routes et relais, quartiers, navires et îles | `docs/design/18-expansion-et-commerce.md` |
 | Glossaire | `docs/design/glossaire.md` |
 
 ## Ce qu'il ne faut pas faire
