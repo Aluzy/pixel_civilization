@@ -27,6 +27,7 @@ export class Navigator {
    * @param {number} [options.crowdCost] - Extra cost of a tile where another agent walks.
    * @param {number} [options.trailSteps] - Footsteps that make a trail.
    * @param {number} [options.trailSpeed] - Speed factor on a trail.
+   * @param {Uint8Array} [options.fromShore] - 1 for each resource taken from the next tile.
    */
   constructor({
     biomeSpeed,
@@ -39,7 +40,12 @@ export class Navigator {
     crowdCost = 0,
     trailSteps = 256,
     trailSpeed = 1,
+    fromShore = new Uint8Array(256),
   }) {
+    /** 1 for each resource taken from a neighbouring tile, standing beside it (fish). */
+    this.fromShore = fromShore;
+    /** Speed on water for the agent being served: 0 on foot, more with a boat or a ship. */
+    this.waterSpeed = 0;
     /** Footsteps that make a trail, and how much faster one walks on it. */
     this.trailSteps = trailSteps;
     this.trailSpeed = trailSpeed;
@@ -74,6 +80,8 @@ export class Navigator {
     this.waterBiome = waterBiome;
     this.biome = new Uint8Array(MAX_CELLS);
     this.resource = new Uint8Array(MAX_CELLS);
+    /** Resource taken from a neighbour of the cell (fish beside the shore), or 0. */
+    this.sideResource = new Uint8Array(MAX_CELLS);
     this.quantity = new Uint8Array(MAX_CELLS);
     this.structure = new Uint8Array(MAX_CELLS);
     this.stepCost = new Float64Array(MAX_CELLS);
@@ -116,6 +124,7 @@ export class Navigator {
     // Inside a house, one gets past a sleeper by swapping beds with it.
     const inBed = this.beds[world.packedAt(cx, cy) >>> PACK.STRUCTURE_SHIFT] === 1;
     this.heldCount = 0;
+    let shore = false;
     for (let row = 0; row < side; row++) {
       for (let col = 0; col < side; col++) {
         const i = row * side + col;
@@ -127,8 +136,12 @@ export class Navigator {
         this.structure[i] = (p >>> PACK.STRUCTURE_SHIFT) & PACK.MASK;
         const worn = world.lastWear() >= this.trailSteps ? this.trailSpeed : 1;
         const wade = this.structureSpeed === null ? 1 : this.structureSpeed[this.structure[i]];
-        const speed =
-          this.blocks[this.structure[i]] === 1 ? 0 : this.biomeSpeed[biome] * worn * wade;
+        const ground =
+          biome === this.waterBiome && this.waterSpeed > 0
+            ? this.waterSpeed
+            : this.biomeSpeed[biome];
+        const speed = this.blocks[this.structure[i]] === 1 ? 0 : ground * worn * wade;
+        if (this.fromShore[this.resource[i]] === 1 && this.quantity[i] > 0) shore = true;
         this.stepCost[i] = speed > 0 ? 1 / speed : Infinity;
         this.held[i] = 0;
         const other = world.lastOccupant();
@@ -148,7 +161,33 @@ export class Navigator {
         }
       }
     }
+    this.markShore(shore, n);
     this.dijkstra(n);
+  }
+
+  /**
+   * Marks the cells beside a resource taken from the shore (fish): one stands there to take it.
+   * @param {boolean} any - The window holds some.
+   * @param {number} n - Cells in the window.
+   * @returns {void}
+   */
+  markShore(any, n) {
+    this.sideResource.fill(0, 0, n);
+    if (!any) return;
+    const side = this.side;
+    for (let i = 0; i < n; i++) {
+      const res = this.resource[i];
+      if (this.fromShore[res] !== 1 || this.quantity[i] === 0) continue;
+      const col = i % side;
+      const row = (i - col) / side;
+      for (let k = 0; k < 8; k++) {
+        const nc = col + DX[k];
+        const nr = row + DY[k];
+        if (nc < 0 || nr < 0 || nc >= side || nr >= side) continue;
+        const ni = nr * side + nc;
+        if (this.sideResource[ni] === 0) this.sideResource[ni] = res;
+      }
+    }
   }
 
   /**
@@ -351,8 +390,9 @@ export class Navigator {
     this.lastHeld = false;
     const n = this.side * this.side;
     for (let i = 0; i < n; i++) {
-      if (this.dist[i] === Infinity || wanted[this.resource[i]] !== 1) continue;
-      if (this.quantity[i] === 0) continue;
+      if (this.dist[i] === Infinity) continue;
+      const here = wanted[this.resource[i]] === 1 && this.quantity[i] > 0;
+      if (!here && wanted[this.sideResource[i]] !== 1) continue;
       if (this.held[i] === 1) this.lastHeld = true;
       else if (best < 0 || this.dist[i] < this.dist[best]) best = i;
     }

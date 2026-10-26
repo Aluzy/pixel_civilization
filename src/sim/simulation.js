@@ -173,6 +173,7 @@ export const RNG_STREAMS = Object.freeze([
  * @property {Float64Array} biomeSpeed
  * @property {number} waterBiome
  * @property {Uint8Array} edible - 1 per resource id eaten where it grows (foraged).
+ * @property {Uint8Array} fromShore - 1 per resource id taken from the next tile (fish).
  * @property {Float64Array} nutrition - Hunger removed per unit, per resource id.
  * @property {Float64Array} harvestTicks - Base ticks to harvest one unit, per resource id.
  * @property {number} harvestForceScale
@@ -352,6 +353,8 @@ function buildContext(balance, tables, agents, seedKey) {
   const nutrition = new Float64Array(resourceSlots);
   const harvestTicks = new Float64Array(resourceSlots);
   const regrowTicks = new Int32Array(resourceSlots);
+  // Taken from the next tile, standing on the shore (fish, decision 0029).
+  const fromShore = new Uint8Array(resourceSlots);
   const zoneSide = Math.ceil((2 * balance.harmony.territoryRadius + 1) / balance.harmony.zoneCell);
   tables.resources.forEach((r, i) => {
     const id = i + 1;
@@ -363,6 +366,7 @@ function buildContext(balance, tables, agents, seedKey) {
     }
     harvestTicks[id] = r.harvestTicks ?? 1;
     regrowTicks[id] = r.renewable ? (r.regrowTicks ?? 0) : 0;
+    fromShore[id] = r.fromShore === true ? 1 : 0;
   });
   const biomeSpeed = Float64Array.from(tables.biomes.map((b) => b.speed ?? 1));
   const waterBiome = tables.biomes.findIndex((b) => b.id === 'water');
@@ -469,7 +473,9 @@ function buildContext(balance, tables, agents, seedKey) {
       crowdCost: balance.actions.crowdCost,
       trailSteps: balance.trails.steps,
       trailSpeed: balance.trails.speed,
+      fromShore,
     }),
+    fromShore,
     blocksAgent,
     blocksPredator,
     passage,
@@ -608,6 +614,8 @@ function buildContext(balance, tables, agents, seedKey) {
     nearestBySubject: new Int32Array(CATALOG.dangerSubject),
     exploreTarget: new Int32Array(2),
     recallTarget: new Int32Array(2),
+    spot: new Int32Array(2),
+    wantedOne: new Uint8Array(resourceSlots),
     crops,
     cropOfResource,
     plotCode,

@@ -152,6 +152,42 @@ export function stepAside(state, ctx, other, wx, wy) {
 }
 
 /**
+ * The tile to take a resource flagged in `wanted` from: the agent's own, else (a resource taken
+ * from the shore, fish) the first neighbour holding one, in a fixed order.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {Uint8Array} wanted - 1 per wanted resource id.
+ * @param {Int32Array} out - Receives x, y (the agent's tile when none is found).
+ * @returns {boolean} True if a tile holds one.
+ */
+function sourceTile(state, ctx, id, wanted, out) {
+  const x = ctx.agents.x[id];
+  const y = ctx.agents.y[id];
+  out[0] = x;
+  out[1] = y;
+  const here = (state.world.packedAt(x, y) >> PACK.RESOURCE_SHIFT) & PACK.MASK;
+  if (wanted[here] === 1) return true;
+  for (let k = 0; k < 8; k++) {
+    const nx = x + DX[k];
+    const ny = y + DY[k];
+    const p = state.world.packedAt(nx, ny);
+    const r = (p >> PACK.RESOURCE_SHIFT) & PACK.MASK;
+    if (
+      wanted[r] !== 1 ||
+      ctx.fromShore[r] !== 1 ||
+      ((p >> PACK.QUANTITY_SHIFT) & PACK.MASK) === 0
+    ) {
+      continue;
+    }
+    out[0] = nx;
+    out[1] = ny;
+    return true;
+  }
+  return false;
+}
+
+/**
  * True if one of the 8 neighbours of (x, y) is water.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
@@ -285,13 +321,13 @@ export function stepAction(state, ctx, id) {
       return;
     }
     case Action.FORAGE: {
-      const x = agents.x[id];
-      const y = agents.y[id];
-      const resource = (state.world.packedAt(x, y) >> PACK.RESOURCE_SHIFT) & PACK.MASK;
-      if (ctx.edible[resource] !== 1) {
+      if (!sourceTile(state, ctx, id, ctx.edible, ctx.spot)) {
         finish(ctx, id);
         return;
       }
+      const x = ctx.spot[0];
+      const y = ctx.spot[1];
+      const resource = (state.world.packedAt(x, y) >> PACK.RESOURCE_SHIFT) & PACK.MASK;
       const need = ctx.harvestTicks[resource] / (1 + agents.force[id] / ctx.harvestForceScale);
       agents.actionProgress[id] += 1;
       if (agents.actionProgress[id] < need) return;
@@ -493,10 +529,13 @@ export function stepAction(state, ctx, id) {
  */
 function harvest(state, ctx, id) {
   const agents = ctx.agents;
-  const x = agents.x[id];
-  const y = agents.y[id];
-  const resource = (state.world.packedAt(x, y) >> PACK.RESOURCE_SHIFT) & PACK.MASK;
   const wanted = agents.harvestGood[id];
+  ctx.wantedOne[wanted] = 1;
+  sourceTile(state, ctx, id, ctx.wantedOne, ctx.spot);
+  ctx.wantedOne[wanted] = 0;
+  const x = ctx.spot[0];
+  const y = ctx.spot[1];
+  const resource = (state.world.packedAt(x, y) >> PACK.RESOURCE_SHIFT) & PACK.MASK;
   const loaded = agents.carriedTotal(id) >= ctx.capacity(id);
   if (resource !== wanted || loaded || !canHarvest(ctx, id, wanted)) {
     finish(ctx, id);
