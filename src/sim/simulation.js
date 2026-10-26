@@ -485,7 +485,7 @@ function buildContext(balance, tables, agents, seedKey) {
     fromShore,
     deck,
     boatGood: catalog.items.find((it) => it.id === 'boat')?.good ?? 0,
-    shipGood: catalog.items.find((it) => it.id === 'ship')?.good ?? 0,
+
     blocksAgent,
     blocksPredator,
     passage,
@@ -506,6 +506,7 @@ function buildContext(balance, tables, agents, seedKey) {
     woodResource: tables.resources.findIndex((r) => r.id === 'wood') + 1,
     fishResource: tables.resources.findIndex((r) => r.id === 'fish') + 1,
     schoolCode: idCode('school'),
+    shipCode: idCode('ship'),
     quarryBiome: Uint8Array.from(tables.biomes, (b) =>
       b.id === 'mountain' || b.id === 'desert' ? 1 : 0,
     ),
@@ -697,6 +698,7 @@ const PROJECT_KINDS = [
   'tower',
   'canal',
   'works',
+  'ship',
 ];
 const PROJECT_NAMES = [
   '',
@@ -709,6 +711,7 @@ const PROJECT_NAMES = [
   'Tour',
   'Canal',
   'Ouvrage',
+  'Navire',
 ];
 
 /**

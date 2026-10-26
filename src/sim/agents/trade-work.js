@@ -120,6 +120,48 @@ function trade(state, ctx, home, id) {
 }
 
 /**
+ * A halt on the way (decision 0029): passing near the camp of a third colony its own colony knows,
+ * the merchant trades there once: it sells part of its load if that counter pays more than it
+ * paid, and the two colonies count a trade (a trade route, later paved). Relays live on it.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} home
+ * @param {number} id
+ * @returns {void}
+ */
+function halt(state, ctx, home, id) {
+  const a = ctx.agents;
+  const to = a.caravanTo[id];
+  const r = ctx.balance.economy.haltRadius;
+  for (let c = 0; c < state.colonies.length; c++) {
+    if (c === home.id || c === to || c === a.caravanHalt[id] || home.relKnown[c] !== 1) continue;
+    const stop = state.colonies[c];
+    if (stop.members === 0 || !stop.hasCamp) continue;
+    if (Math.abs(a.x[id] - stop.campX) > r || Math.abs(a.y[id] - stop.campY) > r) continue;
+    a.caravanHalt[id] = c;
+    const g = a.caravanGood[id];
+    const G = a.goodSlots;
+    const spread = ctx.balance.economy.spread;
+    const held = g > 0 ? a.carried(id, g) : 0;
+    // It sells there only at a profit over what its own counter asked.
+    if (held > 0 && bidOf(stop.price[g]) > askOf(a.priceSeen[id * G + g], spread)) {
+      sell(state, ctx, stop, id, g, Math.ceil(held * ctx.balance.economy.haltShare));
+    }
+    if (home.relTrades[c] === 0) {
+      state.events.push(state.tick, EventType.FIRST_TRADE, id, a.x[id], a.y[id], c, home.id);
+    }
+    home.relTrades[c]++;
+    stop.relTrades[home.id]++;
+    if (stop.relKnown[home.id] !== 1) {
+      stop.relKnown[home.id] = 1;
+      stop.relCampX[home.id] = home.campX;
+      stop.relCampY[home.id] = home.campY;
+    }
+    return;
+  }
+}
+
+/**
  * The merchant's caravan: buy a load at home, walk to the other colony, trade there, come back,
  * sell the return load and post the prices seen.
  * @param {import('../simulation.js').SimState} state
@@ -154,6 +196,7 @@ export function tradeBehaviour(state, ctx, id, plan) {
     a.caravanGood[id] = out[1];
   }
   const to = a.caravanTo[id];
+  halt(state, ctx, home, id);
   if (a.caravanLeg[id] === 1) {
     const other = state.colonies[to];
     if (atPlace(ctx, id, other.campX, other.campY)) {
@@ -177,5 +220,6 @@ export function tradeBehaviour(state, ctx, id, plan) {
   a.caravanTo[id] = -1;
   a.caravanLeg[id] = 0;
   a.caravanGood[id] = 0;
+  a.caravanHalt[id] = -1;
   startHere(ctx, id, Action.IDLE);
 }

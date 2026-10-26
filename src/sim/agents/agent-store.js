@@ -53,6 +53,8 @@ export class AgentStore {
     this.wearyTick = new Int32Array(max);
     /** Speed on water as last perceived: 0 on foot, more with a boat or a ship. */
     this.sail = new Float32Array(max);
+    /** Speed of the craft under way (a quarter of like stations makes it faster). */
+    this.craftSpeed = new Float32Array(max);
     this.geneStart = geneStart;
     this.geneCount = geneStart.length;
     /** Decision genome, `geneCount` per agent (docs/design/06-ia.md, couche 8). */
@@ -104,6 +106,8 @@ export class AgentStore {
     // carries to sell, and the prices it saw at that colony's counter.
     this.caravanTo = new Int8Array(max).fill(-1);
     this.caravanLeg = new Uint8Array(max);
+    /** Last colony the caravan halted at on its way (decision 0029), or -1. */
+    this.caravanHalt = new Int8Array(max).fill(-1);
     this.caravanGood = new Uint8Array(max);
     this.caravanPrice = new Float64Array(max * goodCount);
     /** Tile of the wall segment (gate, tower) it builds, and 1 while it stands on a tower. */
@@ -400,6 +404,7 @@ export class AgentStore {
     this.provisioned[id] = 0;
     this.caravanTo[id] = -1;
     this.caravanLeg[id] = 0;
+    this.caravanHalt[id] = -1;
     this.caravanGood[id] = 0;
     this.caravanPrice.fill(0, id * this.goodSlots, (id + 1) * this.goodSlots);
     // No building site yet (far from anything: never a real tile).
@@ -572,6 +577,7 @@ export class AgentStore {
       h.typedArray(this.genes.subarray(id * this.geneCount, (id + 1) * this.geneCount));
       h.typedArray(this.weary.subarray(id * this.goalCount, (id + 1) * this.goalCount));
       h.uint32(this.wearyTick[id]).uint32(Math.round(this.sail[id] * 1000));
+      h.uint32(Math.round(this.craftSpeed[id] * 1000));
       const d0 = id * this.dangerSlots;
       const d1 = d0 + this.dangerCount[id];
       h.uint32(this.dangerCount[id]).uint32(this.zoneX[id]).uint32(this.zoneY[id]);
@@ -595,6 +601,7 @@ export class AgentStore {
       h.uint32(this.saleTick[id]).uint32(this.crowdSeen[id]).uint32(this.provisioned[id]);
       h.uint32(this.caravanTo[id] & 0xff)
         .uint32(this.caravanLeg[id])
+        .uint32(this.caravanHalt[id] & 0xff)
         .uint32(this.caravanGood[id]);
       h.typedArray(this.caravanPrice.subarray(g0, g0 + this.goodSlots));
       h.uint32(this.siteX[id]).uint32(this.siteY[id]).uint32(this.onTower[id]);

@@ -321,6 +321,8 @@
     "cookTicks": 7200
   },
   "economy": {
+    "haltRadius": 8,
+    "haltShare": 0.5,
     "startCoins": 30,
     "coinsPerMember": 200,
     "coinsPerNutrition": 0.5,
@@ -372,7 +374,9 @@
     "scoutTicks": 24000,
     "scoutLeg": [40, 70],
     "arriveRadius": 3,
-    "maxColonies": 24
+    "maxColonies": 24,
+    "relayDistance": 24,
+    "relayRoad": 2
   },
   "canal": { "minMembers": 20, "reach": 6, "maxLength": 60, "batch": 10 },
   "works": {
@@ -402,7 +406,8 @@
     "schoolTau": 1.5,
     "taughtCopies": 3
   },
-  "sailing": { "boatSpeed": 0.8, "shipSpeed": 1.2, "swimSpeed": 0.3 },
+  "quarters": { "radius": 4, "perStation": 0.1, "maxBonus": 0.3 },
+  "sailing": { "boatSpeed": 0.8, "shipSpeed": 1.2, "swimSpeed": 0.3, "shipMembers": 40 },
   "fortress": {
     "treasureMembers": 30,
     "dangerDecay": 0.8,

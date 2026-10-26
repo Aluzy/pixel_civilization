@@ -55,14 +55,35 @@ export function roomForColony(state, cfg) {
  */
 function farFromCamps(ctx, colony, x, y) {
   const cfg = ctx.balance.migration;
+  // A relay on a road needs less room around it (decision 0029): the roads fill with hamlets.
+  const min = onRoad(ctx, x, y) ? cfg.relayDistance : cfg.minDistance;
   const d = Math.max(Math.abs(x - colony.campX), Math.abs(y - colony.campY));
-  if (d < cfg.minDistance || d > cfg.maxDistance) return false;
+  if (d < min || d > cfg.maxDistance) return false;
   for (let c = 0; c < MAX_COLONIES; c++) {
     if (colony.relKnown[c] !== 1) continue;
     const e = Math.max(Math.abs(colony.relCampX[c] - x), Math.abs(colony.relCampY[c] - y));
-    if (e < cfg.minDistance) return false;
+    if (e < min) return false;
   }
   return true;
+}
+
+/**
+ * True if a paved tile lies within `relayRoad` of (x, y), as the scout sees it.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} x
+ * @param {number} y
+ * @returns {boolean}
+ */
+function onRoad(ctx, x, y) {
+  const nav = ctx.nav;
+  const r = ctx.balance.migration.relayRoad;
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      const cell = nav.cellAt(x + dx, y + dy);
+      if (cell >= 0 && nav.structure[cell] === ctx.pavementCode) return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -291,6 +312,7 @@ export function foundColony(state, ctx, id, x, y) {
   colony.price.set(ctx.basePrices);
   colony.parent = c;
   colony.foundedTick = state.tick;
+  colony.overseas = mother.expSailed;
   state.colonies.push(colony);
   registerHouse(ctx, colony, x, y);
   colony.sheltersBuilt = 1;
@@ -319,5 +341,6 @@ export function foundColony(state, ctx, id, x, y) {
   mother.relPriceTick[d] = state.tick;
   mother.clearExpedition();
   state.events.push(state.tick, EventType.COLONY_FOUNDED, id, x, y, d, c);
+  if (colony.overseas) state.events.push(state.tick, EventType.OVERSEAS, id, x, y, d, c);
   return true;
 }

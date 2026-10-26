@@ -49,6 +49,7 @@ export const EventType = Object.freeze({
   ENCLOSURE_PLANNED: 'enclosurePlanned',
   ENCLOSURE_CLOSED: 'enclosureClosed',
   TAUGHT: 'taught',
+  OVERSEAS: 'overseas',
 });
 
 /** Events kept in memory; older ones are dropped (the count keeps growing). */

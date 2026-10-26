@@ -1,3 +1,4 @@
+import { hasShip } from '../agents/sailing.js';
 import { canalProject } from '../colony/canal.js';
 import { worksProject } from '../colony/works.js';
 import { claimFreeStock, openTasks, releaseTask } from '../colony/colony-logic.js';
@@ -67,6 +68,20 @@ export function colonySystem(state, ctx) {
       if (slot >= 0) openBuildProject(state, ctx, colony, slot, ProjectKind.LIBRARY, 'library');
     }
     fortress(state, ctx, colony);
+    // A ship for the voyages (decision 0029): a large colony at peace builds one on its shore.
+    const sail = ctx.balance.sailing;
+    const h = colony.harmony;
+    const calm = ctx.balance.harmony.calmAbove;
+    if (
+      colony.members >= sail.shipMembers &&
+      !hasShip(state, ctx, colony) &&
+      h[1 + Component.STABILITY] >= calm &&
+      h[1 + Component.WELLBEING] >= calm &&
+      colony.findProject(ProjectKind.SHIP) < 0
+    ) {
+      const slot = colony.freeSlot();
+      if (slot >= 0) openBuildProject(state, ctx, colony, slot, ProjectKind.SHIP, 'ship');
+    }
     canalProject(state, ctx, colony);
     worksProject(state, ctx, colony);
     // Plant what is over-harvested near the camp when durability or spatial order is the weakest

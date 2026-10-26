@@ -13,6 +13,7 @@ export const ProjectKind = Object.freeze({
   TOWER: 7, // Raise a tower on the wall, beside a gate (one project per tower).
   CANAL: 8, // Gather stone, then dig a canal from the water to a home, tile by tile.
   WORKS: 9, // A work of architecture (paving, a public building…): its tiles laid one by one.
+  SHIP: 10, // Gather the materials of a ship, then build it on the shore.
 });
 
 /** Most tiles of one work of architecture. */
@@ -198,6 +199,13 @@ export class Colony {
     this.teachY = 0;
     this.lessonMask = 0;
     this.hasSchool = false;
+    /** Its ship at the quay (decision 0029), and whether its last expedition crossed water. */
+    this.hasShip = false;
+    this.shipX = 0;
+    this.shipY = 0;
+    this.expSailed = false;
+    /** Founded beyond water (an island, another shore). */
+    this.overseas = false;
     this.schoolX = 0;
     this.schoolY = 0;
     /** Guards (docs/design/16-guerre-et-forteresses.md): -1 for a free post, and since when. */
@@ -575,6 +583,10 @@ export class Colony {
     h.uint32(this.hasSchool ? 1 : 0)
       .uint32(this.schoolX)
       .uint32(this.schoolY);
+    h.uint32(this.hasShip ? 1 : 0)
+      .uint32(this.shipX)
+      .uint32(this.shipY);
+    h.uint32(this.expSailed ? 1 : 0).uint32(this.overseas ? 1 : 0);
     this.notebook.hashInto(h);
     h.typedArray(this.guards).typedArray(this.guardTick);
     h.uint32(this.lastThreat).uint32(this.denQuietUntil);
@@ -701,6 +713,7 @@ export class Colony {
 
   /** @returns {void} */
   clearExpedition() {
+    this.expSailed = false;
     this.expState = Expedition.NONE;
     this.expLeader = -1;
     this.expMembers.fill(-1);

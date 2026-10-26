@@ -7,7 +7,13 @@ import { BARE_HANDS, lowestIngredient, matchRecipe } from '../crafting/catalog.j
 import { PACK } from '../world/chunk-store.js';
 import { Action } from './action-types.js';
 import { consolidate, forgetEmptied } from './beliefs.js';
-import { besideStructure, harvestMultiplier, inShelter, structureAt } from './equipment.js';
+import {
+  besideStructure,
+  harvestMultiplier,
+  inShelter,
+  quarterBonus,
+  structureAt,
+} from './equipment.js';
 import { WATER_SUBJECT } from './memory.js';
 import { notice, perceptionRadius } from './perception.js';
 import {
@@ -260,7 +266,13 @@ export function stepAction(state, ctx, id) {
       const trail = state.world.lastWear() >= ctx.trailSteps;
       const other = state.world.lastOccupant();
       const code = packed >>> PACK.STRUCTURE_SHIFT;
-      const ground = groundSpeed(ctx, packed & PACK.MASK, code, agents.sail[id]);
+      const biome = packed & PACK.MASK;
+      const ground = groundSpeed(ctx, biome, code, agents.sail[id]);
+      // An expedition that crosses water founds overseas.
+      if (biome === ctx.waterBiome && agents.colony[id] >= 0) {
+        const home = state.colonies[agents.colony[id]];
+        if (home.inExpedition(id)) home.expSailed = true;
+      }
       const factor = ground * (trail ? ctx.trailSpeed : 1) * ctx.structureSpeed[code];
       // A wall built across the path since it was planned: replan.
       if (factor <= 0 || ctx.blocksAgent[packed >>> PACK.STRUCTURE_SHIFT] === 1) {
@@ -388,13 +400,19 @@ export function stepAction(state, ctx, id) {
     case Action.HARVEST:
       harvest(state, ctx, id);
       return;
-    case Action.CRAFT:
-      agents.actionProgress[id] += 1;
+    case Action.CRAFT: {
+      // At a station among others of its kind (a quarter), the work goes faster.
+      if (agents.actionProgress[id] === 0) {
+        const station = ctx.catalog.recipes[agents.craftRecipe[id]].station;
+        agents.craftSpeed[id] = station > 0 ? quarterBonus(state, ctx, id, station) : 1;
+      }
+      agents.actionProgress[id] += agents.craftSpeed[id];
       if (agents.actionProgress[id] >= ctx.catalog.recipes[agents.craftRecipe[id]].duration) {
         craft(state, ctx, id);
         finish(ctx, id);
       }
       return;
+    }
     case Action.BUILD: {
       const r = agents.craftRecipe[id];
       const works = r === WORKS_RECIPE;

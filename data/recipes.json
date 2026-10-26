@@ -202,13 +202,6 @@
       "kind": "station"
     },
     {
-      "id": "shipyard",
-      "name": "Chantier naval",
-      "color": "#a8865a",
-      "kind": "station",
-      "shore": true
-    },
-    {
       "id": "school",
       "name": "École",
       "color": "#d8c79a",
@@ -222,6 +215,13 @@
       "kind": "library",
       "feminine": true,
       "great": true
+    },
+    {
+      "id": "ship",
+      "name": "Navire",
+      "color": "#6e4b2a",
+      "kind": "ship",
+      "shore": true
     }
   ],
   "items": [
@@ -397,12 +397,6 @@
       "harvest": {
         "fish": 2
       },
-      "sail": true
-    },
-    {
-      "id": "ship",
-      "name": "Navire",
-      "kind": "ship",
       "sail": true
     }
   ],
@@ -874,31 +868,6 @@
       }
     },
     {
-      "id": "shipyard",
-      "station": null,
-      "inputs": {
-        "wood": 8,
-        "fiber": 2,
-        "coal": 2
-      },
-      "durationTicks": 160,
-      "output": {
-        "structure": "shipyard"
-      }
-    },
-    {
-      "id": "ship",
-      "station": "shipyard",
-      "inputs": {
-        "wood": 12,
-        "fiber": 6
-      },
-      "durationTicks": 400,
-      "output": {
-        "item": "ship"
-      }
-    },
-    {
       "id": "school",
       "station": null,
       "inputs": {
@@ -908,6 +877,19 @@
       "durationTicks": 160,
       "output": {
         "structure": "school"
+      }
+    },
+    {
+      "id": "ship",
+      "station": null,
+      "inputs": {
+        "wood": 12,
+        "fiber": 6,
+        "coal": 2
+      },
+      "durationTicks": 400,
+      "output": {
+        "structure": "ship"
       }
     }
   ]

@@ -215,7 +215,7 @@ export function useRecipe(state, ctx, id, r, plan) {
       if (colony && !atCamp(ctx, colony, id) && goToCamp(ctx, colony, id, Action.NONE, plan))
         return;
     }
-    const cell = chooseSite(ctx);
+    const cell = chooseSite(ctx, null, kind === 'station' ? recipe.output : 0);
     if (cell === nav.center) {
       startHere(ctx, id, Action.CRAFT);
       plan.action = Action.CRAFT;
@@ -324,15 +324,25 @@ function buildHouse(state, ctx, id, plan) {
  * fits.
  * @param {import('../simulation.js').SimContext} ctx
  * @param {import('../simulation.js').SimState | null} [state=null] - Given for a house.
+ * @param {number} [kin=0] - A station's code: its site goes beside one of its kind if in sight.
  * @returns {number} Window cell, or -1.
  */
-export function chooseSite(ctx, state = null) {
+export function chooseSite(ctx, state = null, kin = 0) {
   const nav = ctx.nav;
   const n = nav.side * nav.side;
   let anchor = -1;
-  for (let i = 0; i < n; i++) {
-    if (nav.structure[i] === 0 || !nav.reachable(i)) continue;
-    if (anchor < 0 || nav.dist[i] < nav.dist[anchor]) anchor = i;
+  // A station goes beside one of its kind when one is in sight: the quarter grows (decision 0029).
+  if (kin > 0) {
+    for (let i = 0; i < n; i++) {
+      if (nav.structure[i] !== kin || !nav.reachable(i)) continue;
+      if (anchor < 0 || nav.dist[i] < nav.dist[anchor]) anchor = i;
+    }
+  }
+  if (anchor < 0) {
+    for (let i = 0; i < n; i++) {
+      if (nav.structure[i] === 0 || !nav.reachable(i)) continue;
+      if (anchor < 0 || nav.dist[i] < nav.dist[anchor]) anchor = i;
+    }
   }
   if (anchor < 0) anchor = nav.nearestWaterSide();
   if (anchor < 0) anchor = nav.center;
