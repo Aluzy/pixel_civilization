@@ -355,6 +355,9 @@ function askBoard(state, ctx, id, subjects, plan) {
   if (!atCamp(ctx, colony, id)) {
     const far = Math.max(Math.abs(colony.campX - a.x[id]), Math.abs(colony.campY - a.y[id]));
     if (far > ctx.balance.colony.homeRange) return false;
+    // Read lately: what the blackboard knew is in its memory already; going back would only send
+    // it out again (the hungry went to and fro between the camp and the search, decision 0029).
+    if (state.tick - a.boardTick[id] < ctx.balance.colony.boardInterval) return false;
     if (!goToCamp(ctx, colony, id, Action.NONE, plan)) return false;
     plan.note = PlanNote.REMEMBERED;
     return true;
