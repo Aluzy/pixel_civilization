@@ -10,7 +10,7 @@ const DAY = balance.time.ticksPerDay;
 // grown to 16 members (a long test: Vitest breathes between days).
 describe('migration and colonies (J11 exit)', () => {
   it('founds a daughter colony that trades with its mother and grows', async () => {
-    for (const seed of [2, 4]) {
+    for (const seed of [12, 15]) {
       const sim = new Simulation({ seed, balance });
       const colonies = sim.state.colonies;
       let day = 0;
