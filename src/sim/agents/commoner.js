@@ -1,7 +1,8 @@
 import { Action, isFocused } from './action-types.js';
+import { Tier } from './agent-store.js';
 import { moveTo, startHere } from './movement.js';
 import { inShelter } from './equipment.js';
-import { canHarvest } from './actions.js';
+import { besideDoor, canHarvest } from './actions.js';
 import { PACK } from '../world/chunk-store.js';
 import { ProjectKind } from '../colony/colony-store.js';
 import { has } from '../core/bits.js';
@@ -106,6 +107,7 @@ function decide(state, ctx, id) {
   const colony = c >= 0 ? state.colonies[c] : null;
   const map = colony === null ? null : townMap(state, ctx, colony);
   a.asleep[id] = 0;
+  holdTile(state, ctx, id);
   if (colony === null || map === null) {
     // No town to live in: it has to think for itself.
     a.promote(id);
@@ -117,8 +119,10 @@ function decide(state, ctx, id) {
   const eatAt = night ? p.bedtimeNeed : p.eatAt;
   if (a.thirst[id] >= drinkAt && drink(state, ctx, colony, map, id)) return;
   if (a.hunger[id] >= eatAt && eat(state, ctx, colony, map, id)) return;
+  // Only a predator that hunts it sends it home (the others are watched by the guards).
   const predator = state.threats.nearest(a.x[id], a.y[id], p.fleeRadius);
-  if (predator >= 0 && !inShelter(state, ctx, a.x[id], a.y[id])) {
+  const hunted = predator >= 0 && state.threats.target[predator] === id;
+  if (hunted && !inShelter(state, ctx, a.x[id], a.y[id])) {
     a.duty[id] = Duty.SHELTER;
     if (goToBed(state, ctx, colony, map, id, Action.IDLE)) return;
   }
@@ -128,8 +132,43 @@ function decide(state, ctx, id) {
   }
   a.duty[id] = Duty.WORK;
   if (work(state, ctx, colony, map, id)) return;
+  // Nothing to do: it rests at home, off the lanes (and home already when night falls).
   a.duty[id] = Duty.REST;
+  const k = claimBed(colony, a, id);
+  if (k >= 0 && !inHouse(colony, k, a.x[id], a.y[id])) {
+    if (goToBed(state, ctx, colony, map, id, Action.IDLE)) return;
+  }
   startHere(ctx, id, Action.IDLE);
+}
+
+/**
+ * Takes its tile again before it stops there: a commoner that walked through another (decision
+ * 0030) may stand on a tile held by someone else, or by nobody. A tile held by one who stands
+ * there it leaves for a free neighbour, if there is one.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @returns {void}
+ */
+function holdTile(state, ctx, id) {
+  const a = ctx.agents;
+  const world = state.world;
+  const x = a.x[id];
+  const y = a.y[id];
+  const other = world.occupantAt(x, y);
+  if (other === id) return;
+  // Free, or held by another of the people on its way (who walks on through it): taken.
+  if (other < 0 || (a.tier[other] === Tier.COMMONER && a.action[other] === Action.MOVE)) {
+    world.setOccupant(x, y, id);
+    return;
+  }
+  for (let k = 0; k < 8; k++) {
+    const p = world.packedAt(x + DX[k], y + DY[k]);
+    if (world.lastOccupant() >= 0 || ctx.biomeSpeed[p & PACK.MASK] <= 0) continue;
+    if (ctx.blocksAgent[p >>> PACK.STRUCTURE_SHIFT] === 1) continue;
+    a.place(id, x + DX[k], y + DY[k]);
+    return;
+  }
 }
 
 /** Where a trip may end before its target: anywhere at the camp, anywhere beside water. */
@@ -445,16 +484,38 @@ function fishBeside(state, x, y, good) {
 function sleep(state, ctx, colony, map, id) {
   const a = ctx.agents;
   a.duty[id] = Duty.SLEEP;
+  // To the deepest free bed of its house (asleep here if it is that one): the house fills from
+  // the back, so nobody lies between the door and a free bed.
   const k = claimBed(colony, a, id);
-  if (k >= 0 && inHouse(colony, k, a.x[id], a.y[id])) {
-    startHere(ctx, id, Action.SLEEP);
+  if (goToBed(state, ctx, colony, map, id, Action.SLEEP)) return;
+  // Its house taken by strangers: another bed.
+  if (k >= 0 && a.bed[id] < 0 && claimBed(colony, a, id) >= 0) {
+    if (goToBed(state, ctx, colony, map, id, Action.SLEEP)) return;
+  }
+  // Never asleep in a doorway or just inside it: the whole house would wait outside. One with a
+  // bed out of reach for now waits and tries again rather than lie down in a lane, unless worn out.
+  const door = byDoor(state, ctx, a.x[id], a.y[id]);
+  const worn = a.fatigue[id] >= ctx.balance.people.wornAt;
+  if (door || (a.bed[id] >= 0 && !worn)) {
+    startHere(ctx, id, Action.IDLE);
     return;
   }
-  if (goToBed(state, ctx, colony, map, id, Action.SLEEP)) return;
-  if (k < 0 && !atCamp(ctx, colony, id) && goToCamp(state, ctx, colony, map, id, Action.SLEEP)) {
-    return;
+  if (a.bed[id] < 0 && !atCamp(ctx, colony, id)) {
+    if (goToCamp(state, ctx, colony, map, id, Action.SLEEP)) return;
   }
   startHere(ctx, id, Action.SLEEP);
+}
+
+/**
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} x
+ * @param {number} y
+ * @returns {boolean} True on a house door or beside one.
+ */
+function byDoor(state, ctx, x, y) {
+  const here = state.world.packedAt(x, y) >>> PACK.STRUCTURE_SHIFT;
+  return here === ctx.houseDoorCode || besideDoor(state, ctx, x, y);
 }
 
 /**

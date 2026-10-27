@@ -39,7 +39,20 @@ function crowded(members = MIG.fullMembers) {
   colony.members = members;
   a.crowdSeen[0] = members;
   sim.state.tick = 30 * DAY;
+  // A scout must know how to raise a shelter (decision 0030).
+  knowShelter(sim, 0);
   return sim;
+}
+
+/**
+ * Teaches an agent the shelter.
+ * @param {Simulation} sim
+ * @param {number} id
+ * @returns {void}
+ */
+function knowShelter(sim, id) {
+  const r = sim.ctx.catalog.recipeForStructure[sim.ctx.shelterCode];
+  sim.agents.recipes[id].learn(r, sim.state.tick, 1e9);
 }
 
 /**
@@ -83,7 +96,13 @@ describe('migration', () => {
     expect(colony.scout).toBe(0);
     const other = member(sim, sim.agents.x[0], sim.agents.y[0]);
     sim.agents.crowdSeen[other] = MIG.fullMembers;
+    knowShelter(sim, other);
     expect(senseMigration(sim.state, sim.ctx, other, colony, true)).toBe(0);
+    // One who cannot raise a shelter does not scout.
+    colony.scout = -1;
+    const novice = member(sim, sim.agents.x[0], sim.agents.y[0]);
+    sim.agents.crowdSeen[novice] = MIG.fullMembers;
+    expect(senseMigration(sim.state, sim.ctx, novice, colony, true)).toBe(0);
     // Too soon after the last expedition: nobody scouts.
     colony.scout = -1;
     colony.lastExpedition = sim.state.tick;

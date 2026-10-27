@@ -97,7 +97,9 @@ export function formatAgent(agent, names, time) {
     need('Fatigue', agent.needs.fatigue),
     need('Curiosité', agent.needs.curiosity),
     need('Peur', agent.fear ?? 0),
-    `Objectif : ${agent.goal} (${doing})`,
+    agent.commoner
+      ? `Peuple · tâche : ${agent.goal} (${doing})`
+      : `Objectif : ${agent.goal} (${doing})`,
     planLine(agent.plan),
     `Porte : ${carried}`,
   ];

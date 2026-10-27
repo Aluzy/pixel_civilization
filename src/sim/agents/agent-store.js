@@ -540,6 +540,21 @@ export class AgentStore {
   }
 
   /**
+   * Moves the agent onto a tile another walker holds, without taking it: the tile stays the
+   * other's (decision 0030, the crowd of a town).
+   * @param {number} id
+   * @param {number} x
+   * @param {number} y
+   * @returns {void}
+   */
+  through(id, x, y) {
+    if (this.world) this.world.setOccupant(this.x[id], this.y[id], -1 - id);
+    this.x[id] = x;
+    this.y[id] = y;
+    this.grid.move(id, x, y);
+  }
+
+  /**
    * Alive agents within Chebyshev distance `r` of (x, y), in increasing id order, written to
    * `grid.found` (valid until the next query).
    * @param {number} x

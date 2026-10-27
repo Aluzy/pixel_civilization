@@ -176,3 +176,7 @@ Reposé, il ne se lève qu'au petit jour.
 ## Journal de décisions
 
 Chaque individu conserve ses 50 dernières décisions : cycle, objectif retenu, trois meilleurs scores concurrents, plan calculé, résultat (succès, échec, interruption). Le journal sert à l'inspection par l'observateur et au débogage.
+
+## Figures et peuple (décision 0030)
+
+Dans une colonie de 16 membres ou plus, la plupart des individus forment le **peuple** : ils suivent une routine de ville, ont un lit à eux dans une maison collective et naissent par foyers (un crédit de 0,1 naissance par membre et par jour, un lit libre et une réserve proportionnelle). Les **figures** (6 plus 2 % des membres) gardent tout ce que décrit ce document. Voir [19](19-grand-essor.md).

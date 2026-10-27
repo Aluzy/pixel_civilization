@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import balance from '../../data/balance.json' with { type: 'json' };
 import { Action } from '../../src/sim/agents/action-types.js';
 import { stepAction } from '../../src/sim/agents/actions.js';
+import { Tier } from '../../src/sim/agents/agent-store.js';
 import { inShelter } from '../../src/sim/agents/equipment.js';
 import { houseBox, houseDir, raiseHouse, registerHouse } from '../../src/sim/colony/house.js';
 import { createRng } from '../../src/sim/core/rng.js';
@@ -70,7 +71,8 @@ function another(sim, x, y) {
 }
 
 /**
- * True if no two living agents stand on the same tile, and every tile knows who stands on it.
+ * True if no two living agents stand on the same tile, and every tile knows who stands on it
+ * (but for the people of a town on their way).
  * @param {Simulation} sim
  * @returns {boolean}
  */
@@ -79,6 +81,10 @@ function oneByTile(sim) {
   const seen = new Set();
   for (let id = 0; id < a.highWater; id++) {
     if (a.alive[id] !== 1) continue;
+    // The people of a town walk through each other on their way (decision 0030), and take their
+    // tile back at their next decision.
+    const way = a.action[id] === Action.MOVE || a.action[id] === Action.NONE;
+    if (a.tier[id] === Tier.COMMONER && way) continue;
     const key = `${a.x[id]},${a.y[id]}`;
     if (seen.has(key) || sim.world.occupantAt(a.x[id], a.y[id]) !== id) return false;
     seen.add(key);

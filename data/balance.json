@@ -491,7 +491,9 @@
     "drinkAt": 45,
     "eatAt": 45,
     "tiredAt": 90,
+    "wornAt": 98,
     "bedtimeNeed": 25,
+    "homeTicks": 150,
     "lookRadius": 4,
     "tillRadius": 8,
     "fleeRadius": 6,
@@ -509,6 +511,7 @@
     "vocationBonus": 0.5,
     "vocationStock": 20,
     "taskChunk": 15,
-    "fedPortions": 4
+    "fedPortions": 4,
+    "farmUrgency": 6
   }
 }

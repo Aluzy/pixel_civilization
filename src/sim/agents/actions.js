@@ -151,6 +151,20 @@ function slips(agents, id, other) {
 }
 
 /**
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} x
+ * @param {number} y
+ * @returns {boolean} True beside a house door: a sleeper moved there would shut the house.
+ */
+export function besideDoor(state, ctx, x, y) {
+  for (let d = 0; d < 4; d++) {
+    if (structureAt(state, ctx, x + DX[d], y + DY[d]) === ctx.houseDoorCode) return true;
+  }
+  return false;
+}
+
+/**
  * Steps round the tile of its path at `index` (someone stands there) onto a free tile next to the
  * following one, if there is one; the path goes on from there.
  * @param {import('../simulation.js').SimState} state
@@ -380,15 +394,37 @@ export function stepAction(state, ctx, id) {
       }
       // Two agents never share a tile: one in the way is passed head-on, else waited for, and
       // after a while gone round (the new path avoids those who stand still).
+      // In a town's crowd, a commoner on its way walks through another on its way (decision
+      // 0030): only one who stands, works or sleeps holds its tile. It never ends its way there.
+      if (
+        other >= 0 &&
+        other !== id &&
+        agents.tier[id] === Tier.COMMONER &&
+        agents.tier[other] === Tier.COMMONER &&
+        agents.action[other] === Action.MOVE &&
+        index + 1 < agents.pathLength[id]
+      ) {
+        agents.moveProgress[id] -= 1;
+        agents.blocked[id] = 0;
+        agents.through(id, nx, ny);
+        agents.pathIndex[id] = index + 1;
+        agents.stepFactor[id] = 0;
+        state.world.tread(nx, ny, ctx.trailSteps);
+        return;
+      }
       if (other >= 0 && other !== id) {
         // Inside a house, past a sleeper: they swap beds, the sleeper still asleep.
         const facing = headOn(agents, other, agents.x[id], agents.y[id]);
+        // One that walked through the crowd may stand on a tile held by another: no swap from there.
+        const held = state.world.occupantAt(agents.x[id], agents.y[id]) === id;
         const swap =
-          facing ||
-          (agents.asleep[other] === 1 &&
-            inShelter(state, ctx, nx, ny) &&
-            inShelter(state, ctx, agents.x[id], agents.y[id])) ||
-          slips(agents, id, other);
+          held &&
+          (facing ||
+            (agents.asleep[other] === 1 &&
+              inShelter(state, ctx, nx, ny) &&
+              inShelter(state, ctx, agents.x[id], agents.y[id]) &&
+              !besideDoor(state, ctx, agents.x[id], agents.y[id])) ||
+            slips(agents, id, other));
         if (!swap) {
           agents.moveProgress[id] = 1;
           // A commoner goes round one who stands in its way, back onto its path beyond it.

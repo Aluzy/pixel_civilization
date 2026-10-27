@@ -138,8 +138,19 @@ export function chooseFarmJob(state, ctx, colony, id, commoner = false) {
     if (crops.stage[p] === FALLOW) bare++;
     if (crops.claim[p] >= 0) continue;
     const job = jobOf(state, ctx, p, seeds);
-    if (job === FarmJob.NONE || job < bestJob) continue;
+    if (job === FarmJob.NONE) continue;
     const d = Math.max(Math.abs(crops.x[p] - a.x[id]), Math.abs(crops.y[p] - a.y[id]));
+    if (commoner) {
+      // A commoner weighs urgency against the walk: the job at hand before one across the fields.
+      const cost = d - job * ctx.balance.people.farmUrgency;
+      if (best < 0 || cost < bestD) {
+        best = p;
+        bestJob = job;
+        bestD = cost;
+      }
+      continue;
+    }
+    if (job < bestJob) continue;
     if (job > bestJob || d < bestD) {
       best = p;
       bestJob = job;

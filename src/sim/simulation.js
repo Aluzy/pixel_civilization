@@ -10,7 +10,8 @@ import worksData from '../../data/works.json' with { type: 'json' };
 import vocationData from '../../data/vocations.json' with { type: 'json' };
 import { has, withBit } from './core/bits.js';
 import { ACTION_NAMES, Action } from './agents/action-types.js';
-import { AgentStore } from './agents/agent-store.js';
+import { AgentStore, Tier } from './agents/agent-store.js';
+import { DUTY_NAMES } from './agents/commoner.js';
 import { describeExperience } from './agents/experience.js';
 import { attackMultiplier, defenseBonus } from './agents/equipment.js';
 import { MAX_RADIUS, Navigator } from './agents/navigation.js';
@@ -196,7 +197,7 @@ export const RNG_STREAMS = Object.freeze([
  * @property {Float64Array} darknessByPhase
  * @property {number} nightPhase
  * @property {number} duskPhase
- * @property {boolean} evening - Dusk or night: commoners go home.
+ * @property {boolean} evening - The end of the day, dusk or night: commoners go home.
  * @property {number} darkness - Current light level input, 0 (day) to 1 (night).
  * @property {boolean} dark - True at night (reduced perception).
  * @property {Float64Array} inputs - Scratch utility inputs.
@@ -565,7 +566,10 @@ function buildContext(balance, tables, agents, seedKey) {
     darknessByPhase,
     nightPhase: phases.indexOf('night'),
     duskPhase: phases.indexOf('dusk'),
-    evening: phases.indexOf('night') === phase0 || phases.indexOf('dusk') === phase0,
+    evening:
+      phases.indexOf('night') === phase0 ||
+      phases.indexOf('dusk') === phase0 ||
+      phases.indexOf('dusk') === phaseIndexAt(balance.people.homeTicks, time),
     darkness: darknessByPhase[phase0],
     dark: phases.indexOf('night') === phase0,
     inputs: new Float64Array(Object.keys(INPUT).length),
@@ -1063,6 +1067,8 @@ export class Simulation {
     return {
       id: c,
       members: colony.members,
+      figures: colony.figures,
+      vocation: colony.vocation >= 0 ? this.ctx.vocations[colony.vocation].name : null,
       births: colony.births,
       deaths: colony.deaths,
       shelters: colony.shelterCount,
@@ -1179,6 +1185,7 @@ export class Simulation {
       id: c.id,
       parent: c.parent,
       members: c.members,
+      vocation: c.vocation >= 0 ? this.ctx.vocations[c.vocation].name : null,
       camp: c.hasCamp ? { x: c.campX, y: c.campY } : null,
     }));
   }
@@ -1449,7 +1456,14 @@ export class Simulation {
         step: a.projectStep[id],
         steps: project.steps.map((st) => st.name),
       },
-      goal: a.goal[id] >= 0 ? goals[a.goal[id]].name : '—',
+      // A commoner follows its town's routine (decision 0030): its duty stands for a goal.
+      commoner: a.tier[id] === Tier.COMMONER,
+      goal:
+        a.tier[id] === Tier.COMMONER
+          ? DUTY_NAMES[a.duty[id]]
+          : a.goal[id] >= 0
+            ? goals[a.goal[id]].name
+            : '—',
       action: ACTION_NAMES[a.action[id]],
       // Quarter bonus of the craft under way (decision 0029), 1 elsewhere.
       craftSpeed: a.action[id] === Action.CRAFT ? a.craftSpeed[id] : 1,

@@ -9,7 +9,7 @@ Ce fichier est lu en premier par tout agent qui travaille sur ce dépôt. Il fix
 - 1 pixel = 1 unité. Le noir pur `#000000` est réservé aux individus.
 - Les ressources sont des pixels de couleur ; la fabrication combine des couleurs sur des pixels de transformation (stations).
 - Chaque individu a des besoins hiérarchisés, une mémoire limitée qui oublie, et découvre les recettes en essayant.
-- Le rendu volontairement minimal laisse la puissance de calcul à l'**IA, qui est le cœur du jeu** : elle planifie à long terme, imagine des futurs possibles, se représente les autres, apprend de son expérience et évolue de génération en génération (niveaux 1 à 6 de `docs/design/06-ia.md`).
+- Le rendu volontairement minimal laisse la puissance de calcul à l'**IA, qui est le cœur du jeu** : elle planifie à long terme, imagine des futurs possibles, se représente les autres, apprend de son expérience et évolue de génération en génération (niveaux 1 à 6 de `docs/design/06-ia.md`). Dans une grande ville, cette IA est celle des **figures** ; le **peuple** suit une routine de ville (`docs/design/19-grand-essor.md`).
 - Le savoir se transmet par la parole, l'imitation, les cartes et les livres rangés en bibliothèque.
 - L'objectif de la colonie est un score d'harmonie mesurable.
 
@@ -37,6 +37,7 @@ npm run lint         # ESLint (vérifie aussi les interdits de src/sim)
 npm run format       # Prettier
 npm run sim -- --seed 42 --days 30   # simulation headless : rapport par jour, code de sortie 1 si l'individu meurt
 npm run bench                        # mesure : 500 fondateurs pendant 100 jours, coût d'un cycle face au budget de ×16
+npm run bench:towns                  # mesure : 40 villes de 250 habitants (10 000 individus), coût d'un cycle face au budget de ×16
 ```
 
 Les interdits de `src/sim/` sont vérifiés deux fois : par ESLint (`eslint.config.js`) et par le test `tests/sim/purity.test.js`.
@@ -57,7 +58,7 @@ Ces règles ne se négocient pas. Une modification qui en viole une doit être r
 5. **Croyances, pas omniscience.** Un individu ne décide qu'à partir de ce qu'il perçoit et de sa mémoire. Le code d'IA ne lit jamais directement la grille du monde au-delà du rayon de perception.
 6. **Explicabilité.** Toute décision d'IA écrit une entrée courte dans le journal de l'individu (objectif choisi, scores concurrents, plan). Tout ce que l'IA apprend (estimations, génome) est lisible et affichable dans l'inspecteur.
 7. **Budget de réflexion déterministe.** La quantité de calcul de l'IA se mesure en unités de travail (nœuds explorés, tirages simulés) fixées par `balance.json` et la population, jamais en millisecondes. Une machine lente ralentit la vitesse effective, jamais la qualité des décisions. En parallèle (Workers penseurs), les décisions sont appliquées dans l'ordre des identifiants, avec un flux aléatoire par individu.
-8. **Performance.** Pas d'allocation d'objets dans les boucles chaudes de simulation (réutiliser les tampons). Budget : 500 individus à ×1 en moins de 4 ms par cycle sur un portable moyen.
+8. **Performance.** Pas d'allocation d'objets dans les boucles chaudes de simulation (réutiliser les tampons), pas de boucle en carré sur les individus (passer par l'index spatial `src/sim/agents/agent-grid.js`). Budget : 10 000 individus à ×16, soit moins de 6,25 ms par cycle sur un portable moyen (`npm run bench:towns`).
 
 ## Conventions de code
 
@@ -113,13 +114,14 @@ Pour chaque tâche :
 | Menaces, combattants, forteresses, conflits (vision v2) | `docs/design/16-guerre-et-forteresses.md` |
 | Architecture : plan de ville, édifices, paysage, grands travaux, beauté | `docs/design/17-architecture.md` |
 | Expansion et commerce : pêche, savoir durable, routes et relais, quartiers, navires et îles | `docs/design/18-expansion-et-commerce.md` |
+| Le grand essor : figures et peuple, carte de la ville, maisons collectives, naissances du foyer, vocations des villes | `docs/design/19-grand-essor.md` |
 | Glossaire | `docs/design/glossaire.md` |
 
 ## Ce qu'il ne faut pas faire
 
 - Ajouter TypeScript, un framework d'interface (React, Vue) ou un moteur physique.
 - Introduire un réseau de neurones ou un modèle entraîné hors de la partie. L'apprentissage **pendant** la partie est voulu (expérience, évolution du génome), mais par des mécanismes symboliques, bornés et affichables.
-- Simplifier l'IA pour gagner des images par seconde : on gagne du calcul ailleurs (rendu, gel des blocs, parallélisme), pas sur l'intelligence.
+- Simplifier l'IA des **figures** pour gagner des images par seconde : on gagne du calcul ailleurs (rendu, index spatial, carte de la ville, parallélisme), pas sur leur intelligence. Seul le **peuple** suit une routine de ville sans IA complète (décision 0030), et il ne fait que ce que savent faire les figures de sa ville.
 - Utiliser le GPU pour un calcul qui influence les décisions (résultats flottants non garantis identiques d'une machine à l'autre).
 - Donner au joueur un moyen d'agir sur la simulation (il n'est qu'observateur ; seuls le temps, la caméra, l'inspection et la graine sont contrôlables).
 - Scénariser des événements : tout doit émerger des règles.

@@ -405,6 +405,23 @@ Réalisé :
   - l'encombrement des portes des maisons au coucher ;
   - le gel des blocs lointains, pour relever le plafond de 500 individus.
 
+### Mise à jour — Le grand essor (`v0.17.0`)
+
+Demandée après la v0.16 (décision 0030, [19](19-grand-essor.md)) : des populations de l'ordre de 10 000 individus, fluides à ×16, et des éclaireurs qui fondent au loin des villes spécialisées. L'utilisateur accepte de limiter les fonctions de la plupart des pixels : le **peuple** suit une routine de ville, les **figures** gardent l'IA complète.
+
+Réalisé :
+
+- plafonds relevés : 16 384 entités, 16 000 individus, 160 colonies vivantes ;
+- figures et peuple, savoir-faire de la ville, budget de réflexion étalé ;
+- index spatial à la place des boucles en carré ; positions des individus en tableaux transférés et dessinées d'un seul objet ;
+- carte de la ville (chemins, eau, sources) ; la foule qui se traverse ;
+- maisons longues et maisons de ville, faubourgs, placettes, puits, un lit par membre, la maison qui se remplit par le fond ;
+- naissances du foyer ;
+- vocations des villes, éclaireurs lointains, expéditions plus sûres ;
+- inspecteur : rang et tâche d'un membre du peuple ; panneau de colonie : vocation, figures et peuple, les plus grandes villes d'abord.
+
+MESURES
+
 ### J13 — Conflits (reporté)
 
 Reporté à la demande (décision 0029) : l'expansion et le commerce passent d'abord. Le contenu prévu reste valable.

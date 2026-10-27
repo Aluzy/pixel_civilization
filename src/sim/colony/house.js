@@ -133,6 +133,21 @@ export function houseDir(state, ctx, x, y, within, code = ctx.shelterCode) {
 }
 
 /**
+ * How deep a bed lies from the door: steps first, then the straight distance (the tile just
+ * inside the door is the shallowest).
+ * @param {number} bx
+ * @param {number} by
+ * @param {number} x - Door.
+ * @param {number} y
+ * @returns {number}
+ */
+function depth(bx, by, x, y) {
+  const dx = Math.abs(bx - x);
+  const dy = Math.abs(by - y);
+  return Math.max(dx, dy) * 64 + dx + dy;
+}
+
+/**
  * Raises the house: walls, the door on (x, y), beds inside. Whatever grew there is cleared for
  * good (built land does not grow back). The beds are left in `ctx.newBeds` (x, y pairs, count in
  * `ctx.newBedCount`), the step before the door in `ctx.houseStep`, for {@link registerHouse}.
@@ -171,6 +186,22 @@ export function raiseHouse(state, ctx, x, y, dir, code = ctx.shelterCode) {
         ctx.newBedCount++;
       }
     }
+  }
+  // The deepest beds first (farthest from the door, the one just inside it last): filled in that
+  // order, the free beds always keep a way to the door, even in a house without an aisle.
+  const beds = ctx.newBeds;
+  for (let i = 1; i < ctx.newBedCount; i++) {
+    const bx = beds[i * 2];
+    const by = beds[i * 2 + 1];
+    const d = depth(bx, by, x, y);
+    let j = i - 1;
+    while (j >= 0 && depth(beds[j * 2], beds[j * 2 + 1], x, y) < d) {
+      beds[j * 2 + 2] = beds[j * 2];
+      beds[j * 2 + 3] = beds[j * 2 + 1];
+      j--;
+    }
+    beds[j * 2 + 2] = bx;
+    beds[j * 2 + 3] = by;
   }
   doorStep(x, y, dir, ctx.houseStep);
 }
