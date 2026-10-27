@@ -44,7 +44,7 @@ Choix de conception :
 - Mesures : voir la feuille de route ([11](../design/11-feuille-de-route.md), « Le grand essor »).
 - Critère du J10 assoupli (accord de l'utilisateur) : la fonderie dans une partie sur trois, au lieu de deux.
 - Reporté :
-  - retrouver le rythme d'invention de la v0.16 (fonderie au jour 100 : 5 parties sur 24 contre 9) ;
+  - retrouver le rythme d'invention de la v0.16 (fonderie au jour 100 : 3 parties sur 24 contre 9) ;
   - les caravanes de vivres dédiées (le commerce existant transporte les biens) ;
   - la péremption des vivres ;
   - le gel des blocs lointains.
