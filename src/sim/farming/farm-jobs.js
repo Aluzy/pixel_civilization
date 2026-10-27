@@ -160,7 +160,7 @@ export function chooseFarmJob(state, ctx, colony, id, commoner = false) {
   if (best < 0) {
     if (plots >= wantedPlots(ctx, colony)) return false;
     bestJob = seeds > bare ? FarmJob.TILL : FarmJob.GLEAN;
-    if (commoner && (bestJob === FarmJob.GLEAN || !has(colony.knowhow, ctx.plotRecipe))) {
+    if (commoner && !has(colony.knowhow, ctx.plotRecipe)) {
       return false;
     }
     // Wild grain is rare: a few glean, the others keep feeding the colony.

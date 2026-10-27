@@ -271,7 +271,8 @@ describe('jobs', () => {
   });
 
   it('chooses the best paid job, keeps it for days, and leaves it only for clearly more', () => {
-    const sim = market();
+    // A village: in a town, gathering is the people's (decision 0030).
+    const sim = market(balance.people.commonFrom - 1);
     const a = sim.agents;
     const colony = sim.state.colonies[0];
     const J = a.jobCount;
@@ -295,6 +296,12 @@ describe('jobs', () => {
     expect(considerJob(sim.state, sim.ctx, colony, 0)).toBe(true);
     expect(a.job[0]).toBe(woodcutter);
     expect(J).toBe(JOBS.jobs.length);
+    // In a town, a figure leaves gathering to the people.
+    colony.members = balance.people.commonFrom;
+    sim.state.tick += ECO.jobDays * DAY;
+    considerJob(sim.state, sim.ctx, colony, 0);
+    expect(JOBS.jobs[a.job[0]]?.gathers ?? false).toBe(false);
+    colony.members = balance.people.commonFrom - 1;
     // A small colony has no jobs yet.
     colony.members = ECO.jobMembers - 1;
     sim.state.tick += ECO.jobDays * DAY;

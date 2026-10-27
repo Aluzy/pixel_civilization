@@ -22,6 +22,8 @@ import { treasureSpare } from './market.js';
  * @property {number[]} makes - Kitchen recipes it makes (one known is enough).
  * @property {number} gene - Gene index that draws towards it, -1 if none.
  * @property {boolean} trade - Caravans to other colonies (needs another colony known).
+ * @property {boolean} gathers - Only brings what it harvests or grows (left to the people in a
+ *   town).
  */
 
 /**
@@ -74,6 +76,8 @@ export function buildJobs(data, catalog, tables, goalIndex, genes) {
       makes: (j.makes ?? []).map(recipe),
       gene,
       trade: j.trade === true,
+      // Only brings what it harvests or grows: the people's work in a town.
+      gathers: (j.sells ?? []).length > 0 && (j.makes ?? []).length === 0 && !j.trade,
     };
   });
   const workGoals = new Uint8Array(Object.keys(goalIndex).length);
@@ -216,8 +220,13 @@ function bestJob(ctx, id) {
   const pull = ctx.balance.economy.genePull;
   let best = -1;
   let bestValue = 0;
+  // In a town with its people, the figures leave the fields and the gathering to them (decision
+  // 0030) and take the trades that make, carry or need a mind.
+  const c = ctx.agents.colony[id];
+  const town = c >= 0 && ctx.colonies[c].members >= ctx.balance.people.commonFrom;
   for (let j = 0; j < table.jobs.length; j++) {
     const job = table.jobs[j];
+    if (town && job.gathers) continue;
     if (!canDo(ctx, job, id)) continue;
     let v = expectedIncome(ctx, j, id);
     if (job.gene >= 0) v *= 1 + pull * (geneLevel(ctx.genes, ctx.agents.genes, id, job.gene) - 0.5);
@@ -246,11 +255,19 @@ export function considerJob(state, ctx, colony, id) {
   if (colony.members < cfg.jobMembers) return false;
   const current = a.job[id];
   const table = ctx.jobs;
-  const able = current >= 0 && canDo(ctx, table.jobs[current], id);
+  // In a town, a figure that gathered leaves it to the people (decision 0030).
+  const town = colony.members >= ctx.balance.people.commonFrom;
+  const able =
+    current >= 0 && canDo(ctx, table.jobs[current], id) && !(town && table.jobs[current].gathers);
   const held = state.tick - a.jobSince[id];
   const apprentice = state.tick - a.bornTick[id] < cfg.apprenticeDays * day;
   if (able && (held < cfg.jobDays * day || apprentice)) return false;
   const best = bestJob(ctx, id);
+  if (best < 0 && current >= 0 && town && table.jobs[current].gathers) {
+    a.job[id] = -1;
+    a.jobSince[id] = state.tick;
+    return true;
+  }
   if (best < 0 || best === current) return false;
   if (able) {
     const now = expectedIncome(ctx, current, id);

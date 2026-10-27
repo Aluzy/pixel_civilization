@@ -607,6 +607,35 @@ function work(state, ctx, colony, map, id) {
 }
 
 /**
+ * No seed in the town: wild grain from the town's map until it holds a sample's worth, then a
+ * plot sown with it at once, else the grain brought to the stock.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} colony
+ * @param {import('../colony/town-map.js').TownMap} map
+ * @param {number} id
+ * @returns {boolean}
+ */
+function glean(state, ctx, colony, map, id) {
+  const a = ctx.agents;
+  const grain = ctx.crops[0].resource;
+  if (carriedSeeds(ctx, id) > 0) {
+    a.farmJob[id] = FarmJob.TILL;
+    return till(state, ctx, colony, map, id);
+  }
+  const want = ctx.balance.agriculture.gleanUnits;
+  const cell = source(state, ctx, map, grain, id);
+  if (a.carried(id, grain) >= want || a.carriedTotal(id) >= ctx.capacity(id) || cell < 0) {
+    if (a.carried(id, grain) > 0) return goToCamp(state, ctx, colony, map, id, Action.STOCK);
+    releaseFarm(state, ctx, id);
+    return false;
+  }
+  a.harvestGood[id] = grain;
+  a.harvestUntil[id] = want;
+  return goTo(state, ctx, map, id, map.cellX(cell), map.cellY(cell), Action.HARVEST);
+}
+
+/**
  * Gives up its task or its sale.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
@@ -656,13 +685,15 @@ function chooseWork(state, ctx, colony, map, id) {
     stockPortions(ctx.foodTables, colony.stock, portion) >=
     colony.members * ctx.balance.people.fedPortions;
   const room = ctx.capacity(id) - a.carriedTotal(id);
-  if (!fed && colony.farmOpen > 0 && chooseFarmJob(state, ctx, colony, id, true)) return true;
+  // The fields are the people's: tended while jobs are open, widened while the town knows how.
+  const fields = colony.farmOpen > 0 || has(colony.knowhow, ctx.catalog.knowFor[ctx.plotRecipe]);
+  if (!fed && fields && chooseFarmJob(state, ctx, colony, id, true)) return true;
   // One in `minerEvery` keeps the town's store of materials before its works: the figures buy
   // them to craft and invent.
   const miner = id % ctx.balance.people.minerEvery === 0;
   if (miner && room > 0 && gatherMaterial(state, ctx, colony, map, id, room)) return true;
   if (room > 0 && bringWork(state, ctx, colony, map, id, room)) return true;
-  if (fed && colony.farmOpen > 0 && chooseFarmJob(state, ctx, colony, id, true)) return true;
+  if (fed && fields && chooseFarmJob(state, ctx, colony, id, true)) return true;
   if (room <= 0) return false;
   // Nothing the town lacks: what the town lives from, for the counter (and the caravans); else
   // the materials.
@@ -833,9 +864,10 @@ function tend(state, ctx, colony, map, id) {
   const a = ctx.agents;
   const crops = state.crops;
   const job = a.farmJob[id];
+  if (job === FarmJob.GLEAN) return glean(state, ctx, colony, map, id);
   if (job === FarmJob.TILL) return till(state, ctx, colony, map, id);
   const p = a.farmPlot[id];
-  if (p < 0 || job === FarmJob.GLEAN) return false;
+  if (p < 0) return false;
   const x = crops.x[p];
   const y = crops.y[p];
   if (job === FarmJob.HARVEST) {
