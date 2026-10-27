@@ -660,19 +660,58 @@ function chooseWork(state, ctx, colony, map, id) {
   if (room > 0 && bringWork(state, ctx, colony, map, id, room)) return true;
   if (fed && colony.farmOpen > 0 && chooseFarmJob(state, ctx, colony, id, true)) return true;
   if (room <= 0) return false;
-  // Nothing the town lacks: what the town lives from, for the counter (and the caravans).
-  const vocation = colony.vocation >= 0 ? ctx.vocations[colony.vocation] : null;
-  if (vocation === null) return false;
+  // Nothing the town lacks: what the town lives from, for the counter (and the caravans); else
+  // the raw good dearest at the counter, which the figures buy to craft and invent.
   const enough = colony.members * ctx.balance.people.vocationStock;
-  for (const g of vocation.goods) {
-    if (map.sourceCount[g] === 0 || !canHarvest(ctx, id, g) || ctx.cropOfResource[g] >= 0) continue;
-    if (colony.stock[g] >= enough) continue;
-    a.saleGood[id] = g;
-    a.saleAmount[id] = Math.max(1, Math.floor(room));
-    a.saleTick[id] = state.tick;
-    return true;
+  const vocation = colony.vocation >= 0 ? ctx.vocations[colony.vocation] : null;
+  if (vocation !== null) {
+    for (const g of vocation.goods) {
+      if (!gatherable(ctx, colony, map, id, g, enough)) continue;
+      return sell(state, ctx, id, g, room);
+    }
   }
-  return false;
+  let best = 0;
+  let bestRatio = 1;
+  for (let g = 1; g <= ctx.catalog.resourceCount; g++) {
+    if (!gatherable(ctx, colony, map, id, g, enough)) continue;
+    const ratio = colony.price[g] / ctx.basePrices[g];
+    if (ratio > bestRatio) {
+      bestRatio = ratio;
+      best = g;
+    }
+  }
+  return best > 0 && sell(state, ctx, id, best, room);
+}
+
+/**
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} colony
+ * @param {import('../colony/town-map.js').TownMap} map
+ * @param {number} id
+ * @param {number} g - A resource.
+ * @param {number} enough - Stock beyond which the town has enough of it.
+ * @returns {boolean} True if it can gather `g` on the town's map for the counter.
+ */
+function gatherable(ctx, colony, map, id, g, enough) {
+  if (map.sourceCount[g] === 0 || ctx.cropOfResource[g] >= 0) return false;
+  return colony.stock[g] < enough && canHarvest(ctx, id, g);
+}
+
+/**
+ * Sets off to gather `g` and sell it at the counter.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {number} g
+ * @param {number} room
+ * @returns {boolean}
+ */
+function sell(state, ctx, id, g, room) {
+  const a = ctx.agents;
+  a.saleGood[id] = g;
+  a.saleAmount[id] = Math.max(1, Math.floor(room));
+  a.saleTick[id] = state.tick;
+  return true;
 }
 
 /**
