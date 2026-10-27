@@ -32,7 +32,7 @@ export function figureQuota(ctx, colony) {
 }
 
 /**
- * The town's map, drawn again when it is older than `mapTicks`, or a quarter of that when a
+ * The town's map, drawn again when it is older than `mapTicks`, or half of that when a
  * structure changed on it (null without a camp).
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
@@ -51,7 +51,7 @@ export function townMap(state, ctx, colony) {
   const stale =
     map.builtTick < 0 ||
     age >= p.mapTicks ||
-    (age >= p.mapTicks / 4 &&
+    (age >= p.mapTicks / 2 &&
       state.world.changedSince(
         map.originX,
         map.originY,

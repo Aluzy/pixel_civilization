@@ -109,4 +109,4 @@ Dans l'ordre :
 
 - Le peuple n'apprend pas, ne se souvient pas, n'invente pas. Son savoir est celui des figures de sa ville. La décision 0030 assume cette entorse à la règle « ne pas simplifier l'IA » : l'intelligence reste entière chez les figures, qui gardent tout ce qui se raconte.
 - Deux membres du peuple en chemin peuvent partager une case un instant.
-- La fonderie vient plus tard : au jour 100, 2 parties sur 24 l'ont découverte, contre 9 en v0.16 (le four 13 contre 18). L'inventeur a ses matériaux en réserve, mais ne trouve pas la brique puis la fonderie à temps. Le critère du J10 ne l'exige plus que d'une partie sur trois (décision 0030).
+- La fonderie vient plus tard : au jour 100, 5 parties sur 24 l'ont découverte, contre 9 en v0.16 (le four 15 contre 18). L'inventeur a ses matériaux en réserve, mais ne trouve pas la brique puis la fonderie à temps. Le critère du J10 ne l'exige plus que d'une partie sur trois (décision 0030).
