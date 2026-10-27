@@ -26,8 +26,10 @@ export function formatColony(colony, colonies = []) {
       `${colony.deaths} mort(s)`,
   );
   if (colony.parent >= 0) {
-    lines.push(`Fille de la colonie n°${colony.parent}, fondée le jour ${colony.foundedDay}`);
+    const sea = colony.overseas ? ' outre-mer' : '';
+    lines.push(`Fille de la colonie n°${colony.parent}, fondée${sea} le jour ${colony.foundedDay}`);
   }
+  if (colony.ship) lines.push(`Navire à quai (${colony.ship.x}, ${colony.ship.y})`);
   lines.push(
     `${colony.shelters} abri(s), ${colony.beds} lit(s)` +
       (colony.canalTiles ? ` · ${colony.canalTiles} case(s) de canal` : '') +
@@ -56,8 +58,9 @@ export function formatColony(colony, colonies = []) {
   }
   for (const lib of colony.libraries ?? []) {
     const state = lib.abandoned ? ' (abandonnée)' : '';
+    const kind = lib.great ? 'Grande bibliothèque' : 'Bibliothèque';
     lines.push(
-      `Bibliothèque (${lib.x}, ${lib.y})${state} : ${lib.documents} document(s), ` +
+      `${kind} (${lib.x}, ${lib.y})${state} : ${lib.documents} document(s), ` +
         `${lib.recipes.length} recette(s)`,
     );
   }
@@ -111,11 +114,16 @@ export function formatColony(colony, colonies = []) {
   }
   lines.push(...formatFortress(colony.fortress));
   if (colony.scribe >= 0) lines.push(`Scribe : #${colony.scribe}`);
+  if (colony.school) lines.push(`École (${colony.school.x}, ${colony.school.y})`);
+  if (colony.teacher >= 0) lines.push(`Maître : #${colony.teacher}`);
   if (colony.inventor >= 0) lines.push(`Inventeur : #${colony.inventor}`);
   if (colony.guards?.length) lines.push(`Gardes : ${colony.guards.map((g) => `#${g}`).join(' ')}`);
   const k = colony.knowledge;
   if (k && k.known.length + k.written.length + k.lost.length > 0) {
-    lines.push(`Savoir : ${k.known.length} recette(s) connue(s), ${k.written.length} écrite(s)`);
+    const taught = k.taught?.length ? `, ${k.taught.length} enseignée(s)` : '';
+    lines.push(
+      `Savoir : ${k.known.length} recette(s) connue(s), ${k.written.length} écrite(s)${taught}`,
+    );
     if (k.lost.length > 0) lines.push(`Savoir perdu : ${k.lost.join(', ')}`);
     if (k.saved.length > 0) lines.push(`Sauvé par un livre : ${k.saved.join(', ')}`);
     if (k.recovered.length > 0) lines.push(`Retrouvé : ${k.recovered.join(', ')}`);

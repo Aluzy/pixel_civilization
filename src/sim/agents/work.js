@@ -5,6 +5,7 @@ import { canHarvest } from './actions.js';
 import { Action } from './action-types.js';
 import { besideStructure } from './equipment.js';
 import { PlanNote } from './journal.js';
+import { WATER_SUBJECT } from './memory.js';
 import { explore, goToRemembered, moveTo, search, startHere } from './movement.js';
 import { atCamp, campOf } from '../colony/colony-logic.js';
 import { goToCamp } from './colony-work.js';
@@ -192,13 +193,29 @@ export function useRecipe(state, ctx, id, r, plan) {
   }
   if (recipe.outputKind === 'structure') {
     // A colony's station is built at its camp, where everyone sees and uses it.
-    const kind = ctx.catalog.structures[recipe.output - 1].kind;
+    const def = ctx.catalog.structures[recipe.output - 1];
+    const kind = def.kind;
+    // A shipyard goes up on the shore, wherever the water is nearest.
+    if (def.shore) {
+      const site = shoreSite(ctx);
+      if (site === nav.center) {
+        startHere(ctx, id, Action.CRAFT);
+        plan.action = Action.CRAFT;
+      } else if (site >= 0 && moveTo(ctx, id, site, Action.CRAFT)) {
+        plan.action = Action.MOVE;
+        plan.x = nav.cellX(site);
+        plan.y = nav.cellY(site);
+      } else {
+        search(state, ctx, id, WATER_SUBJECT, plan);
+      }
+      return;
+    }
     if (kind === 'station' || kind === 'treasury') {
       const colony = campOf(state, ctx, id);
       if (colony && !atCamp(ctx, colony, id) && goToCamp(ctx, colony, id, Action.NONE, plan))
         return;
     }
-    const cell = chooseSite(ctx);
+    const cell = chooseSite(ctx, null, kind === 'station' ? recipe.output : 0);
     if (cell === nav.center) {
       startHere(ctx, id, Action.CRAFT);
       plan.action = Action.CRAFT;
@@ -214,6 +231,23 @@ export function useRecipe(state, ctx, id, r, plan) {
     return;
   }
   if (!atStation(state, ctx, id, recipe.station, Action.CRAFT, plan)) explore(state, ctx, id, plan);
+}
+
+/**
+ * Cheapest reachable free tile beside water (nothing built, nothing growing), or -1.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @returns {number}
+ */
+function shoreSite(ctx) {
+  const nav = ctx.nav;
+  let best = -1;
+  const n = nav.side * nav.side;
+  for (let i = 0; i < n; i++) {
+    if (!nav.reachable(i) || nav.structure[i] !== 0 || nav.resource[i] !== 0) continue;
+    if (best >= 0 && nav.dist[i] >= nav.dist[best]) continue;
+    if (nav.besideWater(i)) best = i;
+  }
+  return best;
 }
 
 /**
@@ -290,15 +324,25 @@ function buildHouse(state, ctx, id, plan) {
  * fits.
  * @param {import('../simulation.js').SimContext} ctx
  * @param {import('../simulation.js').SimState | null} [state=null] - Given for a house.
+ * @param {number} [kin=0] - A station's code: its site goes beside one of its kind if in sight.
  * @returns {number} Window cell, or -1.
  */
-export function chooseSite(ctx, state = null) {
+export function chooseSite(ctx, state = null, kin = 0) {
   const nav = ctx.nav;
   const n = nav.side * nav.side;
   let anchor = -1;
-  for (let i = 0; i < n; i++) {
-    if (nav.structure[i] === 0 || !nav.reachable(i)) continue;
-    if (anchor < 0 || nav.dist[i] < nav.dist[anchor]) anchor = i;
+  // A station goes beside one of its kind when one is in sight: the quarter grows (decision 0029).
+  if (kin > 0) {
+    for (let i = 0; i < n; i++) {
+      if (nav.structure[i] !== kin || !nav.reachable(i)) continue;
+      if (anchor < 0 || nav.dist[i] < nav.dist[anchor]) anchor = i;
+    }
+  }
+  if (anchor < 0) {
+    for (let i = 0; i < n; i++) {
+      if (nav.structure[i] === 0 || !nav.reachable(i)) continue;
+      if (anchor < 0 || nav.dist[i] < nav.dist[anchor]) anchor = i;
+    }
   }
   if (anchor < 0) anchor = nav.nearestWaterSide();
   if (anchor < 0) anchor = nav.center;

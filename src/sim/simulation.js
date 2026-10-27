@@ -7,6 +7,7 @@ import recipeData from '../../data/recipes.json' with { type: 'json' };
 import resourceData from '../../data/resources.json' with { type: 'json' };
 import worldData from '../../data/world.json' with { type: 'json' };
 import worksData from '../../data/works.json' with { type: 'json' };
+import { has, withBit } from './core/bits.js';
 import { ACTION_NAMES, Action } from './agents/action-types.js';
 import { AgentStore } from './agents/agent-store.js';
 import { describeExperience } from './agents/experience.js';
@@ -172,6 +173,7 @@ export const RNG_STREAMS = Object.freeze([
  * @property {Float64Array} biomeSpeed
  * @property {number} waterBiome
  * @property {Uint8Array} edible - 1 per resource id eaten where it grows (foraged).
+ * @property {Uint8Array} fromShore - 1 per resource id taken from the next tile (fish).
  * @property {Float64Array} nutrition - Hunger removed per unit, per resource id.
  * @property {Float64Array} harvestTicks - Base ticks to harvest one unit, per resource id.
  * @property {number} harvestForceScale
@@ -300,22 +302,24 @@ function goodVector(catalog, tables, counts) {
  * @returns {Int32Array} Good id per {@link DocKind}.
  */
 function docGoods(catalog) {
-  const out = new Int32Array(3);
+  const out = new Int32Array(4);
   out[DocKind.BOOK] = catalog.items.find((i) => i.kind === 'book')?.good ?? 0;
   out[DocKind.MAP] = catalog.items.find((i) => i.kind === 'map')?.good ?? 0;
+  out[DocKind.TABLET] = catalog.items.find((i) => i.kind === 'tablet')?.good ?? 0;
   return out;
 }
 
 /**
  * Planning target "have an item of this kind".
  * @param {import('./crafting/catalog.js').Catalog} catalog
- * @param {string} kind
+ * @param {string | string[]} kind - Item kind, or kinds
  * @param {number} id
  * @returns {import('./ai/planner.js').PlanTarget}
  */
 function itemTarget(catalog, kind, id) {
+  const kinds = Array.isArray(kind) ? kind : [kind];
   const goods = new Uint8Array(catalog.goodCount);
-  for (const item of catalog.items) if (item.kind === kind) goods[item.good] = 1;
+  for (const item of catalog.items) if (kinds.includes(item.kind)) goods[item.good] = 1;
   return { id, goods, structures: new Uint8Array(catalog.structures.length + 1) };
 }
 
@@ -351,6 +355,8 @@ function buildContext(balance, tables, agents, seedKey) {
   const nutrition = new Float64Array(resourceSlots);
   const harvestTicks = new Float64Array(resourceSlots);
   const regrowTicks = new Int32Array(resourceSlots);
+  // Taken from the next tile, standing on the shore (fish, decision 0029).
+  const fromShore = new Uint8Array(resourceSlots);
   const zoneSide = Math.ceil((2 * balance.harmony.territoryRadius + 1) / balance.harmony.zoneCell);
   tables.resources.forEach((r, i) => {
     const id = i + 1;
@@ -362,6 +368,7 @@ function buildContext(balance, tables, agents, seedKey) {
     }
     harvestTicks[id] = r.harvestTicks ?? 1;
     regrowTicks[id] = r.renewable ? (r.regrowTicks ?? 0) : 0;
+    fromShore[id] = r.fromShore === true ? 1 : 0;
   });
   const biomeSpeed = Float64Array.from(tables.biomes.map((b) => b.speed ?? 1));
   const waterBiome = tables.biomes.findIndex((b) => b.id === 'water');
@@ -438,6 +445,10 @@ function buildContext(balance, tables, agents, seedKey) {
   const darknessByPhase = Float64Array.from(phases.map((p) => worldData.darkness[p] ?? 0));
   const phase0 = phaseIndexAt(0, time);
   /** @type {SimContext} */
+  // Decks over water (a pier): walked like land.
+  const deck = Uint8Array.from(['', ...catalog.structures.map((st) => st.kind)], (k) =>
+    k === 'pier' ? 1 : 0,
+  );
   const ctx = {
     balance,
     tables,
@@ -468,7 +479,13 @@ function buildContext(balance, tables, agents, seedKey) {
       crowdCost: balance.actions.crowdCost,
       trailSteps: balance.trails.steps,
       trailSpeed: balance.trails.speed,
+      fromShore,
+      deck,
     }),
+    fromShore,
+    deck,
+    boatGood: catalog.items.find((it) => it.id === 'boat')?.good ?? 0,
+
     blocksAgent,
     blocksPredator,
     passage,
@@ -487,6 +504,9 @@ function buildContext(balance, tables, agents, seedKey) {
     plainBiome: tables.biomes.findIndex((b) => b.id === 'plain'),
     forestBiome: tables.biomes.findIndex((b) => b.id === 'forest'),
     woodResource: tables.resources.findIndex((r) => r.id === 'wood') + 1,
+    fishResource: tables.resources.findIndex((r) => r.id === 'fish') + 1,
+    schoolCode: idCode('school'),
+    shipCode: idCode('ship'),
     quarryBiome: Uint8Array.from(tables.biomes, (b) =>
       b.id === 'mountain' || b.id === 'desert' ? 1 : 0,
     ),
@@ -587,10 +607,12 @@ function buildContext(balance, tables, agents, seedKey) {
     replicationCost: goodVector(catalog, tables, balance.replication.cost),
     costOut: new Int32Array(2),
     imagined: { hp: 0, maxHp: 0, attack: 0, defense: 0 },
-    contentOut: new Int32Array(3),
+    contentOut: new Float64Array(3),
+    taughtCounts: new Int16Array(MAX_COLONIES * catalog.recipes.length),
     /** Good id of each document kind. */
     docGood: docGoods(catalog),
-    bookTarget: itemTarget(catalog, 'book', 70),
+    // Something to write recipes in: a book, or a clay tablet (decision 0029).
+    bookTarget: itemTarget(catalog, ['book', 'tablet'], 70),
     mapTarget: itemTarget(catalog, 'map', 71),
     weaponTarget: itemTarget(catalog, 'weapon', 72),
     armorTarget: itemTarget(catalog, 'armor', 73),
@@ -607,6 +629,8 @@ function buildContext(balance, tables, agents, seedKey) {
     nearestBySubject: new Int32Array(CATALOG.dangerSubject),
     exploreTarget: new Int32Array(2),
     recallTarget: new Int32Array(2),
+    spot: new Int32Array(2),
+    wantedOne: new Uint8Array(resourceSlots),
     crops,
     cropOfResource,
     plotCode,
@@ -674,6 +698,7 @@ const PROJECT_KINDS = [
   'tower',
   'canal',
   'works',
+  'ship',
 ];
 const PROJECT_NAMES = [
   '',
@@ -686,6 +711,7 @@ const PROJECT_NAMES = [
   'Tour',
   'Canal',
   'Ouvrage',
+  'Navire',
 ];
 
 /**
@@ -827,6 +853,7 @@ export class Simulation {
       dangerSlots: balance.learning.dangerSlots,
       jobCount: JOBS.jobs.length,
       tradeSlots: balance.economy.tradeSlots,
+      goalCount: GOAL_TABLE.goals.length,
     });
     agents.world = world;
     const seedKey = seedToKey(seed);
@@ -1020,6 +1047,10 @@ export class Simulation {
       },
       inventor: colony.inventor,
       scribe: colony.scribe,
+      teacher: colony.teacher,
+      school: colony.hasSchool ? { x: colony.schoolX, y: colony.schoolY } : null,
+      ship: colony.hasShip ? { x: colony.shipX, y: colony.shipY } : null,
+      overseas: colony.overseas,
       knowledge: this.describeKnowledge(),
       market: this.describeMarket(colony),
       parent: colony.parent,
@@ -1188,7 +1219,7 @@ export class Simulation {
     for (let d = 0; d < docs.max; d++) {
       if (docs.kind[d] === DocKind.NONE || docs.holder[d] !== id) continue;
       out.push({
-        kind: docs.kind[d] === DocKind.BOOK ? 'book' : 'map',
+        kind: ['', 'book', 'map', 'tablet'][docs.kind[d]],
         recipes: this.recipeNames(docs.recipes[d]),
         places: docs.entryCount[d],
       });
@@ -1204,7 +1235,7 @@ export class Simulation {
   describeLibraries(c) {
     const colony = this.state.colonies[c];
     const out = [];
-    const content = new Int32Array(3);
+    const content = new Float64Array(3);
     for (let li = 0; li < colony.libraryCount; li++) {
       if (colony.libraryStanding[li] !== 1) continue;
       const documents = this.state.documents.libraryContent(c, li, content);
@@ -1212,6 +1243,7 @@ export class Simulation {
         x: colony.libraryX[li],
         y: colony.libraryY[li],
         abandoned: colony.libraryAbandoned[li] === 1,
+        great: colony.libraryGreat[li] === 1,
         documents,
         recipes: this.recipeNames(content[0]),
       });
@@ -1222,19 +1254,20 @@ export class Simulation {
   /**
    * Collective knowledge (docs/design/05-savoir.md): recipes known by the living, written within
    * reach, lost, saved by a book, found again.
-   * @returns {{ known: string[], written: string[], lost: string[], saved: string[],
-   *   recovered: string[] }}
+   * @returns {{ known: string[], written: string[], taught: string[], lost: string[],
+   *   saved: string[], recovered: string[] }}
    */
   describeKnowledge() {
     const k = this.state.knowledge;
     const pick = (/** @type {Int32Array} */ ticks) => {
       let m = 0;
-      for (let r = 0; r < ticks.length; r++) if (ticks[r] >= 0) m |= 1 << r;
+      for (let r = 0; r < ticks.length; r++) if (ticks[r] >= 0) m = withBit(m, r);
       return this.recipeNames(m);
     };
     return {
       known: this.recipeNames(k.known),
       written: this.recipeNames(k.written),
+      taught: this.recipeNames(k.taught),
       lost: this.recipeNames(k.lostMask),
       saved: pick(k.savedByBook),
       recovered: pick(k.recovered),
@@ -1249,7 +1282,7 @@ export class Simulation {
     const catalog = this.ctx.catalog;
     const out = [];
     for (let r = 0; r < catalog.recipes.length; r++) {
-      if ((mask & (1 << r)) !== 0) out.push(catalog.recipes[r].name);
+      if (has(mask, r)) out.push(catalog.recipes[r].name);
     }
     return out;
   }
@@ -1372,6 +1405,8 @@ export class Simulation {
       },
       goal: a.goal[id] >= 0 ? goals[a.goal[id]].name : '—',
       action: ACTION_NAMES[a.action[id]],
+      // Quarter bonus of the craft under way (decision 0029), 1 elsewhere.
+      craftSpeed: a.action[id] === Action.CRAFT ? a.craftSpeed[id] : 1,
       asleep: a.asleep[id] === 1,
       exploration: withMap
         ? { cellSize: a.explored[id].cellSize, cells: a.explored[id].entries() }

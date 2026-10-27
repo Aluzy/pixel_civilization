@@ -115,3 +115,11 @@ Implémenté au J11 (décision 0024). Là où il s'écarte des sections précéd
 **Mesures** (10 graines, 150 jours) : voir la feuille de route ([11](11-feuille-de-route.md), J11).
 
 **Reporté** : gel des blocs lointains, calque des territoires, tableau de bord par colonie, incidents et rancunes (J13), troc direct entre individus, groupe soudé en voyage, autres raisons de partir (lits, harmonie, danger).
+
+## Expansion (décision 0029)
+
+- Seules les colonies vivantes comptent dans la limite (24) ; une colonie éteinte libère sa place.
+- **Relais** : un site à 2 cases d'une route pavée n'a besoin que de 24 cases d'écart avec les autres camps (56 sinon).
+- **Navire** : une colonie d'au moins 40 membres qui va bien bâtit un navire sur sa berge. Tant qu'il est à quai, son éclaireur, son expédition et ses caravanes avancent sur l'eau. Une colonie fondée au-delà de l'eau est d'outre-mer.
+- Les routes pavées relient aussi les colonies qui ont commercé.
+- Détail dans [18](18-expansion-et-commerce.md).

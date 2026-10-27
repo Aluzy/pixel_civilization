@@ -1,3 +1,4 @@
+import { has, withBit, withoutBit } from '../core/bits.js';
 import { EventType } from '../core/events.js';
 import { DocKind } from '../knowledge/document-store.js';
 import { collectiveKnowledge } from '../knowledge/writing.js';
@@ -42,24 +43,27 @@ export function knowledgeSystem(state, ctx) {
         colony.libraryAbandoned[li] = 1;
         state.events.push(state.tick, EventType.ABANDONED, -1, lx, ly, colony.id);
       }
-      if (daily && state.rng.threats.next() < w.fireChancePerDay) burn(state, colony, li);
+      // A great library is of stone: it does not burn (the draw is made all the same, so that
+      // the stream of chances stays the same).
+      const fire = daily && state.rng.threats.next() < w.fireChancePerDay;
+      if (fire && colony.libraryGreat[li] !== 1) burn(state, colony, li);
     }
   }
   const k = state.knowledge;
   collectiveKnowledge(state, ctx, ctx.contentOut);
   k.known = ctx.contentOut[0];
   k.written = ctx.contentOut[1];
+  k.taught = ctx.contentOut[2];
   for (let r = 0; r < k.recipes; r++) {
     if (k.discovered[r] < 0) continue;
-    const bit = 1 << r;
-    const alive = ((k.known | k.written) & bit) !== 0;
-    if (!alive && (k.lostMask & bit) === 0) {
-      k.lostMask |= bit;
+    const alive = has(k.known, r) || has(k.written, r);
+    if (!alive && !has(k.lostMask, r)) {
+      k.lostMask = withBit(k.lostMask, r);
       k.lost[r] = state.tick;
       k.losses[r]++;
       state.events.push(state.tick, EventType.KNOWLEDGE_LOST, -1, 0, 0, r);
-    } else if (alive && (k.lostMask & bit) !== 0) {
-      k.lostMask &= ~bit;
+    } else if (alive && has(k.lostMask, r)) {
+      k.lostMask = withoutBit(k.lostMask, r);
       k.recovered[r] = state.tick;
       state.events.push(state.tick, EventType.KNOWLEDGE_RECOVERED, -1, 0, 0, r);
     }

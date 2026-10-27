@@ -1,3 +1,4 @@
+import { hashBits } from '../core/bits.js';
 import { TrialNotebook } from '../crafting/notebook.js';
 
 /** Kinds of colony projects. */
@@ -12,6 +13,7 @@ export const ProjectKind = Object.freeze({
   TOWER: 7, // Raise a tower on the wall, beside a gate (one project per tower).
   CANAL: 8, // Gather stone, then dig a canal from the water to a home, tile by tile.
   WORKS: 9, // A work of architecture (paving, a public building…): its tiles laid one by one.
+  SHIP: 10, // Gather the materials of a ship, then build it on the shore.
 });
 
 /** Most tiles of one work of architecture. */
@@ -37,7 +39,8 @@ export const MAX_GUARDS = 12;
 export const MAX_COOKS = 8;
 
 /** Most colonies in a game (relation sheets are preallocated for each). */
-export const MAX_COLONIES = 16;
+/** Colonies a game can hold, living or dead (the living are capped by migration.maxColonies). */
+export const MAX_COLONIES = 32;
 
 /** Most members of an expedition. */
 export const MAX_EXPEDITION = 12;
@@ -180,11 +183,31 @@ export class Colony {
     this.libraryY = new Int32Array(MAX_LIBRARIES);
     this.libraryStanding = new Uint8Array(MAX_LIBRARIES);
     this.libraryAbandoned = new Uint8Array(MAX_LIBRARIES);
+    /** 1 for a great library (decision 0029): more room, it does not burn, one learns better. */
+    this.libraryGreat = new Uint8Array(MAX_LIBRARIES);
     this.libraryVisit = new Int32Array(MAX_LIBRARIES);
     this.libraryCount = 0;
     /** Member who took the task of writing (one scribe at a time), and since when. */
     this.scribe = -1;
     this.scribeTick = 0;
+    // Teaching (decision 0029): the master (one at a time), since when, the last tick it taught,
+    // where, what it teaches (53-bit set), and the school.
+    this.teacher = -1;
+    this.teacherTick = 0;
+    this.teachTick = -0x40000000;
+    this.teachX = 0;
+    this.teachY = 0;
+    this.lessonMask = 0;
+    this.hasSchool = false;
+    /** Its ship at the quay (decision 0029), and whether its last expedition crossed water. */
+    this.hasShip = false;
+    this.shipX = 0;
+    this.shipY = 0;
+    this.expSailed = false;
+    /** Founded beyond water (an island, another shore). */
+    this.overseas = false;
+    this.schoolX = 0;
+    this.schoolY = 0;
     /** Guards (docs/design/16-guerre-et-forteresses.md): -1 for a free post, and since when. */
     this.guards = new Int32Array(MAX_GUARDS).fill(-1);
     this.guardTick = new Int32Array(MAX_GUARDS);
@@ -423,11 +446,13 @@ export class Colony {
    * @param {number} x
    * @param {number} y
    * @param {number} tick
+   * @param {boolean} [great=false] - A great library.
    * @returns {number} Library index, -1 if the colony has too many.
    */
-  addLibrary(x, y, tick) {
+  addLibrary(x, y, tick, great = false) {
     if (this.libraryCount >= MAX_LIBRARIES) return -1;
     const i = this.libraryCount++;
+    this.libraryGreat[i] = great ? 1 : 0;
     this.libraryX[i] = x;
     this.libraryY[i] = y;
     this.libraryStanding[i] = 1;
@@ -553,13 +578,22 @@ export class Colony {
       .typedArray(this.boardTick.subarray(0, n));
     h.typedArray(this.boardX.subarray(0, n)).typedArray(this.boardY.subarray(0, n));
     h.uint32(this.scribe).uint32(this.scribeTick).uint32(this.inventor).uint32(this.inventorTick);
+    h.uint32(this.teacher).uint32(this.teacherTick).uint32(this.teachTick);
+    hashBits(h.uint32(this.teachX).uint32(this.teachY), this.lessonMask);
+    h.uint32(this.hasSchool ? 1 : 0)
+      .uint32(this.schoolX)
+      .uint32(this.schoolY);
+    h.uint32(this.hasShip ? 1 : 0)
+      .uint32(this.shipX)
+      .uint32(this.shipY);
+    h.uint32(this.expSailed ? 1 : 0).uint32(this.overseas ? 1 : 0);
     this.notebook.hashInto(h);
     h.typedArray(this.guards).typedArray(this.guardTick);
     h.uint32(this.lastThreat).uint32(this.denQuietUntil);
     const L = this.libraryCount;
     h.uint32(L).typedArray(this.libraryX.subarray(0, L)).typedArray(this.libraryY.subarray(0, L));
     h.typedArray(this.libraryStanding.subarray(0, L));
-    h.typedArray(this.libraryAbandoned.subarray(0, L));
+    h.typedArray(this.libraryAbandoned.subarray(0, L)).typedArray(this.libraryGreat.subarray(0, L));
     h.typedArray(this.libraryVisit.subarray(0, L));
     for (const p of this.projects) p.hashInto(h);
     h.typedArray(this.harmony).uint32(this.focus & 0xff);
@@ -679,6 +713,7 @@ export class Colony {
 
   /** @returns {void} */
   clearExpedition() {
+    this.expSailed = false;
     this.expState = Expedition.NONE;
     this.expLeader = -1;
     this.expMembers.fill(-1);

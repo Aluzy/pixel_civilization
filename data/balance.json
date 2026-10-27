@@ -67,7 +67,8 @@
     "planMaxSteps": 12,
     "planTravelCost": 60,
     "planExploreCost": 600,
-    "shelterRange": 48
+    "shelterRange": 48,
+    "weariness": { "perFailure": 1, "grace": 8, "scale": 0.3, "halfLifeDays": 3 }
   },
   "memory": {
     "placeTauDays": 3,
@@ -208,6 +209,9 @@
   "imagination": { "rollouts": 12, "predatorSpread": 0.3, "riskHealth": 0.3 },
   "writing": {
     "bookRecipes": 10,
+    "tabletRecipes": 3,
+    "greatRoom": 4,
+    "greatTau": 2,
     "mapEntries": 100,
     "writeRecipeTicks": 50,
     "writeEntryTicks": 5,
@@ -317,6 +321,8 @@
     "cookTicks": 7200
   },
   "economy": {
+    "haltRadius": 8,
+    "haltShare": 0.5,
     "startCoins": 30,
     "coinsPerMember": 200,
     "coinsPerNutrition": 0.5,
@@ -367,7 +373,10 @@
     "provisionPortions": 6,
     "scoutTicks": 24000,
     "scoutLeg": [40, 70],
-    "arriveRadius": 3
+    "arriveRadius": 3,
+    "maxColonies": 24,
+    "relayDistance": 24,
+    "relayRoad": 2
   },
   "canal": { "minMembers": 20, "reach": 6, "maxLength": 60, "batch": 10 },
   "works": {
@@ -381,9 +390,24 @@
     "avenueStep": 3,
     "roadTrees": 4,
     "drainTiles": 40,
-    "treesWanted": 30
+    "treesWanted": 30,
+    "pierReach": 16,
+    "pierLength": 4,
+    "pathTiles": 40
   },
   "trails": { "steps": 60, "speed": 1.25 },
+  "teaching": {
+    "members": 12,
+    "mastery": 0.6,
+    "roleTicks": 2400,
+    "sessionTicks": 400,
+    "lessonTicks": 40,
+    "reach": 2,
+    "schoolTau": 1.5,
+    "taughtCopies": 3
+  },
+  "quarters": { "radius": 4, "perStation": 0.1, "maxBonus": 0.3 },
+  "sailing": { "boatSpeed": 0.8, "shipSpeed": 1.2, "swimSpeed": 0.3, "shipMembers": 40 },
   "fortress": {
     "treasureMembers": 30,
     "dangerDecay": 0.8,

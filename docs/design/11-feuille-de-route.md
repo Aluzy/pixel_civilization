@@ -369,7 +369,45 @@ Réalisé :
   - styles propres aux colonies ;
   - entretien des bâtiments.
 
-### J13 — Conflits (`v1.0.0`)
+### Mise à jour — L'expansion et le commerce (`v0.16.0`)
+
+Demandée à la place du J13 (décision 0029, [18](18-expansion-et-commerce.md)) : voir les colonies s'étendre et commercer plutôt que se faire la guerre. Six ensembles :
+
+- correctifs (recettes au-delà de 32, objectif qui échoue sans cesse, places des colonies éteintes, famines des grandes colonies) ;
+- la mer nourricière : pêche, ponton, fumoir, barque ;
+- le savoir durable : tablettes, grande bibliothèque, maîtres et école ;
+- sentiers, routes, relais et haltes des caravanes ;
+- quartiers spécialisés ;
+- navires et îles.
+
+Réalisé :
+
+- **Mesures**, sur les graines 1 à 100 et 150 jours, face à la v0.15 :
+  - parties éteintes : 1 (9 avant) ; parties sous 10 individus : 2 (13) ;
+  - morts de faim ou de soif : 12 % des morts (41 %), 990 au lieu de 4 173 ;
+  - harmonie médiane de la colonie mère : 63 (49) ; savoir 0,94 (0) ; beauté 0,43 (0,35) ;
+  - un livre ou une tablette est écrit dans 92 parties (53) ; une leçon est donnée dans 99 ;
+  - un navire est bâti dans 75 parties, une colonie est fondée outre-mer dans 43 (74 colonies) ; 11 parties ont un relais ;
+  - population au jour 150 : médiane 47,5 (49,5), moyenne 69,4 (69,4) ; 28 parties passent 100 (28). Les colonies vivent plus longtemps (plus de morts de vieillesse) mais ne grandissent pas plus vite.
+  - Ouvrages nouveaux, plus rares parce qu'ils viennent après les autres : ponton dans 7 parties, sentiers pavés dans 18, grande bibliothèque dans 1.
+- **Coût** : 197 ms par jour simulé en médiane sur ces parties (143 en v0.15). `npm run bench` : 1,62 ms par cycle en moyenne, 2,34 ms le pire jour, pour 200 à 315 individus (6,25 ms permis à ×16).
+- **Tenu** :
+  - les sorties des J2 à J12 passent ;
+  - graines de démonstration : J3 4 ; J6 5 ; J9 et J10 22, 34 et 1 ; J11 12 et 15 ; J12 6 et 11.
+- **Assoupli** :
+  - le J4 compte la barque comme un outil ;
+  - la nuit : plus de 70 % des membres dorment à minuit sur 5 parties (« presque tous » sur une partie avant). Ceux qui rentrent tard de la pêche attendent aux portes des maisons, qui n'ont qu'une case.
+- **Ajouts** : voir [18](18-expansion-et-commerce.md) et la décision 0029.
+- **Reporté** :
+  - la péremption des vivres ;
+  - le navire porté et le chantier naval ;
+  - les marchés de carrefour ;
+  - l'encombrement des portes des maisons au coucher ;
+  - le gel des blocs lointains, pour relever le plafond de 500 individus.
+
+### J13 — Conflits (reporté)
+
+Reporté à la demande (décision 0029) : l'expansion et le commerce passent d'abord. Le contenu prévu reste valable.
 
 - Incidents et rancunes, raids décidés par simulation mentale (butin, chances, pertes), alerte et défense, bonus des murs, butin, paix, absorption.
 

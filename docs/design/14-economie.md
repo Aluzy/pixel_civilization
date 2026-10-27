@@ -141,3 +141,9 @@ Implémenté au J10 (décision 0023). Là où il s'écarte des sections précéd
 **Reporté** : or et pierres précieuses (J12), coffre personnel et héritage des biens, troc et carnet d'offres et de demandes entre individus, prospérité dans l'harmonie, péremption, courbes de prix au tableau de bord.
 
 **Au J11** ([15](15-colonies-et-migration.md), décision 0024) : un septième métier choisi, **marchand**, fait voyager des biens d'un comptoir de colonie à l'autre (caravanes), quand sa colonie en connaît une autre et ses prix.
+
+## Haltes et quartiers (décision 0029)
+
+- **Halte** : une caravane qui passe à 8 cases du camp d'une troisième colonie y fait halte une fois. Elle y vend la moitié de sa charge si c'est à son avantage, et les deux colonies comptent un échange.
+- **Quartiers** : on travaille plus vite à une station entourée de stations du même type (+10 % par voisine à 4 cases, +30 % au plus). Les nouvelles stations se posent à côté de leurs semblables.
+- Détail dans [18](18-expansion-et-commerce.md).

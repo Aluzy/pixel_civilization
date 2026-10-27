@@ -202,21 +202,25 @@ describe('room for everyone', () => {
 });
 
 describe('days and nights', () => {
-  it('sleeps at night: by midnight nearly everyone is asleep, guards aside', () => {
-    const sim = new Simulation({ seed: 2, balance });
-    sim.step(20 * DAY + Math.round(0.8 * DAY));
-    const a = sim.agents;
-    const colony = sim.state.colonies[0];
+  // Over five games, since v0.16 (decision 0029): those back late from fishing queue at the
+  // single doors of the houses, and a few are still on their way to a free bed at midnight.
+  it('sleeps at night: by midnight most are asleep, guards aside', () => {
     let awake = 0;
     let members = 0;
-    for (let id = 0; id < a.highWater; id++) {
-      if (a.alive[id] !== 1 || colony.guards.includes(id)) continue;
-      members++;
-      if (a.asleep[id] === 0) awake++;
+    for (let seed = 1; seed <= 5; seed++) {
+      const sim = new Simulation({ seed, balance });
+      sim.step(20 * DAY + Math.round(0.8 * DAY));
+      const a = sim.agents;
+      const colony = sim.state.colonies[0];
+      for (let id = 0; id < a.highWater; id++) {
+        if (a.alive[id] !== 1 || colony.guards.includes(id)) continue;
+        members++;
+        if (a.asleep[id] === 0) awake++;
+      }
     }
-    expect(members).toBeGreaterThan(5);
-    expect(awake / members).toBeLessThan(0.2);
-  });
+    expect(members).toBeGreaterThan(25);
+    expect(awake / members).toBeLessThan(0.3);
+  }, 60000);
 
   it('lets berries grow back only after three days', () => {
     const sim = new Simulation({ seed: 5, balance });

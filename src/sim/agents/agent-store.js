@@ -1,3 +1,4 @@
+import { hashBits } from '../core/bits.js';
 import { RecipeBook } from '../crafting/recipe-book.js';
 import { Action } from './action-types.js';
 import { ExplorationMap } from './exploration-map.js';
@@ -15,6 +16,9 @@ export const PATH_MAX = 2048;
  * Components of all agents, as typed arrays indexed by entity id (light ECS). Ids are reused
  * after death, lowest first, so iteration in id order is deterministic.
  */
+/** Beds an agent remembers it found taken, to look elsewhere for the night. */
+export const BED_SLOTS = 4;
+
 export class AgentStore {
   /**
    * @param {object} options
@@ -29,6 +33,7 @@ export class AgentStore {
    * @param {number} [options.dangerSlots=8] - Zones whose danger an agent keeps in mind.
    * @param {number} [options.jobCount=0] - Jobs of data/jobs.json.
    * @param {number} [options.tradeSlots=1] - Recent trades kept per agent (inspector).
+   * @param {number} [options.goalCount=1] - Goals of data/ai-goals.json (weariness).
    */
   constructor({
     max,
@@ -42,8 +47,21 @@ export class AgentStore {
     dangerSlots = 8,
     jobCount = 0,
     tradeSlots = 1,
+    goalCount = 1,
   }) {
     this.sheets = sheets;
+    // Weariness per goal (decision 0029): failed trials pile up while pursuing it, and fade.
+    this.goalCount = goalCount;
+    this.weary = new Float64Array(max * goalCount);
+    this.wearyTick = new Int32Array(max);
+    /** Speed on water as last perceived: 0 on foot, more with a boat or a ship. */
+    this.sail = new Float32Array(max);
+    /** Speed of the craft under way (a quarter of like stations makes it faster). */
+    this.craftSpeed = new Float32Array(max);
+    /** Beds of its colony it last found taken (a ring of BED_SLOTS), and when. */
+    this.bedTaken = new Int16Array(max * BED_SLOTS).fill(-1);
+    this.bedTakenTick = new Int32Array(max * BED_SLOTS);
+    this.bedTakenNext = new Uint8Array(max);
     this.geneStart = geneStart;
     this.geneCount = geneStart.length;
     /** Decision genome, `geneCount` per agent (docs/design/06-ia.md, couche 8). */
@@ -95,6 +113,8 @@ export class AgentStore {
     // carries to sell, and the prices it saw at that colony's counter.
     this.caravanTo = new Int8Array(max).fill(-1);
     this.caravanLeg = new Uint8Array(max);
+    /** Last colony the caravan halted at on its way (decision 0029), or -1. */
+    this.caravanHalt = new Int8Array(max).fill(-1);
     this.caravanGood = new Uint8Array(max);
     this.caravanPrice = new Float64Array(max * goodCount);
     /** Tile of the wall segment (gate, tower) it builds, and 1 while it stands on a tower. */
@@ -223,8 +243,8 @@ export class AgentStore {
     this.delivers = new Uint16Array(max);
     /** Age at which each agent dies of old age, in ticks. */
     this.lifespan = new Int32Array(max);
-    /** What it saw written in its colony's library (bit set of recipes), and whether it went. */
-    this.librarySeen = i32();
+    /** What it saw written in its colony's library (53-bit set of recipes), and whether it went. */
+    this.librarySeen = f64();
     /** Weakest harmony component of its colony, as read on the blackboard (-1: none). */
     this.focusSeen = new Int8Array(max);
     /** Tick the newest map seen in the library was made, -1 if none. */
@@ -289,6 +309,11 @@ export class AgentStore {
     this.alive[id] = 1;
     this.aliveCount++;
     this.bornTick[id] = tick;
+    this.weary.fill(0, id * this.goalCount, (id + 1) * this.goalCount);
+    this.sail[id] = 0;
+    this.bedTaken.fill(-1, id * BED_SLOTS, (id + 1) * BED_SLOTS);
+    this.bedTakenNext[id] = 0;
+    this.wearyTick[id] = tick;
     this.x[id] = x;
     this.y[id] = y;
     if (this.world) this.world.setOccupant(x, y, id);
@@ -388,6 +413,7 @@ export class AgentStore {
     this.provisioned[id] = 0;
     this.caravanTo[id] = -1;
     this.caravanLeg[id] = 0;
+    this.caravanHalt[id] = -1;
     this.caravanGood[id] = 0;
     this.caravanPrice.fill(0, id * this.goodSlots, (id + 1) * this.goodSlots);
     // No building site yet (far from anything: never a real tile).
@@ -554,10 +580,16 @@ export class AgentStore {
       h.typedArray(this.gathered.subarray(g0, g0 + this.goodSlots));
       h.uint32(this.builds[id]).uint32(this.delivers[id]);
       this.social[id].hashInto(h);
-      h.uint32(this.lifespan[id]).uint32(this.librarySeen[id]).uint32(this.libraryVisited[id]);
+      hashBits(h.uint32(this.lifespan[id]), this.librarySeen[id]).uint32(this.libraryVisited[id]);
       h.uint32(this.mapSeen[id]).uint32(this.focusSeen[id] & 0xff);
       h.uint32(this.attackTarget[id]).uint32(this.attackCooldown[id]);
       h.typedArray(this.genes.subarray(id * this.geneCount, (id + 1) * this.geneCount));
+      h.typedArray(this.weary.subarray(id * this.goalCount, (id + 1) * this.goalCount));
+      h.uint32(this.wearyTick[id]).uint32(Math.round(this.sail[id] * 1000));
+      h.uint32(Math.round(this.craftSpeed[id] * 1000));
+      h.typedArray(this.bedTaken.subarray(id * BED_SLOTS, (id + 1) * BED_SLOTS));
+      h.typedArray(this.bedTakenTick.subarray(id * BED_SLOTS, (id + 1) * BED_SLOTS));
+      h.uint32(this.bedTakenNext[id]);
       const d0 = id * this.dangerSlots;
       const d1 = d0 + this.dangerCount[id];
       h.uint32(this.dangerCount[id]).uint32(this.zoneX[id]).uint32(this.zoneY[id]);
@@ -581,6 +613,7 @@ export class AgentStore {
       h.uint32(this.saleTick[id]).uint32(this.crowdSeen[id]).uint32(this.provisioned[id]);
       h.uint32(this.caravanTo[id] & 0xff)
         .uint32(this.caravanLeg[id])
+        .uint32(this.caravanHalt[id] & 0xff)
         .uint32(this.caravanGood[id]);
       h.typedArray(this.caravanPrice.subarray(g0, g0 + this.goodSlots));
       h.uint32(this.siteX[id]).uint32(this.siteY[id]).uint32(this.onTower[id]);

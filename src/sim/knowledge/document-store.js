@@ -1,5 +1,7 @@
+import { hashBits, or, popcount } from '../core/bits.js';
+
 /** Kinds of written documents. */
-export const DocKind = Object.freeze({ NONE: 0, BOOK: 1, MAP: 2 });
+export const DocKind = Object.freeze({ NONE: 0, BOOK: 1, MAP: 2, TABLET: 3 });
 
 /**
  * Books and maps (docs/design/05-savoir.md): each one is an object with its own content, carried
@@ -20,9 +22,9 @@ export class DocumentStore {
     /** Colony and library index where it is kept, or -1. */
     this.colony = new Int16Array(max).fill(-1);
     this.library = new Int16Array(max).fill(-1);
-    /** Bit sets of recipes written, and of those written wrong. */
-    this.recipes = new Int32Array(max);
-    this.wrong = new Int32Array(max);
+    /** Sets of recipes written, and of those written wrong (53-bit sets, core/bits.js). */
+    this.recipes = new Float64Array(max);
+    this.wrong = new Float64Array(max);
     this.author = new Int32Array(max).fill(-1);
     this.made = new Int32Array(max);
     // Map entries: subject, position and date of observation.
@@ -80,7 +82,7 @@ export class DocumentStore {
   carried(holder, kind, room) {
     for (let id = 0; id < this.max; id++) {
       if (this.kind[id] !== kind || this.holder[id] !== holder) continue;
-      if (kind === DocKind.BOOK && popcount(this.recipes[id]) >= room) continue;
+      if (kind !== DocKind.MAP && popcount(this.recipes[id]) >= room) continue;
       if (kind === DocKind.MAP && this.entryCount[id] >= room) continue;
       return id;
     }
@@ -92,7 +94,7 @@ export class DocumentStore {
    * when its newest map was made.
    * @param {number} colony
    * @param {number} library
-   * @param {Int32Array} out - Receives recipes, wrong, and the newest map's tick (-1 if none).
+   * @param {Float64Array} out - Receives recipes, wrong, and the newest map's tick (-1 if none).
    * @returns {number} Documents there.
    */
   libraryContent(colony, library, out) {
@@ -104,8 +106,8 @@ export class DocumentStore {
       if (this.kind[id] === DocKind.NONE) continue;
       if (this.colony[id] !== colony || this.library[id] !== library) continue;
       n++;
-      out[0] |= this.recipes[id];
-      out[1] |= this.wrong[id];
+      out[0] = or(out[0], this.recipes[id]);
+      out[1] = or(out[1], this.wrong[id]);
       if (this.kind[id] === DocKind.MAP && this.made[id] > out[2]) out[2] = this.made[id];
     }
     return n;
@@ -120,9 +122,8 @@ export class DocumentStore {
     for (let id = 0; id < this.max; id++) {
       if (this.kind[id] === DocKind.NONE) continue;
       h.uint32(id).uint32(this.kind[id]).uint32(this.holder[id]).uint32(this.library[id]);
-      h.uint32(this.colony[id] & 0xffff)
-        .uint32(this.recipes[id])
-        .uint32(this.wrong[id]);
+      h.uint32(this.colony[id] & 0xffff);
+      hashBits(hashBits(h, this.recipes[id]), this.wrong[id]);
       h.uint32(this.entryCount[id]);
       const e0 = id * this.mapEntries;
       const e1 = e0 + this.entryCount[id];
@@ -130,14 +131,4 @@ export class DocumentStore {
       h.typedArray(this.entryY.subarray(e0, e1)).typedArray(this.entryTick.subarray(e0, e1));
     }
   }
-}
-
-/**
- * @param {number} m
- * @returns {number} Number of bits set.
- */
-export function popcount(m) {
-  let n = 0;
-  for (let v = m; v !== 0; v &= v - 1) n++;
-  return n;
 }

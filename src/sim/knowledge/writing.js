@@ -1,9 +1,23 @@
 import { tauOf } from '../agents/beliefs.js';
 import { EventType } from '../core/events.js';
-import { DocKind, popcount } from './document-store.js';
+import { andNot, has, lowest, or, popcount, withBit } from '../core/bits.js';
+import { DocKind } from './document-store.js';
 
 // Writing, reading and keeping documents (docs/design/05-savoir.md, « Livres », « Cartes »,
 // « Bibliothèques »). One writes only what one believes; one reads only in a library.
+
+/**
+ * A document the agent carries that still has room for a recipe: a book, else a clay tablet.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @returns {number} Document id, or -1.
+ */
+export function writable(state, ctx, id) {
+  const w = ctx.balance.writing;
+  const book = state.documents.carried(id, DocKind.BOOK, w.bookRecipes);
+  return book >= 0 ? book : state.documents.carried(id, DocKind.TABLET, w.tabletRecipes);
+}
 
 /**
  * Library of the agent's colony on or next to its tile (standing and not abandoned), or -1.
@@ -19,9 +33,11 @@ export function libraryBeside(state, ctx, id) {
   const colony = state.colonies[c];
   for (let i = 0; i < colony.libraryCount; i++) {
     if (colony.libraryStanding[i] !== 1) continue;
-    if (Math.abs(colony.libraryX[i] - a.x[id]) > 1 || Math.abs(colony.libraryY[i] - a.y[id]) > 1) {
-      continue;
-    }
+    // A great library is a 3 × 3 block: one stands beside it two tiles from its centre.
+    const reach = colony.libraryGreat[i] === 1 ? 2 : 1;
+    const dx = Math.abs(colony.libraryX[i] - a.x[id]);
+    const dy = Math.abs(colony.libraryY[i] - a.y[id]);
+    if (dx > reach || dy > reach) continue;
     return i;
   }
   return -1;
@@ -69,9 +85,7 @@ export function believedRecipes(ctx, id) {
  */
 export function nextToWrite(state, ctx, id, doc) {
   const inBook = doc >= 0 ? state.documents.recipes[doc] : 0;
-  const todo = believedRecipes(ctx, id) & ~ctx.agents.librarySeen[id] & ~inBook;
-  if (todo === 0) return -1;
-  return 31 - Math.clz32(todo & -todo);
+  return lowest(andNot(andNot(believedRecipes(ctx, id), ctx.agents.librarySeen[id]), inBook));
 }
 
 /**
@@ -105,11 +119,11 @@ export function wantsMap(state, ctx, id) {
 export function writeOne(state, ctx, id) {
   const docs = state.documents;
   const w = ctx.balance.writing;
-  const book = docs.carried(id, DocKind.BOOK, w.bookRecipes);
+  const book = writable(state, ctx, id);
   const r = book >= 0 ? nextToWrite(state, ctx, id, book) : -1;
   if (r >= 0) {
-    docs.recipes[book] |= 1 << r;
-    if (ctx.agents.recipes[id].wrong[r] === 1) docs.wrong[book] |= 1 << r;
+    docs.recipes[book] = withBit(docs.recipes[book], r);
+    if (ctx.agents.recipes[id].wrong[r] === 1) docs.wrong[book] = withBit(docs.wrong[book], r);
     docs.author[book] = id;
     ctx.agents.recipes[id].use(r, state.tick, ctx.balance.memory.consolidation, ctx.maxTau);
     state.events.push(state.tick, EventType.WRITTEN, id, ctx.agents.x[id], ctx.agents.y[id], r);
@@ -181,12 +195,14 @@ export function storeDocuments(state, ctx, id, li) {
   const docs = state.documents;
   const a = ctx.agents;
   const c = a.colony[id];
+  const w = ctx.balance.writing;
+  const room = w.libraryCapacity * (state.colonies[c].libraryGreat[li] === 1 ? w.greatRoom : 1);
   let kept = docs.libraryContent(c, li, ctx.contentOut);
   let stored = 0;
   for (let d = 0; d < docs.max; d++) {
     if (docs.kind[d] === DocKind.NONE || docs.holder[d] !== id) continue;
     if (docs.recipes[d] === 0 && docs.entryCount[d] === 0) continue;
-    if (kept >= ctx.balance.writing.libraryCapacity) break;
+    if (kept >= room) break;
     docs.holder[d] = -1;
     docs.colony[d] = c;
     docs.library[d] = li;
@@ -215,16 +231,23 @@ export function readOne(state, ctx, id, li) {
   docs.libraryContent(c, li, ctx.contentOut);
   const written = ctx.contentOut[0];
   const book = a.recipes[id];
-  const todo = written & ~book.knownMask();
-  if (todo !== 0) {
-    const r = 31 - Math.clz32(todo & -todo);
+  const r = lowest(andNot(written, book.knownMask()));
+  if (r >= 0) {
     // Right if at least one document has it right.
     let right = false;
     for (let d = 0; d < docs.max; d++) {
       if (docs.kind[d] === DocKind.NONE || docs.colony[d] !== c || docs.library[d] !== li) continue;
-      if ((docs.recipes[d] & (1 << r)) !== 0 && (docs.wrong[d] & (1 << r)) === 0) right = true;
+      if (has(docs.recipes[d], r) && !has(docs.wrong[d], r)) right = true;
     }
-    book.learn(r, state.tick, ctx.recipeTau, 1, !right);
+    // Read in a great library, a recipe is forgotten more slowly.
+    const great = state.colonies[c].libraryGreat[li] === 1;
+    book.learn(
+      r,
+      state.tick,
+      ctx.recipeTau * (great ? ctx.balance.writing.greatTau : 1),
+      1,
+      !right,
+    );
     state.events.push(state.tick, EventType.READ, id, a.x[id], a.y[id], r);
     state.knowledge.noteRead(r, state.tick);
     return true;
@@ -267,19 +290,31 @@ function readMapEntry(state, ctx, id, c, li) {
  * known (rightly) by a living agent.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
- * @param {Int32Array} out - Receives known, written.
+ * @param {Float64Array} out - Receives known, written, taught.
  * @returns {void}
  */
 export function collectiveKnowledge(state, ctx, out) {
   const a = ctx.agents;
+  const counts = ctx.taughtCounts;
+  const R = ctx.catalog.recipes.length;
+  counts.fill(0);
   let known = 0;
   for (let id = 0; id < a.highWater; id++) {
     if (a.alive[id] !== 1) continue;
     const book = a.recipes[id];
+    const c = a.colony[id];
+    const school = c >= 0 && state.colonies[c].hasSchool;
     for (let r = 0; r < book.recipeCount; r++) {
-      if (book.known[r] === 1 && book.wrong[r] === 0) known |= 1 << r;
+      if (book.known[r] !== 1 || book.wrong[r] !== 0) continue;
+      known = withBit(known, r);
+      if (school) counts[c * R + r]++;
     }
   }
+  // Taught (decision 0029): known by enough members of a colony that has a school.
+  let taught = 0;
+  const copies = ctx.balance.teaching.taughtCopies;
+  for (let k = 0; k < counts.length; k++) if (counts[k] >= copies) taught = withBit(taught, k % R);
+  out[2] = taught;
   const docs = state.documents;
   let written = 0;
   for (let d = 0; d < docs.max; d++) {
@@ -291,7 +326,7 @@ export function collectiveKnowledge(state, ctx, out) {
       const li = docs.library[d];
       if (colony.libraryStanding[li] !== 1 || colony.libraryAbandoned[li] === 1) continue;
     }
-    written |= docs.recipes[d] & ~docs.wrong[d];
+    written = or(written, andNot(docs.recipes[d], docs.wrong[d]));
   }
   out[0] = known;
   out[1] = written;

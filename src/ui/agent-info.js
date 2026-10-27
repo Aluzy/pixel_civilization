@@ -27,6 +27,7 @@ const NOTE_TEXT = {
   [PlanNote.COOKING]: 'cuisine',
   [PlanNote.MIGRATING]: 'migration',
   [PlanNote.TRADING]: 'caravane',
+  [PlanNote.TEACHING]: 'école',
 };
 
 /**
@@ -83,7 +84,9 @@ export function formatAgent(agent, names, time) {
   const carried = agent.inventory.length === 0 ? 'rien' : agent.inventory.map(item).join(', ');
   const hp = String(Math.round(agent.hp)).padStart(3);
   const memoryTitle = `Mémoire ${agent.memory.length}/${agent.memoryCapacity}`;
-  const doing = agent.asleep ? 'dort' : agent.action;
+  const quarter =
+    agent.craftSpeed > 1 ? ` (quartier : ×${agent.craftSpeed.toFixed(1).replace('.', ',')})` : '';
+  const doing = agent.asleep ? 'dort' : `${agent.action}${quarter}`;
   const life = agent.lifespan ? `/${Math.floor(agent.lifespan / time.ticksPerDay)}` : '';
   const lines = [
     `Individu #${agent.id} · (${agent.x}, ${agent.y}) · ${days}${life} j · génération ` +

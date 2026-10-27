@@ -1,9 +1,19 @@
+import { learnTick, teachTick } from './teach-work.js';
+import { groundSpeed } from './sailing.js';
+import { refresh, tire } from '../ai/weariness.js';
+import { withBit } from '../core/bits.js';
 import { EventType } from '../core/events.js';
 import { BARE_HANDS, lowestIngredient, matchRecipe } from '../crafting/catalog.js';
 import { PACK } from '../world/chunk-store.js';
 import { Action } from './action-types.js';
 import { consolidate, forgetEmptied } from './beliefs.js';
-import { besideStructure, harvestMultiplier, inShelter, structureAt } from './equipment.js';
+import {
+  besideStructure,
+  harvestMultiplier,
+  inShelter,
+  quarterBonus,
+  structureAt,
+} from './equipment.js';
 import { WATER_SUBJECT } from './memory.js';
 import { notice, perceptionRadius } from './perception.js';
 import {
@@ -40,6 +50,7 @@ import {
   readOne,
   storeDocuments,
   writeOne,
+  writable,
 } from '../knowledge/writing.js';
 
 /** Bits of AgentStore.flags: first experiences, reported once each in the chronicle. */
@@ -150,6 +161,42 @@ export function stepAside(state, ctx, other, wx, wy) {
 }
 
 /**
+ * The tile to take a resource flagged in `wanted` from: the agent's own, else (a resource taken
+ * from the shore, fish) the first neighbour holding one, in a fixed order.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {Uint8Array} wanted - 1 per wanted resource id.
+ * @param {Int32Array} out - Receives x, y (the agent's tile when none is found).
+ * @returns {boolean} True if a tile holds one.
+ */
+function sourceTile(state, ctx, id, wanted, out) {
+  const x = ctx.agents.x[id];
+  const y = ctx.agents.y[id];
+  out[0] = x;
+  out[1] = y;
+  const here = (state.world.packedAt(x, y) >> PACK.RESOURCE_SHIFT) & PACK.MASK;
+  if (wanted[here] === 1) return true;
+  for (let k = 0; k < 8; k++) {
+    const nx = x + DX[k];
+    const ny = y + DY[k];
+    const p = state.world.packedAt(nx, ny);
+    const r = (p >> PACK.RESOURCE_SHIFT) & PACK.MASK;
+    if (
+      wanted[r] !== 1 ||
+      ctx.fromShore[r] !== 1 ||
+      ((p >> PACK.QUANTITY_SHIFT) & PACK.MASK) === 0
+    ) {
+      continue;
+    }
+    out[0] = nx;
+    out[1] = ny;
+    return true;
+  }
+  return false;
+}
+
+/**
  * True if one of the 8 neighbours of (x, y) is water.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
@@ -218,8 +265,15 @@ export function stepAction(state, ctx, id) {
       const packed = state.world.packedAt(nx, ny);
       const trail = state.world.lastWear() >= ctx.trailSteps;
       const other = state.world.lastOccupant();
-      const wade = ctx.structureSpeed[packed >>> PACK.STRUCTURE_SHIFT];
-      const factor = ctx.biomeSpeed[packed & PACK.MASK] * (trail ? ctx.trailSpeed : 1) * wade;
+      const code = packed >>> PACK.STRUCTURE_SHIFT;
+      const biome = packed & PACK.MASK;
+      const ground = groundSpeed(ctx, biome, code, agents.sail[id]);
+      // An expedition that crosses water founds overseas.
+      if (biome === ctx.waterBiome && agents.colony[id] >= 0) {
+        const home = state.colonies[agents.colony[id]];
+        if (home.inExpedition(id)) home.expSailed = true;
+      }
+      const factor = ground * (trail ? ctx.trailSpeed : 1) * ctx.structureSpeed[code];
       // A wall built across the path since it was planned: replan.
       if (factor <= 0 || ctx.blocksAgent[packed >>> PACK.STRUCTURE_SHIFT] === 1) {
         finish(ctx, id);
@@ -283,13 +337,13 @@ export function stepAction(state, ctx, id) {
       return;
     }
     case Action.FORAGE: {
-      const x = agents.x[id];
-      const y = agents.y[id];
-      const resource = (state.world.packedAt(x, y) >> PACK.RESOURCE_SHIFT) & PACK.MASK;
-      if (ctx.edible[resource] !== 1) {
+      if (!sourceTile(state, ctx, id, ctx.edible, ctx.spot)) {
         finish(ctx, id);
         return;
       }
+      const x = ctx.spot[0];
+      const y = ctx.spot[1];
+      const resource = (state.world.packedAt(x, y) >> PACK.RESOURCE_SHIFT) & PACK.MASK;
       const need = ctx.harvestTicks[resource] / (1 + agents.force[id] / ctx.harvestForceScale);
       agents.actionProgress[id] += 1;
       if (agents.actionProgress[id] < need) return;
@@ -346,13 +400,19 @@ export function stepAction(state, ctx, id) {
     case Action.HARVEST:
       harvest(state, ctx, id);
       return;
-    case Action.CRAFT:
-      agents.actionProgress[id] += 1;
+    case Action.CRAFT: {
+      // At a station among others of its kind (a quarter), the work goes faster.
+      if (agents.actionProgress[id] === 0) {
+        const station = ctx.catalog.recipes[agents.craftRecipe[id]].station;
+        agents.craftSpeed[id] = station > 0 ? quarterBonus(state, ctx, id, station) : 1;
+      }
+      agents.actionProgress[id] += agents.craftSpeed[id];
       if (agents.actionProgress[id] >= ctx.catalog.recipes[agents.craftRecipe[id]].duration) {
         craft(state, ctx, id);
         finish(ctx, id);
       }
       return;
+    }
     case Action.BUILD: {
       const r = agents.craftRecipe[id];
       const works = r === WORKS_RECIPE;
@@ -409,6 +469,12 @@ export function stepAction(state, ctx, id) {
       finish(ctx, id);
       return;
     }
+    case Action.TEACH:
+      if (!teachTick(state, ctx, id)) finish(ctx, id);
+      return;
+    case Action.LEARN:
+      if (!learnTick(state, ctx, id)) finish(ctx, id);
+      return;
     case Action.WRITE:
     case Action.READ: {
       // One recipe (or map entry) at a time, at the library.
@@ -419,8 +485,7 @@ export function stepAction(state, ctx, id) {
       }
       const w = ctx.balance.writing;
       const writing = agents.action[id] === Action.WRITE;
-      const docs = state.documents;
-      const book = docs.carried(id, DocKind.BOOK, w.bookRecipes);
+      const book = writable(state, ctx, id);
       const onMap = writing && (book < 0 || nextToWrite(state, ctx, id, book) < 0);
       const need = writing ? (onMap ? w.writeEntryTicks : w.writeRecipeTicks) : w.readRecipeTicks;
       agents.actionProgress[id] += 1;
@@ -491,10 +556,13 @@ export function stepAction(state, ctx, id) {
  */
 function harvest(state, ctx, id) {
   const agents = ctx.agents;
-  const x = agents.x[id];
-  const y = agents.y[id];
-  const resource = (state.world.packedAt(x, y) >> PACK.RESOURCE_SHIFT) & PACK.MASK;
   const wanted = agents.harvestGood[id];
+  ctx.wantedOne[wanted] = 1;
+  sourceTile(state, ctx, id, ctx.wantedOne, ctx.spot);
+  ctx.wantedOne[wanted] = 0;
+  const x = ctx.spot[0];
+  const y = ctx.spot[1];
+  const resource = (state.world.packedAt(x, y) >> PACK.RESOURCE_SHIFT) & PACK.MASK;
   const loaded = agents.carriedTotal(id) >= ctx.capacity(id);
   if (resource !== wanted || loaded || !canHarvest(ctx, id, wanted)) {
     finish(ctx, id);
@@ -692,6 +760,8 @@ function craft(state, ctx, id) {
     // A book or a map is an object with its own (blank) content.
     if (recipe.output === ctx.docGood[DocKind.BOOK])
       state.documents.create(DocKind.BOOK, id, state.tick);
+    if (recipe.output === ctx.docGood[DocKind.TABLET])
+      state.documents.create(DocKind.TABLET, id, state.tick);
     if (recipe.output === ctx.docGood[DocKind.MAP])
       state.documents.create(DocKind.MAP, id, state.tick);
     state.events.push(state.tick, EventType.CRAFTED, id, x, y, r);
@@ -766,7 +836,8 @@ function imitate(state, ctx, maker, r) {
       continue;
     }
     const model = a.social[id];
-    model.skills[model.sheet(maker, state.tick)] |= 1 << r;
+    const sheet = model.sheet(maker, state.tick);
+    model.skills[sheet] = withBit(model.skills[sheet], r);
     const book = a.recipes[id];
     if (book.knows(r) || a.rng[id].next() >= cfg.imitationChance) continue;
     book.learn(r, state.tick, ctx.recipeTau, cfg.imitationStrength);
@@ -798,6 +869,7 @@ function experiment(state, ctx, id) {
       state.knowledge.noteDiscovery(r, id, state.tick);
     }
     agents.hint[id] = 0;
+    refresh(ctx, id, agents.goal[id]);
     if (station === agents.ideaStation[id] && mask === agents.ideaMask[id]) {
       agents.ideaStation[id] = -1;
       agents.ideaMask[id] = 0;
@@ -808,6 +880,7 @@ function experiment(state, ctx, id) {
     agents.addCarried(id, lowestIngredient(ctx.catalog, m), -1);
   }
   book.recordFailure(station, mask, state.tick, ctx.failureTau);
+  tire(ctx, id, agents.goal[id], state.tick);
   // A material alone at a station: watching what the station does to it may give an idea.
   if (station !== BARE_HANDS && (mask & (mask - 1)) === 0) inspire(state, ctx, id, -1, station);
   // A researcher notes it in the colony's notebook, for itself and those after it.

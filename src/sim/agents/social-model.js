@@ -15,7 +15,7 @@ export class SocialModel {
     /** Grows with talks and shared work. */
     this.affinity = new Float64Array(capacity);
     /** Bit set of recipes the agent saw the other one make. */
-    this.skills = new Int32Array(capacity);
+    this.skills = new Float64Array(capacity);
     /** Projects both contributed to. */
     this.shared = new Uint16Array(capacity);
     this.talks = new Uint16Array(capacity);

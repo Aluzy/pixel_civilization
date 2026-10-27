@@ -32,6 +32,20 @@ export function migrationPressure(ctx, id) {
 }
 
 /**
+ * True if one more colony may be founded: fewer living colonies than `maxColonies` (a dead colony
+ * frees its place, decision 0029), and room left in the game's table of colonies.
+ * @param {import('../simulation.js').SimState} state
+ * @param {{ maxColonies: number }} cfg
+ * @returns {boolean}
+ */
+export function roomForColony(state, cfg) {
+  if (state.colonies.length >= MAX_COLONIES) return false;
+  let living = 0;
+  for (const c of state.colonies) if (c.members > 0) living++;
+  return living < cfg.maxColonies;
+}
+
+/**
  * Whether (x, y) is far enough from every camp the colony knows of (its own included).
  * @param {import('../simulation.js').SimContext} ctx
  * @param {Colony} colony
@@ -41,14 +55,35 @@ export function migrationPressure(ctx, id) {
  */
 function farFromCamps(ctx, colony, x, y) {
   const cfg = ctx.balance.migration;
+  // A relay on a road needs less room around it (decision 0029): the roads fill with hamlets.
+  const min = onRoad(ctx, x, y) ? cfg.relayDistance : cfg.minDistance;
   const d = Math.max(Math.abs(x - colony.campX), Math.abs(y - colony.campY));
-  if (d < cfg.minDistance || d > cfg.maxDistance) return false;
+  if (d < min || d > cfg.maxDistance) return false;
   for (let c = 0; c < MAX_COLONIES; c++) {
     if (colony.relKnown[c] !== 1) continue;
     const e = Math.max(Math.abs(colony.relCampX[c] - x), Math.abs(colony.relCampY[c] - y));
-    if (e < cfg.minDistance) return false;
+    if (e < min) return false;
   }
   return true;
+}
+
+/**
+ * True if a paved tile lies within `relayRoad` of (x, y), as the scout sees it.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} x
+ * @param {number} y
+ * @returns {boolean}
+ */
+function onRoad(ctx, x, y) {
+  const nav = ctx.nav;
+  const r = ctx.balance.migration.relayRoad;
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      const cell = nav.cellAt(x + dx, y + dy);
+      if (cell >= 0 && nav.structure[cell] === ctx.pavementCode) return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -194,7 +229,7 @@ export function senseMigration(state, ctx, id, home, atHome) {
   if (home.expState !== Expedition.NONE) return 0;
   const day = ctx.balance.time.ticksPerDay;
   const ready =
-    state.colonies.length < MAX_COLONIES && state.tick - home.lastExpedition >= cfg.everyDays * day;
+    roomForColony(state, cfg) && state.tick - home.lastExpedition >= cfg.everyDays * day;
   if (!ready) return 0;
   const current = home.scout >= 0 && a.alive[home.scout] === 1 ? home.scout : -1;
   if (current === id) {
@@ -270,13 +305,14 @@ export function foundColony(state, ctx, id, x, y) {
   if (mother.expState !== Expedition.TRAVELLING || !mother.inExpedition(id)) return false;
   const cfg = ctx.balance.migration;
   const near = Math.max(Math.abs(x - mother.expX), Math.abs(y - mother.expY));
-  if (near > cfg.siteRadius || state.colonies.length >= MAX_COLONIES) return false;
+  if (near > cfg.siteRadius || !roomForColony(state, cfg)) return false;
   const d = state.colonies.length;
   const b = ctx.balance;
   const colony = new Colony(d, ctx.catalog.goodCount, b.colony, b.harmony, ctx.jobs.jobs.length);
   colony.price.set(ctx.basePrices);
   colony.parent = c;
   colony.foundedTick = state.tick;
+  colony.overseas = mother.expSailed;
   state.colonies.push(colony);
   registerHouse(ctx, colony, x, y);
   colony.sheltersBuilt = 1;
@@ -305,5 +341,6 @@ export function foundColony(state, ctx, id, x, y) {
   mother.relPriceTick[d] = state.tick;
   mother.clearExpedition();
   state.events.push(state.tick, EventType.COLONY_FOUNDED, id, x, y, d, c);
+  if (colony.overseas) state.events.push(state.tick, EventType.OVERSEAS, id, x, y, d, c);
   return true;
 }

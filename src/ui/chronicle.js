@@ -48,6 +48,7 @@ const MAKING_TEXT = {
   [EventType.DISCOVERED]: (c) => `${c.who} découvre comment faire : ${c.thing}.`,
   [EventType.TOLD]: (c) => `${c.who} apprend de vive voix comment faire : ${c.thing}.`,
   [EventType.IMITATED]: (c) => `${c.who} apprend en regardant faire : ${c.thing}.`,
+  [EventType.TAUGHT]: (c) => `${c.who} apprend à l’école comment faire : ${c.thing}.`,
   [EventType.MISTAKEN]: (c) => `${c.who} avait mal compris comment faire : ${c.thing}.`,
   [EventType.FORGOT_RECIPE]: (c) => `${c.who} a oublié comment faire : ${c.thing}.`,
   [EventType.CRAFTED]: (c) => `${c.who} fabrique : ${c.thing}.`,
@@ -142,6 +143,7 @@ export const FILTERS = Object.freeze([
       EventType.FIRST_DISH,
       EventType.FIRST_JOB,
       EventType.COLONY_FOUNDED,
+      EventType.OVERSEAS,
       EventType.FIRST_TRADE,
       EventType.ENCLOSURE_PLANNED,
       EventType.ENCLOSURE_CLOSED,
@@ -159,10 +161,12 @@ export const FILTERS = Object.freeze([
       EventType.FIRST_DELIVERY,
       EventType.TOLD,
       EventType.IMITATED,
+      EventType.TAUGHT,
       EventType.MISTAKEN,
       EventType.FIRST_JOB,
       EventType.EXPEDITION,
       EventType.COLONY_FOUNDED,
+      EventType.OVERSEAS,
       EventType.FIRST_TRADE,
       EventType.ENCLOSURE_PLANNED,
       EventType.ENCLOSURE_CLOSED,
@@ -270,6 +274,8 @@ export function formatEvent(event, time, names) {
     text = `${who} annonce une expédition pour fonder une colonie ${where}.`;
   } else if (event.type === EventType.COLONY_FOUNDED) {
     text = `${who} fonde la colonie n°${event.subject}, fille de la colonie n°${event.other}, ${where}.`;
+  } else if (event.type === EventType.OVERSEAS) {
+    text = `La colonie n°${event.subject} est fondée outre-mer : ses fondateurs ont traversé l’eau.`;
   } else if (event.type === EventType.FIRST_TRADE) {
     text =
       `Première caravane de la colonie n°${event.other} chez la colonie n°${event.subject}, ` +

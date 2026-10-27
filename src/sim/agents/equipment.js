@@ -85,6 +85,29 @@ export function inShelter(state, ctx, x, y) {
 }
 
 /**
+ * Speed factor of work at a station of `code` (decision 0029, « Quartiers spécialisés »): other
+ * stations of the same kind within `quarters.radius` of the worker make it faster, up to a cap.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {number} code
+ * @returns {number}
+ */
+export function quarterBonus(state, ctx, id, code) {
+  const cfg = ctx.balance.quarters;
+  const x = ctx.agents.x[id];
+  const y = ctx.agents.y[id];
+  const r = cfg.radius;
+  let n = 0;
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) if (structureAt(state, ctx, x + dx, y + dy) === code) n++;
+  }
+  // The station worked at is one of them; each other one of its kind nearby adds a share.
+  const others = n > 0 ? n - 1 : 0;
+  return 1 + Math.min(cfg.maxBonus, cfg.perStation * others);
+}
+
+/**
  * True if a structure of `code` is on the agent's tile or one of its 8 neighbours.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx

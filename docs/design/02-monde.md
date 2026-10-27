@@ -75,6 +75,13 @@ Au village (décision 0026) :
 - une baie récoltée jusqu'au bout ne repousse pas avant **3 jours** ;
 - rien ne repousse sous une construction (maison, mur) : la terre bâtie est changée pour de bon.
 
+## Poisson et eau navigable (décision 0029)
+
+- Le **poisson** vit sur l'eau peu profonde, près du rivage (altitude 0,24 à 0,30). Il repousse en un jour.
+- On le prend depuis une case voisine, comme on boit ; un **ponton** avance sur l'eau et se marche comme la terre.
+- L'eau se traverse avec une barque (×0,8) ou sur un voyage de la colonie qui a un navire à quai (×1,2). Le monde a des terres coupées par l'eau : on y fonde des colonies d'outre-mer.
+- Détail dans [18](18-expansion-et-commerce.md).
+
 ## Terre transformée : sentiers (décision 0026)
 
 Les individus modifient durablement le monde : ils bâtissent, défrichent, cultivent, et leurs pas tracent des chemins.
