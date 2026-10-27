@@ -687,13 +687,13 @@ function chooseWork(state, ctx, colony, map, id) {
   const room = ctx.capacity(id) - a.carriedTotal(id);
   // The fields are the people's: tended while jobs are open, widened while the town knows how.
   const fields = colony.farmOpen > 0 || has(colony.knowhow, ctx.catalog.knowFor[ctx.plotRecipe]);
-  if (!fed && fields && chooseFarmJob(state, ctx, colony, id, true)) return true;
+  if (!fed && fields && chooseFarmJob(state, ctx, colony, id, true)) return farmer(ctx, id);
   // One in `minerEvery` keeps the town's store of materials before its works: the figures buy
   // them to craft and invent.
   const miner = id % ctx.balance.people.minerEvery === 0;
   if (miner && room > 0 && gatherMaterial(state, ctx, colony, map, id, room)) return true;
   if (room > 0 && bringWork(state, ctx, colony, map, id, room)) return true;
-  if (fed && fields && chooseFarmJob(state, ctx, colony, id, true)) return true;
+  if (fed && fields && chooseFarmJob(state, ctx, colony, id, true)) return farmer(ctx, id);
   if (room <= 0) return false;
   // Nothing the town lacks: what the town lives from, for the counter (and the caravans); else
   // the materials.
@@ -726,7 +726,8 @@ function gatherMaterial(state, ctx, colony, map, id, room) {
   for (let g = 1; g <= ctx.catalog.resourceCount; g++) {
     // Food is the fields' work (and the vocation's): here, the materials of the crafts.
     if (ctx.edible[g] === 1 || !gatherable(ctx, colony, map, id, g, store)) continue;
-    const ratio = colony.price[g] / ctx.basePrices[g];
+    // The dearest, the scarcest in store first: every material gets its share of hands.
+    const ratio = colony.price[g] / ctx.basePrices[g] / (1 + colony.stock[g] / colony.members);
     if (ratio > bestRatio) {
       bestRatio = ratio;
       best = g;
@@ -750,6 +751,18 @@ function gatherable(ctx, colony, map, id, g, enough) {
 }
 
 /**
+ * Its trade is the fields now (for the counter's books).
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @returns {boolean} True.
+ */
+function farmer(ctx, id) {
+  const j = ctx.jobs.index.farmer;
+  if (j !== undefined) ctx.agents.job[id] = j;
+  return true;
+}
+
+/**
  * Sets off to gather `g` and sell it at the counter.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
@@ -760,6 +773,8 @@ function gatherable(ctx, colony, map, id, g, enough) {
  */
 function sell(state, ctx, id, g, room) {
   const a = ctx.agents;
+  // Its trade, for the counter's books: the one that sells that good.
+  if (ctx.jobs.sellerOf[g] >= 0) a.job[id] = ctx.jobs.sellerOf[g];
   a.saleGood[id] = g;
   a.saleAmount[id] = Math.max(1, Math.floor(room));
   a.saleTick[id] = state.tick;
