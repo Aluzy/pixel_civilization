@@ -657,11 +657,15 @@ function chooseWork(state, ctx, colony, map, id) {
     colony.members * ctx.balance.people.fedPortions;
   const room = ctx.capacity(id) - a.carriedTotal(id);
   if (!fed && colony.farmOpen > 0 && chooseFarmJob(state, ctx, colony, id, true)) return true;
+  // One in `minerEvery` keeps the town's store of materials before its works: the figures buy
+  // them to craft and invent.
+  const miner = id % ctx.balance.people.minerEvery === 0;
+  if (miner && room > 0 && gatherMaterial(state, ctx, colony, map, id, room)) return true;
   if (room > 0 && bringWork(state, ctx, colony, map, id, room)) return true;
   if (fed && colony.farmOpen > 0 && chooseFarmJob(state, ctx, colony, id, true)) return true;
   if (room <= 0) return false;
   // Nothing the town lacks: what the town lives from, for the counter (and the caravans); else
-  // the raw good dearest at the counter, which the figures buy to craft and invent.
+  // the materials.
   const enough = colony.members * ctx.balance.people.vocationStock;
   const vocation = colony.vocation >= 0 ? ctx.vocations[colony.vocation] : null;
   if (vocation !== null) {
@@ -670,10 +674,27 @@ function chooseWork(state, ctx, colony, map, id) {
       return sell(state, ctx, id, g, room);
     }
   }
+  return gatherMaterial(state, ctx, colony, map, id, room);
+}
+
+/**
+ * A few of each material in store (`materialStock` per member): the dearest at the counter that
+ * is short, gathered for sale.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} colony
+ * @param {import('../colony/town-map.js').TownMap} map
+ * @param {number} id
+ * @param {number} room
+ * @returns {boolean}
+ */
+function gatherMaterial(state, ctx, colony, map, id, room) {
+  const store = colony.members * ctx.balance.people.materialStock;
   let best = 0;
-  let bestRatio = 1;
+  let bestRatio = 0;
   for (let g = 1; g <= ctx.catalog.resourceCount; g++) {
-    if (!gatherable(ctx, colony, map, id, g, enough)) continue;
+    // Food is the fields' work (and the vocation's): here, the materials of the crafts.
+    if (ctx.edible[g] === 1 || !gatherable(ctx, colony, map, id, g, store)) continue;
     const ratio = colony.price[g] / ctx.basePrices[g];
     if (ratio > bestRatio) {
       bestRatio = ratio;

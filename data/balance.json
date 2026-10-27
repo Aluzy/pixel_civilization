@@ -510,6 +510,8 @@
     "wellTries": 8,
     "vocationBonus": 0.5,
     "vocationStock": 20,
+    "materialStock": 2,
+    "minerEvery": 4,
     "taskChunk": 15,
     "fedPortions": 4,
     "farmUrgency": 6
