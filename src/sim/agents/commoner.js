@@ -8,6 +8,8 @@ import { ProjectKind } from '../colony/colony-store.js';
 import { has } from '../core/bits.js';
 import { atCamp, readyToBuild, releaseTask, remaining, reserve } from '../colony/colony-logic.js';
 import { planHouse } from '../colony/house.js';
+import { nextSegment } from '../colony/fortress.js';
+import { nextCanal } from '../colony/canal.js';
 import { claimBed, releaseBed, townMap } from '../colony/people.js';
 import { stockPortions } from '../farming/food.js';
 import {
@@ -169,6 +171,16 @@ function holdTile(state, ctx, id) {
     a.place(id, x + DX[k], y + DY[k]);
     return;
   }
+}
+
+/** Projects the people raise, by kind: houses, wells, the wall, its towers, canals. */
+const RAISED = new Uint8Array(16);
+/** Of those, the ones laid tile by tile beside the builder. */
+const WALLS = new Uint8Array(16);
+for (const k of [ProjectKind.SHELTER, ProjectKind.WELL]) RAISED[k] = 1;
+for (const k of [ProjectKind.ENCLOSURE, ProjectKind.TOWER, ProjectKind.CANAL]) {
+  RAISED[k] = 1;
+  WALLS[k] = 1;
 }
 
 /** Where a trip may end before its target: anywhere at the camp, anywhere beside water. */
@@ -636,6 +648,46 @@ function glean(state, ctx, colony, map, id) {
 }
 
 /**
+ * Lays the next tile of the town's wall, tower or canal from a free tile beside it (the town map
+ * leads there); nothing left to lay or nowhere to stand, the task goes back.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} colony
+ * @param {import('../colony/town-map.js').TownMap} map
+ * @param {import('../colony/colony-store.js').Project} project
+ * @param {number} id
+ * @returns {boolean}
+ */
+function buildWall(state, ctx, colony, map, project, id) {
+  const a = ctx.agents;
+  const out = ctx.recallTarget;
+  const next =
+    project.kind === ProjectKind.CANAL
+      ? nextCanal(colony, out)
+      : nextSegment(state, ctx, colony, project, id, out);
+  if (!next) {
+    drop(state, ctx, id);
+    return false;
+  }
+  const x = out[0];
+  const y = out[1];
+  a.siteX[id] = x;
+  a.siteY[id] = y;
+  if (Math.max(Math.abs(a.x[id] - x), Math.abs(a.y[id] - y)) === 1) {
+    startHere(ctx, id, Action.BUILD);
+    return true;
+  }
+  for (let k = 0; k < 8; k++) {
+    const sx = x + DX[k];
+    const sy = y + DY[k];
+    if (!map.reaches(sx, sy) || !freeFor(state, sx, sy, id)) continue;
+    if (goTo(state, ctx, map, id, sx, sy, Action.BUILD)) return true;
+  }
+  drop(state, ctx, id);
+  return false;
+}
+
+/**
  * Gives up its task or its sale.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
@@ -672,8 +724,7 @@ function chooseWork(state, ctx, colony, map, id) {
   const a = ctx.agents;
   for (let s = 0; s < colony.projects.length; s++) {
     const p = colony.projects[s];
-    const raise = p.kind === ProjectKind.SHELTER || p.kind === ProjectKind.WELL;
-    if (!raise || !readyToBuild(colony, p)) continue;
+    if (!RAISED[p.kind] || p.builder >= 0 || !readyToBuild(colony, p)) continue;
     if (!has(colony.knowhow, ctx.catalog.knowFor[p.recipe])) continue;
     p.builder = id;
     reserve(state, a, id, s, 0, 0, true);
@@ -687,11 +738,13 @@ function chooseWork(state, ctx, colony, map, id) {
   const room = ctx.capacity(id) - a.carriedTotal(id);
   // The fields are the people's: tended while jobs are open, widened while the town knows how.
   const fields = colony.farmOpen > 0 || has(colony.knowhow, ctx.catalog.knowFor[ctx.plotRecipe]);
+  // One in `minerEvery` keeps the town's store of materials before anything (the figures buy
+  // them to craft and invent), the next one serves the town's works first; the others go to the
+  // fields first while the pantry is short.
+  const share = id % ctx.balance.people.minerEvery;
+  if (share === 0 && room > 0 && gatherMaterial(state, ctx, colony, map, id, room)) return true;
+  if (share === 1 && room > 0 && bringWork(state, ctx, colony, map, id, room)) return true;
   if (!fed && fields && chooseFarmJob(state, ctx, colony, id, true)) return farmer(ctx, id);
-  // One in `minerEvery` keeps the town's store of materials before its works: the figures buy
-  // them to craft and invent.
-  const miner = id % ctx.balance.people.minerEvery === 0;
-  if (miner && room > 0 && gatherMaterial(state, ctx, colony, map, id, room)) return true;
   if (room > 0 && bringWork(state, ctx, colony, map, id, room)) return true;
   if (fed && fields && chooseFarmJob(state, ctx, colony, id, true)) return farmer(ctx, id);
   if (room <= 0) return false;
@@ -842,6 +895,7 @@ function build(state, ctx, colony, map, id) {
   const holds = ctx.catalog.recipes[r].inputs.every((i) => a.carried(id, i.good) >= i.count);
   if (!holds) return goToCamp(state, ctx, colony, map, id, Action.DEPOSIT);
   a.craftRecipe[id] = r;
+  if (WALLS[project.kind]) return buildWall(state, ctx, colony, map, project, id);
   if (project.kind === ProjectKind.WELL) {
     // The well's spot, chosen with the project; dug where the digger stands.
     return goTo(state, ctx, map, id, project.tileX[0], project.tileY[0], Action.CRAFT);

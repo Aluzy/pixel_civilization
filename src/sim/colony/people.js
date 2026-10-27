@@ -1,5 +1,5 @@
 import { Tier } from '../agents/agent-store.js';
-import { or } from '../core/bits.js';
+import { has, or } from '../core/bits.js';
 import { stockPortions } from '../farming/food.js';
 import { take } from '../economy/market.js';
 import { bear } from './replication.js';
@@ -277,4 +277,33 @@ function openSpot(state, ctx, map, x, y) {
     }
   }
   return free >= 6;
+}
+
+/**
+ * Whether the agent can make recipe `r`: a figure if it knows it, one of the people if its town
+ * does (decision 0030).
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {number} r
+ * @returns {boolean}
+ */
+export function makes(ctx, id, r) {
+  const a = ctx.agents;
+  if (a.tier[id] !== Tier.COMMONER) return a.recipes[id].knows(r);
+  const c = a.colony[id];
+  return c >= 0 && has(ctx.colonies[c].knowhow, ctx.catalog.knowFor[r]);
+}
+
+/**
+ * Strengthens the memory of a recipe just used (figures only: the people keep no book).
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {number} r
+ * @returns {void}
+ */
+export function used(state, ctx, id, r) {
+  const a = ctx.agents;
+  if (a.tier[id] === Tier.COMMONER) return;
+  a.recipes[id].use(r, state.tick, ctx.balance.memory.consolidation, ctx.maxTau);
 }

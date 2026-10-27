@@ -1,6 +1,7 @@
 import { EventType } from '../core/events.js';
 import { PACK } from '../world/chunk-store.js';
 import { Enclosure, ProjectKind } from './colony-store.js';
+import { makes, used } from './people.js';
 
 // Treasures and fortresses (docs/design/16-guerre-et-forteresses.md, « Trésors et forteresses »):
 // a colony keeps its gold, gems and écus in a treasure room; when the danger felt at the camp or
@@ -439,7 +440,7 @@ export function buildSegment(state, ctx, id) {
   const x = a.siteX[id];
   const y = a.siteY[id];
   const gap = Math.max(Math.abs(a.x[id] - x), Math.abs(a.y[id] - y));
-  if (gap !== 1 || !a.recipes[id].knows(r)) return false;
+  if (gap !== 1 || !makes(ctx, id, r)) return false;
   for (const input of recipe.inputs) if (a.carried(id, input.good) < input.count) return false;
   const code = recipe.output;
   const here = state.world.packedAt(x, y) >>> PACK.STRUCTURE_SHIFT;
@@ -457,7 +458,7 @@ export function buildSegment(state, ctx, id) {
     if (colony.encOpen <= 1 && code === ctx.wallCode && predatorInside(state, colony)) return false;
   }
   for (const input of recipe.inputs) a.addCarried(id, input.good, -input.count);
-  a.recipes[id].use(r, state.tick, ctx.balance.memory.consolidation, ctx.maxTau);
+  used(state, ctx, id, r);
   a.recordMade(id, r, state.tick);
   a.builds[id]++;
   if (here === ctx.plotCode) {
