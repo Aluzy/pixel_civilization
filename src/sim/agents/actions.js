@@ -795,7 +795,8 @@ function harvestable(state, ctx, id) {
 }
 
 /**
- * True if the agent has what it takes to harvest `resource` (some need a tool).
+ * True if the agent has what it takes to harvest `resource` (some need a tool, which one of the
+ * people has when its town knows how to make it).
  * @param {import('../simulation.js').SimContext} ctx
  * @param {number} id
  * @param {number} resource
@@ -803,7 +804,14 @@ function harvestable(state, ctx, id) {
  */
 export function canHarvest(ctx, id, resource) {
   const tool = ctx.catalog.requiredTool[resource];
-  return tool === 0 || (tool > 0 && ctx.agents.carried(id, tool) > 0);
+  if (tool === 0) return true;
+  if (tool < 0) return false;
+  const a = ctx.agents;
+  if (a.carried(id, tool) > 0) return true;
+  // The people work with the town's tools: those its figures know how to make (decision 0030).
+  if (a.tier[id] !== Tier.COMMONER || a.colony[id] < 0) return false;
+  const r = ctx.catalog.recipeForGood[tool];
+  return r >= 0 && has(ctx.colonies[a.colony[id]].knowhow, ctx.catalog.knowFor[r]);
 }
 
 /**
