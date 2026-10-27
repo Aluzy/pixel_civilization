@@ -30,6 +30,8 @@ import { treasureSpare } from './market.js';
  * @property {Record<string, number>} index - Job index per id.
  * @property {Uint8Array} workGoals - 1 per goal that is the work of a chosen job.
  * @property {Int8Array} postJob - Job index per post kind: [guard, inventor, scribe].
+ * @property {Int8Array} sellerOf - Per good, the first job that sells it (-1 none): the trade
+ *   one of the people does when it brings that good (decision 0030).
  */
 
 /** Post kinds, in the order of {@link JobTable.postJob}. */
@@ -77,7 +79,17 @@ export function buildJobs(data, catalog, tables, goalIndex, genes) {
   const workGoals = new Uint8Array(Object.keys(goalIndex).length);
   for (const j of jobs) if (!j.post) workGoals[j.goal] = 1;
   const postJob = Int8Array.from(POSTS, (p) => jobs.findIndex((j) => j.post === p));
-  return { jobs, index: Object.fromEntries(jobs.map((j, i) => [j.id, i])), workGoals, postJob };
+  const sellerOf = new Int8Array(catalog.goodCount).fill(-1);
+  jobs.forEach((j, i) => {
+    for (const g of j.sells) if (sellerOf[g] < 0) sellerOf[g] = i;
+  });
+  return {
+    jobs,
+    index: Object.fromEntries(jobs.map((j, i) => [j.id, i])),
+    workGoals,
+    postJob,
+    sellerOf,
+  };
 }
 
 /**
