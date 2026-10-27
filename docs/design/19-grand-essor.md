@@ -21,7 +21,7 @@ Chaque colonie a deux rangs d'individus (`Tier` dans `agent-store.js`) :
 
   La routine se revoit tous les 30 cycles (120 au repos), ou quand une action finit. Elle écrit sa tâche (`duty`) que l'inspecteur affiche.
 
-**Quota de figures** (`people.figureQuota`) : toute la colonie tant qu'elle a moins de 16 membres, puis 12 figures plus 2 % des membres. Un membre du peuple est promu quand une figure manque ; un nouveau-né est une figure si le quota n'est pas plein.
+**Quota de figures** (`people.figureQuota`) : toute la colonie tant qu'elle a moins de 16 membres, puis 8 figures plus 2 % des membres. Un membre du peuple est promu quand une figure manque ; un nouveau-né est une figure si le quota n'est pas plein.
 
 **Esprit léger** : un membre du peuple a une mémoire de 2 lieux, une carte d'exploration grossière, un journal de 4 entrées et un modèle social d'une place. La routine ne lit que la carte de la ville (ci-dessous), jamais la grille du monde au-delà.
 

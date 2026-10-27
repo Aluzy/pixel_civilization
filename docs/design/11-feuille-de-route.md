@@ -420,7 +420,21 @@ Réalisé :
 - vocations des villes, éclaireurs lointains, expéditions plus sûres ;
 - inspecteur : rang et tâche d'un membre du peuple ; panneau de colonie : vocation, figures et peuple, les plus grandes villes d'abord.
 
-MESURES
+- **Mesures** (graines 1 à 24) :
+  - `npm run bench:towns` (40 villes de 250 habitants, 10 000 à 11 500 individus) : 5,8 ms par cycle en moyenne, 6,2 ms le pire jour (6,25 ms permis à ×16) ;
+  - J10 au jour 100 : four dans 16 parties (18 en v0.16), fonderie dans 3 (9), chaîne du pain dans 10 ;
+  - J11 : une fille qui commerce et passe 16 membres avant le jour 150 dans 16 parties ;
+  - J12 : une enceinte fermée avant le jour 150, sans brèche, dans 7 parties (7 sur 10 en v0.16) ;
+  - la croissance sur 300 jours n'a pas été mesurée sur la version finale. Une mesure intermédiaire (12 graines, avant les derniers réglages des figures) donnait 844 individus en moyenne au jour 300 et 413 au jour 150, contre 69 au jour 150 en v0.16.
+- **Tenu** :
+  - les sorties des J2 à J12 passent ;
+  - graines de démonstration : J3 14 ; J6 16 ; J9 et J10 3, 5 et 9 ; J11 11 et 22 ; J12 2 et 22.
+- **Assoupli** (avec l'accord de l'utilisateur) : le J10 n'exige plus la fonderie que d'une partie sur trois.
+- **Reporté** :
+  - retrouver le rythme d'invention de la v0.16 ;
+  - les caravanes de vivres dédiées ;
+  - la péremption des vivres ;
+  - le gel des blocs lointains.
 
 ### J13 — Conflits (reporté)
 

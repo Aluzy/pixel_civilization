@@ -16,7 +16,7 @@ Trois obstacles :
 
 ## Décision
 
-1. **Deux rangs.** Les figures (12 par colonie plus 2 % des membres, toute la colonie sous 16 membres) gardent l'IA complète. Les autres, le peuple, suivent une routine de ville fixe (boire, manger, s'abriter, dormir, travailler pour la ville) et fabriquent ce que savent faire les figures de leur ville.
+1. **Deux rangs.** Les figures (8 par colonie plus 2 % des membres, toute la colonie sous 16 membres) gardent l'IA complète. Les autres, le peuple, suivent une routine de ville fixe (boire, manger, s'abriter, dormir, travailler pour la ville) et fabriquent ce que savent faire les figures de leur ville.
 2. **La carte de la ville.** Un arbre de chemins depuis le camp, un autre vers l'eau, et les sources proches, recalculés au plus toutes les 300 cycles. Le peuple lit cette carte au lieu de planifier ses trajets.
 3. **Un index spatial** remplace les boucles en carré sur les individus. Le budget de réflexion des figures s'étale quand elles sont nombreuses.
 4. **La foule** : un membre du peuple en chemin traverse un autre en chemin ; seul celui qui se tient, travaille ou dort tient sa case.
