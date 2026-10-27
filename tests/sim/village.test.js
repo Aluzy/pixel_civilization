@@ -113,6 +113,8 @@ describe('houses', () => {
   it('makes the smallest house a ring of 8 tiles, 7 walls and the door, around one bed', () => {
     const sim = new Simulation({ seed: 5, balance });
     sim.ctx.houseSize = Int32Array.from([3, 3]);
+    sim.ctx.houseW[sim.ctx.shelterCode] = 3;
+    sim.ctx.houseH[sim.ctx.shelterCode] = 3;
     const { x, y, dir } = house(sim);
     const box = new Int32Array(4);
     houseBox(3, 3, x, y, dir, box);

@@ -51,6 +51,8 @@ export class ChunkStore {
     this.last = null;
     /** Tile index in {@link ChunkStore#last} of the last {@link ChunkStore#packedAt}. */
     this.lastIndex = 0;
+    /** Structures and grounds changed so far (each chunk keeps the count at its last one). */
+    this.builds = 0;
     /** Set by {@link ChunkStore#takeUnit}: true if the last take emptied its tile. */
     this.lastTakeDepleted = false;
   }
@@ -214,7 +216,28 @@ export class ChunkStore {
   setStructure(x, y, code) {
     const chunk = this.get(toChunk(x), toChunk(y));
     chunk.structure[Chunk.index(toLocal(x), toLocal(y))] = code;
+    chunk.built = ++this.builds;
     this.markChanged(chunk);
+  }
+
+  /**
+   * True if a structure or the ground changed in a chunk overlapping the box since the count of
+   * changes was `stamp` (a town's map is then out of date).
+   * @param {number} x0
+   * @param {number} y0
+   * @param {number} x1
+   * @param {number} y1
+   * @param {number} stamp - A value of {@link ChunkStore#builds}.
+   * @returns {boolean}
+   */
+  changedSince(x0, y0, x1, y1, stamp) {
+    for (let cy = toChunk(y0); cy <= toChunk(y1); cy++) {
+      for (let cx = toChunk(x0); cx <= toChunk(x1); cx++) {
+        const chunk = this.chunks.get(chunkId(cx, cy));
+        if (chunk !== undefined && chunk.built > stamp) return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -227,6 +250,7 @@ export class ChunkStore {
   setBiome(x, y, biome) {
     const chunk = this.get(toChunk(x), toChunk(y));
     chunk.biome[Chunk.index(toLocal(x), toLocal(y))] = biome;
+    chunk.built = ++this.builds;
     this.markChanged(chunk);
   }
 

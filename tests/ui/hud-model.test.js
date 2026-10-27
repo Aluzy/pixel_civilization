@@ -32,7 +32,7 @@ describe('phone HUD model', () => {
       effectiveSpeed: 16,
       paused: false,
       auto: true,
-      agents: [1, 2, 3],
+      agents: { count: 3 },
     };
     expect(topLine(frame)).toBe('J12 07:05 · ×16 auto · 3 ind.');
     const withHarmony = { ...frame, colony: { harmony: { score: 61.6, focus: 3 } } };

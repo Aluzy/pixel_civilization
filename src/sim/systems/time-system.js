@@ -12,4 +12,6 @@ export function timeSystem(state, ctx) {
   ctx.phase = phase;
   ctx.darkness = ctx.darknessByPhase[phase];
   ctx.dark = ctx.nightPhase === phase;
+  // Evening: dusk or night, when the people of a town go home (decision 0030).
+  ctx.evening = ctx.dark || ctx.duskPhase === phase;
 }

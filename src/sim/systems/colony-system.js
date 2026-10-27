@@ -1,7 +1,9 @@
 import { hasShip } from '../agents/sailing.js';
 import { canalProject } from '../colony/canal.js';
 import { worksProject } from '../colony/works.js';
-import { claimFreeStock, openTasks, releaseTask } from '../colony/colony-logic.js';
+import { atCamp, claimFreeStock, openTasks, releaseTask } from '../colony/colony-logic.js';
+import { Tier } from '../agents/agent-store.js';
+import { addKnowhow, peoplePass } from '../colony/people.js';
 import { Enclosure, ProjectKind } from '../colony/colony-store.js';
 import { planEnclosure, updateDanger, wallNeeds, wantsEnclosure } from '../colony/fortress.js';
 import { PACK } from '../world/chunk-store.js';
@@ -22,13 +24,27 @@ export function colonySystem(state, ctx) {
   const cfg = ctx.balance.colony;
   if (state.tick % cfg.taskInterval !== 0) return;
   const a = ctx.agents;
+  const parents = ctx.colonyParent;
+  const commoners = ctx.colonyCommoner;
   for (const colony of state.colonies) {
     colony.members = 0;
     colony.gleaning = 0;
+    colony.figures = 0;
+    colony.knowhow = 0;
+    parents[colony.id] = -1;
+    commoners[colony.id] = -1;
   }
   for (let id = 0; id < a.highWater; id++) {
     if (a.alive[id] !== 1 || a.colony[id] < 0) continue;
-    state.colonies[a.colony[id]].members++;
+    const home = state.colonies[a.colony[id]];
+    home.members++;
+    // The people (decision 0030): its figures and what they know, a commoner to promote, a
+    // member at the camp to be a parent.
+    if (a.tier[id] === Tier.FIGURE) {
+      home.figures++;
+      addKnowhow(home, a, id);
+    } else if (commoners[home.id] < 0) commoners[home.id] = id;
+    if (home.hasCamp && atCamp(ctx, home, id)) parents[home.id] = id;
     if (a.farmJob[id] === FarmJob.GLEAN) state.colonies[a.colony[id]].gleaning++;
     if (a.taskProject[id] >= 0 && state.tick - a.taskTick[id] > cfg.reservationTicks) {
       releaseTask(state, ctx, id);
@@ -39,6 +55,7 @@ export function colonySystem(state, ctx) {
     if (!colony.hasCamp || colony.members === 0) continue;
     if (dawn) updateDanger(state, ctx, colony);
     updateExpedition(state, ctx, colony);
+    peoplePass(state, ctx, colony, parents[colony.id], commoners[colony.id]);
     // Shelters: one at a time for a small colony, more at once as it grows (a large colony has
     // many hands to gather the materials).
     let building = 0;
@@ -47,10 +64,15 @@ export function colonySystem(state, ctx) {
     // Beds ahead of the births: a share of the members more, at least one.
     const ahead = Math.max(1, Math.ceil(colony.members * cfg.bedMargin));
     const missingBeds = colony.members + ahead - colony.beds();
-    const perHouse = ctx.bedsPerHouse;
+    // A town builds longhouses (decision 0030): many beds for the materials of a few houses.
+    const long = ctx.longhouseCode > 0 && colony.members >= ctx.balance.people.longhouseFrom;
+    const house = long ? ctx.longhouseCode : ctx.shelterCode;
+    const perHouse = ctx.bedsOf[house];
     if (missingBeds > 0 && building < atOnce && building * perHouse < missingBeds + perHouse) {
       const slot = colony.freeSlot();
-      if (slot >= 0) openBuildProject(state, ctx, colony, slot, ProjectKind.SHELTER, 'shelter');
+      if (slot >= 0) {
+        openBuildProject(state, ctx, colony, slot, ProjectKind.SHELTER, 'shelter', house);
+      }
     } else if (missingBeds + perHouse <= 0) {
       // Fewer mouths than beds now: houses nobody has started building are given up (their
       // materials stay in the stock).
@@ -203,10 +225,14 @@ function dropProject(state, ctx, colony, project) {
  * @param {number} slot
  * @param {number} kind - {@link ProjectKind}.
  * @param {string} structureKind - "shelter", "library", "treasury" or "tower".
+ * @param {number} [code=0] - The structure itself, else the first of that kind.
  * @returns {void}
  */
-function openBuildProject(state, ctx, colony, slot, kind, structureKind) {
-  const structure = ctx.catalog.structures.find((st) => st.kind === structureKind);
+function openBuildProject(state, ctx, colony, slot, kind, structureKind, code = 0) {
+  const structure =
+    code > 0
+      ? ctx.catalog.structures[code - 1]
+      : ctx.catalog.structures.find((st) => st.kind === structureKind);
   if (!structure) return;
   const r = ctx.catalog.recipeForStructure[structure.code];
   if (r < 0) return;

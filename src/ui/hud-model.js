@@ -49,7 +49,7 @@ export function shortSpeed({ speed }) {
 /**
  * The top bar: day and time, speed (with the effective one when behind), population.
  * @param {{ time: { day: number, hour: number, minute: number }, speed: number | 'max',
- *   effectiveSpeed: number, paused: boolean, auto?: boolean, agents: unknown[],
+ *   effectiveSpeed: number, paused: boolean, auto?: boolean, agents: { count: number },
  *   colony?: { harmony?: { score: number, focus: number } } | null }} frame
  * @returns {string}
  */
@@ -64,7 +64,7 @@ export function topLine(frame) {
   const auto = frame.auto ? ' auto' : '';
   const h = frame.colony?.harmony;
   const harmony = h && h.focus >= 0 ? ` · H ${Math.round(h.score)}` : '';
-  return `${clock} · ${speed}${auto} · ${frame.agents.length} ind.${harmony}`;
+  return `${clock} · ${speed}${auto} · ${frame.agents.count} ind.${harmony}`;
 }
 
 /**

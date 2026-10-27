@@ -196,10 +196,10 @@ export function chooseTask(state, ctx, colony, id) {
   const portion = ctx.balance.cooking.portion;
   for (let s = 0; s < colony.projects.length; s++) {
     const p = colony.projects[s];
-    // Anyone can plant; only those who know the recipe build.
-    if (!readyToBuild(colony, p)) continue;
+    // Anyone can plant; only those who know the recipe build; the town's commoners dig wells.
+    if (!readyToBuild(colony, p) || p.kind === ProjectKind.WELL) continue;
     const anyone = p.kind === ProjectKind.FIELD || p.kind === ProjectKind.WORKS;
-    if (!anyone && !book.knows(p.recipe)) continue;
+    if (!anyone && !book.knows(ctx.catalog.knowFor[p.recipe])) continue;
     p.builder = id;
     reserve(state, a, id, s, 0, 0, true);
     return true;
@@ -263,6 +263,7 @@ export function chooseTask(state, ctx, colony, id) {
 }
 
 /**
+ * Reserves a task of project `slot` for the agent: bring `amount` units of `good`, or build.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../agents/agent-store.js').AgentStore} a
  * @param {number} id
@@ -272,7 +273,7 @@ export function chooseTask(state, ctx, colony, id) {
  * @param {boolean} build
  * @returns {void}
  */
-function reserve(state, a, id, slot, good, amount, build) {
+export function reserve(state, a, id, slot, good, amount, build) {
   a.taskProject[id] = slot;
   a.taskGood[id] = good;
   a.taskAmount[id] = amount;

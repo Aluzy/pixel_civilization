@@ -1,5 +1,6 @@
 import { memoryEvent } from '../agents/beliefs.js';
 import { EventType } from '../core/events.js';
+import { Tier } from '../agents/agent-store.js';
 
 /**
  * Forgetting: every `sweepInterval` ticks, places whose strength fell below the threshold are
@@ -15,7 +16,8 @@ export function memorySystem(state, ctx) {
   if (state.tick % m.sweepInterval !== 0) return;
   const a = ctx.agents;
   for (let id = 0; id < a.highWater; id++) {
-    if (a.alive[id] !== 1) continue;
+    // Commoners keep no places nor recipes of their own (decision 0030).
+    if (a.alive[id] !== 1 || a.tier[id] === Tier.COMMONER) continue;
     const memory = a.memory[id];
     for (let i = memory.count - 1; i >= 0; i--) {
       if (memory.strength(i, state.tick) >= m.forgetThreshold) continue;

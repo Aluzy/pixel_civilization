@@ -133,6 +133,11 @@ export const RNG_STREAMS = Object.freeze([
  * @property {number} towerCode
  * @property {number} treasuryCode - Structure code of the treasure room.
  * @property {Int32Array} houseSize - Width, height of a house (walls included).
+ * @property {Int32Array} houseW - Width of each kind of house, by structure code (0: no house).
+ * @property {Int32Array} houseH - Height of each kind of house.
+ * @property {Int32Array} bedsOf - Beds inside each kind of house.
+ * @property {number} longhouseCode - Structure code of the longhouse (decision 0030), 0 if none.
+ * @property {number} wellCode - Structure code of the well (decision 0030), 0 if none.
  * @property {number} trailSteps - Footsteps that wear a tile into a trail.
  * @property {number} trailSpeed - Speed factor on a trail.
  * @property {number} houseWallCode
@@ -145,7 +150,7 @@ export const RNG_STREAMS = Object.freeze([
  *   and door (the house is remembered by its beds), water works (remembered as water), the
  *   town's paving, buildings and trees.
  * @property {Uint8Array} ringWall - 1 for the walls of an enclosure (palisade, stone wall).
- * @property {Uint8Array} wet - 1 for the structures holding water (canal, bridge, fountain).
+ * @property {Uint8Array} wet - 1 for the structures holding water (canal, bridge, fountain, well).
  * @property {number} pavementCode
  * @property {number} bridgeCode
  * @property {number} fountainCode
@@ -163,6 +168,9 @@ export const RNG_STREAMS = Object.freeze([
  * @property {Float64Array} structureSpeed - Walking speed factor per structure code.
  * @property {number} canalCode - Structure code of a canal (0 if none).
  * @property {Int32Array} siteOut - Scratch: x, y, direction of a planned house.
+ * @property {Int32Array} watchers - Scratch: ids of those who may watch a maker.
+ * @property {Int32Array} colonyParent - Scratch: a member at the camp of each colony.
+ * @property {Int32Array} colonyCommoner - Scratch: a commoner of each colony.
  * @property {Int32Array} newBeds - Scratch: beds of the house just raised (x, y pairs).
  * @property {number} newBedCount
  * @property {number} carcass - Resource id of a carcass (0 if none).
@@ -183,6 +191,8 @@ export const RNG_STREAMS = Object.freeze([
  *   mealTicks: number, fastTicks: number }} rates - Per tick.
  * @property {Float64Array} darknessByPhase
  * @property {number} nightPhase
+ * @property {number} duskPhase
+ * @property {boolean} evening - Dusk or night: commoners go home.
  * @property {number} darkness - Current light level input, 0 (day) to 1 (night).
  * @property {boolean} dark - True at night (reduced perception).
  * @property {Float64Array} inputs - Scratch utility inputs.
@@ -389,7 +399,7 @@ function buildContext(balance, tables, agents, seedKey) {
   const passage = new Uint8Array(catalog.structures.length + 1);
   // Walls of a ring (palisade, stone wall): they close an enclosure.
   const ringWall = new Uint8Array(catalog.structures.length + 1);
-  const solid = new Set(['wall', 'house_wall', 'edifice', 'tree', 'fountain']);
+  const solid = new Set(['wall', 'house_wall', 'edifice', 'tree', 'fountain', 'well']);
   for (const st of catalog.structures) {
     if (solid.has(st.kind)) blocksAgent[st.code] = blocksPredator[st.code] = 1;
     // Predators do not swim across a canal either.
@@ -402,13 +412,23 @@ function buildContext(balance, tables, agents, seedKey) {
   // The house: its walls, its door and its beds (docs/design/03-individu.md, « Abri »).
   const shelterDef = catalog.structures.find((st) => st.kind === 'shelter');
   const houseSize = Int32Array.from(shelterDef?.footprint ?? [3, 3]);
+  // Every kind of house, by its code: width and height (walls included), beds inside.
+  const houseW = new Int32Array(catalog.structures.length + 1);
+  const houseH = new Int32Array(catalog.structures.length + 1);
+  for (const st of catalog.structures) {
+    if (st.kind !== 'shelter') continue;
+    houseW[st.code] = st.footprint?.[0] ?? 3;
+    houseH[st.code] = st.footprint?.[1] ?? 3;
+  }
+  const bedsOf = Int32Array.from(houseW, (w, c) => (w > 0 ? (w - 2) * (houseH[c] - 2) : 0));
+  const mostBeds = Math.max(1, ...bedsOf);
   const idCode = (id) => catalog.structures.find((st) => st.id === id)?.code ?? 0;
   // Walking speed on a structure (wading through a canal), and the water it holds.
   const structureSpeed = Float64Array.from({ length: catalog.structures.length + 1 }, (_, c) =>
     c > 0 ? catalog.structures[c - 1].speed : 1,
   );
   const canalCode = codeOf('canal');
-  const wetKinds = new Set(['canal', 'bridge', 'fountain']);
+  const wetKinds = new Set(['canal', 'bridge', 'fountain', 'well']);
   const wet = Uint8Array.from({ length: catalog.structures.length + 1 }, (_, c) =>
     c > 0 && wetKinds.has(catalog.structures[c - 1].kind) ? 1 : 0,
   );
@@ -539,6 +559,8 @@ function buildContext(balance, tables, agents, seedKey) {
     },
     darknessByPhase,
     nightPhase: phases.indexOf('night'),
+    duskPhase: phases.indexOf('dusk'),
+    evening: phases.indexOf('night') === phase0 || phases.indexOf('dusk') === phase0,
     darkness: darknessByPhase[phase0],
     dark: phases.indexOf('night') === phase0,
     inputs: new Float64Array(Object.keys(INPUT).length),
@@ -573,6 +595,11 @@ function buildContext(balance, tables, agents, seedKey) {
     shelterCodes,
     shelterCode: shelterCodes.indexOf(1),
     houseSize,
+    houseW,
+    houseH,
+    bedsOf,
+    longhouseCode: idCode('longhouse'),
+    wellCode: idCode('well'),
     trailSteps: balance.trails.steps,
     trailSpeed: balance.trails.speed,
     houseWallCode: idCode(shelterDef?.wall),
@@ -585,7 +612,12 @@ function buildContext(balance, tables, agents, seedKey) {
       c > 0 && !placeKinds.has(catalog.structures[c - 1].kind) ? 1 : 0,
     ),
     siteOut: new Int32Array(3),
-    newBeds: new Int32Array(2 * (houseSize[0] - 2) * (houseSize[1] - 2)),
+    /** Per colony, at each pass of the colony system: a member at the camp, a commoner. */
+    colonyParent: new Int32Array(MAX_COLONIES),
+    colonyCommoner: new Int32Array(MAX_COLONIES),
+    /** Ids of those who may watch a maker (a copy of a grid query). */
+    watchers: new Int32Array(balance.agent.maxEntities),
+    newBeds: new Int32Array(2 * mostBeds),
     newBedCount: 0,
     predatorBiomes: Uint8Array.from(tables.biomes, (b) => (predator.biomes.includes(b.id) ? 1 : 0)),
     predatorPhases: Uint8Array.from(phases, (p) => (predator.phases.includes(p) ? 1 : 0)),
@@ -975,13 +1007,18 @@ export class Simulation {
   }
 
   /**
-   * Positions of alive agents, interpolated along their path, for the renderer.
-   * @returns {{ id: number, x: number, y: number, asleep: boolean }[]}
+   * Positions of alive agents, interpolated along their path, for the renderer, packed in typed
+   * arrays (thousands of individuals: their buffers are transferred, not copied).
+   * @returns {{ count: number, ids: Int32Array, xy: Float32Array, asleep: Uint8Array }}
    */
   agentPositions() {
     const a = this.state.agents;
-    const out = [];
-    for (let id = 0; id < a.highWater; id++) {
+    const n = a.aliveCount;
+    const ids = new Int32Array(n);
+    const xy = new Float32Array(n * 2);
+    const asleep = new Uint8Array(n);
+    let k = 0;
+    for (let id = 0; id < a.highWater && k < n; id++) {
       if (a.alive[id] !== 1) continue;
       let x = a.x[id];
       let y = a.y[id];
@@ -991,9 +1028,13 @@ export class Simulation {
         x += (a.path[id][i * 2] - x) * t;
         y += (a.path[id][i * 2 + 1] - y) * t;
       }
-      out.push({ id, x, y, asleep: a.asleep[id] === 1 });
+      ids[k] = id;
+      xy[k * 2] = x;
+      xy[k * 2 + 1] = y;
+      asleep[k] = a.asleep[id];
+      k++;
     }
-    return out;
+    return { count: k, ids, xy, asleep };
   }
 
   /**

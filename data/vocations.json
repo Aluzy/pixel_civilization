@@ -1,0 +1,29 @@
+{
+  "vocations": [
+    {
+      "id": "farm",
+      "name": "Ville agricole",
+      "goods": ["wheat", "berries"],
+      "site": { "biomes": ["plain"], "share": 0.5 },
+      "plots": 2
+    },
+    {
+      "id": "stone",
+      "name": "Ville de la pierre",
+      "goods": ["stone", "clay"],
+      "site": { "resource": "stone", "tiles": 3 }
+    },
+    {
+      "id": "fish",
+      "name": "Port de pêche",
+      "goods": ["fish"],
+      "site": { "resource": "fish", "tiles": 4 }
+    },
+    {
+      "id": "wood",
+      "name": "Ville forestière",
+      "goods": ["wood", "fiber"],
+      "site": { "biomes": ["forest"], "share": 0.4 }
+    }
+  ]
+}

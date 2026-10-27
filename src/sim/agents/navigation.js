@@ -1,4 +1,5 @@
 import { PACK } from '../world/chunk-store.js';
+import { CHUNK_SIZE } from '../world/coords.js';
 import { Action } from './action-types.js';
 
 /** Largest perception radius supported by the navigation window. */
@@ -127,45 +128,117 @@ export class Navigator {
     // Inside a house, one gets past a sleeper by swapping beds with it.
     const inBed = this.beds[world.packedAt(cx, cy) >>> PACK.STRUCTURE_SHIFT] === 1;
     this.heldCount = 0;
+    const shore =
+      typeof world.get === 'function'
+        ? this.readChunks(world, inBed)
+        : this.readTiles(world, inBed);
+    this.markShore(shore, n);
+    this.dijkstra(n);
+  }
+
+  /**
+   * Reads the window's tiles row by row, straight from the chunks' arrays.
+   * @param {import('../world/chunk-store.js').ChunkStore} world
+   * @param {boolean} inBed - The agent lies in a bed.
+   * @returns {boolean} True if a resource taken from the shore is in sight.
+   */
+  readChunks(world, inBed) {
+    const side = this.side;
+    let shore = false;
+    const structureSpeed = this.structureSpeed;
+    const agents = this.agents;
+    for (let row = 0; row < side; row++) {
+      const y = this.originY + row;
+      const chunkY = Math.floor(y / CHUNK_SIZE);
+      const base = (y - chunkY * CHUNK_SIZE) * CHUNK_SIZE;
+      // A row is read chunk by chunk, straight from the chunk's arrays.
+      for (let col = 0; col < side;) {
+        const x0 = this.originX + col;
+        const chunkX = Math.floor(x0 / CHUNK_SIZE);
+        const chunk = world.get(chunkX, chunkY);
+        const lx0 = x0 - chunkX * CHUNK_SIZE;
+        const run = Math.min(side - col, CHUNK_SIZE - lx0);
+        for (let k = 0; k < run; k++, col++) {
+          const i = row * side + col;
+          const t = base + lx0 + k;
+          const biome = chunk.biome[t];
+          const code = chunk.structure[t];
+          const res = chunk.resource[t];
+          const qty = chunk.quantity[t];
+          this.biome[i] = biome;
+          this.resource[i] = res;
+          this.quantity[i] = qty;
+          this.structure[i] = code;
+          const worn = chunk.wear[t] >= this.trailSteps ? this.trailSpeed : 1;
+          const wade = structureSpeed === null ? 1 : structureSpeed[code];
+          let ground = this.biomeSpeed[biome];
+          if (biome === this.waterBiome) ground = this.deck[code] === 1 ? 1 : this.waterSpeed;
+          const speed = this.blocks[code] === 1 ? 0 : ground * worn * wade;
+          if (qty > 0 && this.fromShore[res] === 1) shore = true;
+          this.stepCost[i] = speed > 0 ? 1 / speed : Infinity;
+          this.held[i] = 0;
+          const other = chunk.occupant[t] - 1;
+          if (other >= 0 && i !== this.center && agents !== null && speed > 0) {
+            // Someone walking will likely have moved on; someone standing still steps aside
+            // when asked, at the cost of a wait (gone round when there is room).
+            const walking = agents.action[other] === Action.MOVE && agents.blocked[other] === 0;
+            this.stepCost[i] += walking ? this.crowdCost : this.crowdCost * 3;
+            if (!walking) {
+              this.held[i] = 1;
+              this.heldCount++;
+            }
+            if (agents.asleep[other] === 1 && this.beds[code] === 1 && !inBed) {
+              this.stepCost[i] = Infinity;
+            }
+          }
+        }
+      }
+    }
+    return shore;
+  }
+
+  /**
+   * Reads the window's tiles one by one through `packedAt` (any world that offers it).
+   * @param {{ packedAt: (x: number, y: number) => number, lastWear: () => number,
+   *   lastOccupant: () => number }} world
+   * @param {boolean} inBed - The agent lies in a bed.
+   * @returns {boolean} True if a resource taken from the shore is in sight.
+   */
+  readTiles(world, inBed) {
+    const side = this.side;
     let shore = false;
     for (let row = 0; row < side; row++) {
       for (let col = 0; col < side; col++) {
         const i = row * side + col;
         const p = world.packedAt(this.originX + col, this.originY + row);
         const biome = p & PACK.MASK;
+        const code = (p >>> PACK.STRUCTURE_SHIFT) & PACK.MASK;
         this.biome[i] = biome;
         this.resource[i] = (p >> PACK.RESOURCE_SHIFT) & PACK.MASK;
         this.quantity[i] = (p >> PACK.QUANTITY_SHIFT) & PACK.MASK;
-        this.structure[i] = (p >>> PACK.STRUCTURE_SHIFT) & PACK.MASK;
+        this.structure[i] = code;
         const worn = world.lastWear() >= this.trailSteps ? this.trailSpeed : 1;
-        const wade = this.structureSpeed === null ? 1 : this.structureSpeed[this.structure[i]];
+        const wade = this.structureSpeed === null ? 1 : this.structureSpeed[code];
         let ground = this.biomeSpeed[biome];
-        if (biome === this.waterBiome) {
-          ground = this.deck[this.structure[i]] === 1 ? 1 : this.waterSpeed;
-        }
-        const speed = this.blocks[this.structure[i]] === 1 ? 0 : ground * worn * wade;
+        if (biome === this.waterBiome) ground = this.deck[code] === 1 ? 1 : this.waterSpeed;
+        const speed = this.blocks[code] === 1 ? 0 : ground * worn * wade;
         if (this.fromShore[this.resource[i]] === 1 && this.quantity[i] > 0) shore = true;
         this.stepCost[i] = speed > 0 ? 1 / speed : Infinity;
         this.held[i] = 0;
         const other = world.lastOccupant();
         if (other >= 0 && i !== this.center && this.agents !== null && speed > 0) {
           const a = this.agents;
-          // Someone walking will likely have moved on; someone standing still steps aside when
-          // asked, at the cost of a wait (gone round when there is room).
           const walking = a.action[other] === Action.MOVE && a.blocked[other] === 0;
           this.stepCost[i] += walking ? this.crowdCost : this.crowdCost * 3;
           if (!walking) {
             this.held[i] = 1;
             this.heldCount++;
           }
-          if (a.asleep[other] === 1 && this.beds[this.structure[i]] === 1 && !inBed) {
-            this.stepCost[i] = Infinity;
-          }
+          if (a.asleep[other] === 1 && this.beds[code] === 1 && !inBed) this.stepCost[i] = Infinity;
         }
       }
     }
-    this.markShore(shore, n);
-    this.dijkstra(n);
+    return shore;
   }
 
   /**
@@ -620,16 +693,20 @@ export class Navigator {
   }
 
   /**
-   * Writes the path from the agent to `cell` (agent's cell excluded) as x, y pairs.
+   * Writes the path from the agent to `cell` (agent's cell excluded) as x, y pairs; a path
+   * longer than `out` holds is cut: the agent walks its first part, then looks again.
    * @param {number} cell - A reachable cell.
    * @param {Int32Array} out
-   * @returns {number} Number of steps.
+   * @returns {number} Number of steps written.
    */
   writePath(cell, out) {
     let steps = 0;
     for (let c = cell; c !== this.center && c >= 0; c = this.prev[c]) steps++;
-    let k = steps - 1;
-    for (let c = cell; c !== this.center && c >= 0; c = this.prev[c]) {
+    const max = out.length >> 1;
+    let c = cell;
+    for (let skip = steps - max; skip > 0; skip--) c = this.prev[c];
+    if (steps > max) steps = max;
+    for (let k = steps - 1; c !== this.center && c >= 0; c = this.prev[c]) {
       out[k * 2] = this.cellX(c);
       out[k * 2 + 1] = this.cellY(c);
       k--;

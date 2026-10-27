@@ -222,6 +222,23 @@
       "color": "#6e4b2a",
       "kind": "ship",
       "shore": true
+    },
+    {
+      "id": "longhouse",
+      "name": "Maison longue",
+      "color": "#8a5a38",
+      "kind": "shelter",
+      "sleepRecovery": 2,
+      "footprint": [6, 4],
+      "wall": "house_wall",
+      "door": "house_door",
+      "feminine": true
+    },
+    {
+      "id": "well",
+      "name": "Puits",
+      "color": "#5d8fb0",
+      "kind": "well"
     }
   ],
   "items": [
@@ -891,6 +908,33 @@
       "output": {
         "structure": "ship"
       }
+    },
+    {
+      "id": "longhouse",
+      "station": null,
+      "inputs": {
+        "wood": 18,
+        "fiber": 8,
+        "stone": 6
+      },
+      "durationTicks": 300,
+      "output": {
+        "structure": "longhouse"
+      },
+      "learntWith": "shelter"
+    },
+    {
+      "id": "well",
+      "station": null,
+      "inputs": {
+        "stone": 5,
+        "wood": 1
+      },
+      "durationTicks": 120,
+      "output": {
+        "structure": "well"
+      },
+      "learntWith": "shelter"
     }
   ]
 }

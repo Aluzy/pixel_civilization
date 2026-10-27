@@ -116,9 +116,11 @@ export function countFarmJobs(state, ctx, colony) {
  * @param {import('../simulation.js').SimContext} ctx
  * @param {import('../colony/colony-store.js').Colony} colony
  * @param {number} id
+ * @param {boolean} [plotsOnly=false] - Only the jobs of existing plots (a commoner does not
+ *   choose where to make a new one).
  * @returns {boolean}
  */
-export function chooseFarmJob(state, ctx, colony, id) {
+export function chooseFarmJob(state, ctx, colony, id, plotsOnly = false) {
   const crops = state.crops;
   const a = ctx.agents;
   const seeds = seedsInStock(ctx, colony) + carriedSeeds(ctx, id);
@@ -142,7 +144,7 @@ export function chooseFarmJob(state, ctx, colony, id) {
     }
   }
   if (best < 0) {
-    if (plots >= wantedPlots(ctx, colony)) return false;
+    if (plotsOnly || plots >= wantedPlots(ctx, colony)) return false;
     bestJob = seeds > bare ? FarmJob.TILL : FarmJob.GLEAN;
     // Wild grain is rare: a few glean, the others keep feeding the colony.
     if (bestJob === FarmJob.GLEAN) {

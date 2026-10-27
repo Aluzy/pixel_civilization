@@ -84,8 +84,13 @@ describe('memory in play', () => {
     sim.step(DAY);
     const map = sim.agents.explored[0];
     expect(map.size).toBeGreaterThan(4);
+    // Where it stands, or next to it (it may have just stepped beyond what it last saw).
     const cell = Math.floor(sim.agents.x[0] / map.cellSize);
     const row = Math.floor(sim.agents.y[0] / map.cellSize);
-    expect(map.lastSeen(cell, row)).toBeGreaterThan(0);
+    let seen = -1;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) seen = Math.max(seen, map.lastSeen(cell + dx, row + dy));
+    }
+    expect(seen).toBeGreaterThan(0);
   });
 });

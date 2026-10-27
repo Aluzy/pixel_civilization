@@ -99,7 +99,7 @@ export function colonyWork(state, ctx, id, plan) {
   if (a.taskBuild[id] === 1) {
     const r = project.recipe;
     // It found out it had the recipe wrong (or forgot it): someone else will build.
-    if (!a.recipes[id].knows(r)) {
+    if (!a.recipes[id].knows(ctx.catalog.knowFor[r])) {
       releaseTask(state, ctx, id);
       startHere(ctx, id, Action.IDLE);
       return;
@@ -235,7 +235,8 @@ function research(state, ctx, colony, id) {
   const limit = ctx.balance.colony.researchTicks;
   for (const p of colony.projects) {
     if (p.kind === ProjectKind.FIELD || p.kind === ProjectKind.WORKS) continue;
-    if (!readyToBuild(colony, p) || book.knows(p.recipe)) continue;
+    if (p.kind === ProjectKind.WELL) continue;
+    if (!readyToBuild(colony, p) || book.knows(ctx.catalog.knowFor[p.recipe])) continue;
     if (p.researcher === id) return true;
     const free = p.researcher < 0 || a.alive[p.researcher] !== 1;
     // A researcher keeps the task for a while: it remembers what it already tried.

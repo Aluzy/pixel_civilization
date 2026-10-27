@@ -46,10 +46,11 @@ let autoSeq = 0;
 
 /**
  * @param {object} message
+ * @param {Transferable[]} [transfer] - Buffers handed over to the renderer.
  * @returns {void}
  */
-function post(message) {
-  self.postMessage(message);
+function post(message, transfer = []) {
+  self.postMessage(message, transfer);
 }
 
 /** @returns {void} */
@@ -59,24 +60,28 @@ function sendFrame() {
   lastFrameAt = now;
   const events = sim.events.since(nextEventSeq);
   if (events.length > 0) nextEventSeq = events.at(-1).seq + 1;
-  post({
-    type: FromWorker.FRAME,
-    tick: sim.tick,
-    time: sim.time(),
-    speed: scheduler.speed,
-    paused: scheduler.paused,
-    effectiveSpeed: scheduler.effectiveSpeed(now),
-    skip: skip?.kind ?? null,
-    agents: sim.agentPositions(),
-    threats: sim.threatPositions(),
-    // The colony of the selected individual, else the first; and a line for each colony.
-    colony: sim.describeColony(selectedColony()),
-    colonies: sim.describeColonies(),
-    auto: auto.enabled,
-    events,
-    selected: selected >= 0 ? sim.describeAgent(selected, selectedWithMap) : null,
-    history: historyRows(),
-  });
+  const agents = sim.agentPositions();
+  post(
+    {
+      type: FromWorker.FRAME,
+      tick: sim.tick,
+      time: sim.time(),
+      speed: scheduler.speed,
+      paused: scheduler.paused,
+      effectiveSpeed: scheduler.effectiveSpeed(now),
+      skip: skip?.kind ?? null,
+      agents,
+      threats: sim.threatPositions(),
+      // The colony of the selected individual, else the first; and a line for each colony.
+      colony: sim.describeColony(selectedColony()),
+      colonies: sim.describeColonies(),
+      auto: auto.enabled,
+      events,
+      selected: selected >= 0 ? sim.describeAgent(selected, selectedWithMap) : null,
+      history: historyRows(),
+    },
+    [agents.ids.buffer, agents.xy.buffer, agents.asleep.buffer],
+  );
 }
 
 /**

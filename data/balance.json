@@ -4,15 +4,27 @@
     "ticksPerDay": 1200,
     "dayStartHour": 6,
     "phases": [
-      { "name": "day", "fraction": 0.6 },
-      { "name": "dusk", "fraction": 0.1 },
-      { "name": "night", "fraction": 0.2 },
-      { "name": "dawn", "fraction": 0.1 }
+      {
+        "name": "day",
+        "fraction": 0.6
+      },
+      {
+        "name": "dusk",
+        "fraction": 0.1
+      },
+      {
+        "name": "night",
+        "fraction": 0.2
+      },
+      {
+        "name": "dawn",
+        "fraction": 0.1
+      }
     ],
     "speedSteps": [1, 4, 16, 64, 256]
   },
   "agent": {
-    "maxEntities": 512,
+    "maxEntities": 16384,
     "start": {
       "hp": 100,
       "force": 10,
@@ -68,7 +80,12 @@
     "planTravelCost": 60,
     "planExploreCost": 600,
     "shelterRange": 48,
-    "weariness": { "perFailure": 1, "grace": 8, "scale": 0.3, "halfLifeDays": 3 }
+    "weariness": {
+      "perFailure": 1,
+      "grace": 8,
+      "scale": 0.3,
+      "halfLifeDays": 3
+    }
   },
   "memory": {
     "placeTauDays": 3,
@@ -77,13 +94,23 @@
     "forgetThreshold": 0.1,
     "sweepInterval": 100,
     "sameRadius": 4,
-    "salience": { "water": 1, "edible": 1, "structure": 1, "danger": 0.8, "other": 0.5 },
+    "salience": {
+      "water": 1,
+      "edible": 1,
+      "structure": 1,
+      "danger": 0.8,
+      "other": 0.5
+    },
     "eventCooldown": 600,
     "maxBlur": 12,
     "structureTauDays": 15,
     "dangerTauDays": 2
   },
-  "exploration": { "cellSize": 8, "capacity": 1024, "staleDays": 3 },
+  "exploration": {
+    "cellSize": 8,
+    "capacity": 1024,
+    "staleDays": 3
+  },
   "crafting": {
     "recipeTauDays": 10,
     "failureTauDays": 5,
@@ -151,7 +178,9 @@
     "unhurtDays": 2,
     "cooldownTicks": 300,
     "durationTicks": 60,
-    "cost": { "fiber": 3 },
+    "cost": {
+      "fiber": 3
+    },
     "costFood": 6,
     "mutation": 0.05,
     "eatAbove": 15,
@@ -169,6 +198,8 @@
     "projectSlots": 8,
     "houseCore": 5,
     "houseRange": 30,
+    "suburbRange": 44,
+    "squareEvery": 4,
     "membersPerShelterProject": 15,
     "worksUrgency": 0.5,
     "bedMargin": 0.15,
@@ -177,7 +208,7 @@
     "taskInterval": 50,
     "foodPerMember": 4,
     "habitBonus": 1,
-    "maxPopulation": 500,
+    "maxPopulation": 16000,
     "exploreLeash": 40,
     "homeRange": 80,
     "researchTicks": 7200,
@@ -206,7 +237,11 @@
     "sharedAffinity": 0.3,
     "talkAffinity": 0.1
   },
-  "imagination": { "rollouts": 12, "predatorSpread": 0.3, "riskHealth": 0.3 },
+  "imagination": {
+    "rollouts": 12,
+    "predatorSpread": 0.3,
+    "riskHealth": 0.3
+  },
   "writing": {
     "bookRecipes": 10,
     "tabletRecipes": 3,
@@ -378,7 +413,12 @@
     "relayDistance": 24,
     "relayRoad": 2
   },
-  "canal": { "minMembers": 20, "reach": 6, "maxLength": 60, "batch": 10 },
+  "canal": {
+    "minMembers": 20,
+    "reach": 6,
+    "maxLength": 60,
+    "batch": 10
+  },
   "works": {
     "minMembers": 30,
     "everyDays": 2,
@@ -395,7 +435,10 @@
     "pierLength": 4,
     "pathTiles": 40
   },
-  "trails": { "steps": 60, "speed": 1.25 },
+  "trails": {
+    "steps": 60,
+    "speed": 1.25
+  },
   "teaching": {
     "members": 12,
     "mastery": 0.6,
@@ -406,8 +449,17 @@
     "schoolTau": 1.5,
     "taughtCopies": 3
   },
-  "quarters": { "radius": 4, "perStation": 0.1, "maxBonus": 0.3 },
-  "sailing": { "boatSpeed": 0.8, "shipSpeed": 1.2, "swimSpeed": 0.3, "shipMembers": 40 },
+  "quarters": {
+    "radius": 4,
+    "perStation": 0.1,
+    "maxBonus": 0.3
+  },
+  "sailing": {
+    "boatSpeed": 0.8,
+    "shipSpeed": 1.2,
+    "swimSpeed": 0.3,
+    "shipMembers": 40
+  },
   "fortress": {
     "treasureMembers": 30,
     "dangerDecay": 0.8,
@@ -421,5 +473,31 @@
     "batch": 10,
     "towerSight": 6,
     "towerAttack": 1.5
+  },
+  "people": {
+    "commonFrom": 16,
+    "figures": 6,
+    "figureShare": 0.02,
+    "figureBudget": 200,
+    "mapRadius": 52,
+    "mapTicks": 1200,
+    "mapSlots": 12,
+    "drinkSlots": 64,
+    "checkTicks": 30,
+    "restTicks": 120,
+    "drinkAt": 45,
+    "eatAt": 45,
+    "tiredAt": 90,
+    "bedtimeNeed": 25,
+    "lookRadius": 4,
+    "fleeRadius": 6,
+    "birthShare": 0.06,
+    "birthFood": 6,
+    "birthPantry": 1,
+    "longhouseFrom": 30,
+    "wellRadius": 10,
+    "membersPerWell": 25,
+    "wellNear": 4,
+    "wellTries": 8
   }
 }

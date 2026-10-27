@@ -71,6 +71,8 @@ export const BARE_HANDS = 0;
  * @property {RecipeDef[]} recipes
  * @property {Int16Array} recipeForGood - Recipe index making each good, or −1.
  * @property {Int16Array} recipeForStructure - Recipe index making each structure code, or −1.
+ * @property {Int16Array} knowFor - Per recipe: the recipe whose knowledge makes it known (itself,
+ *   or the base of a variant).
  * @property {Uint8Array} material - 1 for goods usable in experiments (non-edible resources).
  * @property {Int8Array} ingredientBit - Bit of each good in a trial or recipe mask, or −1.
  * @property {Int16Array} ingredientGood - Good of each mask bit.
@@ -180,8 +182,11 @@ export function buildCatalog(data, tables) {
     let mask = 0;
     for (const { good } of inputs) mask |= 1 << ingredientBit[good];
     const key = recipeKey(station, mask);
-    if (byKey.has(key)) throw new Error(`Recipes ${r.id} and another share station and inputs`);
-    byKey.set(key, index);
+    // A variant learnt with another recipe (a longhouse, with the shelter) is not found by trying.
+    if (r.learntWith === undefined) {
+      if (byKey.has(key)) throw new Error(`Recipes ${r.id} and another share station and inputs`);
+      byKey.set(key, index);
+    }
     const isItem = r.output.item !== undefined;
     const output = isItem ? goodOf(r.output.item) : structureCode.get(r.output.structure);
     if (output === undefined) throw new Error(`Recipe ${r.id}: unknown output`);
@@ -202,10 +207,20 @@ export function buildCatalog(data, tables) {
     };
   });
 
+  // Who knows a recipe knows its variants (decision 0030).
+  const recipeIndex = new Map(data.recipes.map((r, i) => [r.id, i]));
+  const knowFor = Int16Array.from(data.recipes, (r, i) => {
+    if (r.learntWith === undefined) return i;
+    const base = recipeIndex.get(r.learntWith);
+    if (base === undefined) throw new Error(`Recipe ${r.id}: unknown base ${r.learntWith}`);
+    return base;
+  });
+
   return {
     resourceCount,
     goodCount,
     items,
+    knowFor,
     structures,
     recipes,
     recipeForGood,

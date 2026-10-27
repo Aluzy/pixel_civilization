@@ -557,12 +557,12 @@ function planRoad(state, ctx, colony, p) {
   for (let c = 0; c < MAX_COLONIES && c < state.colonies.length; c++) {
     // Kin, or a colony it traded with: trade routes are paved too (decision 0029).
     const partner = colony.relKin[c] === 1 || colony.relTrades[c] > 0;
-    if (c === colony.id || !partner || (colony.roads & (1 << c)) !== 0) continue;
+    if (c === colony.id || !partner || colony.roads[c] === 1) continue;
     const other = state.colonies[c];
     if (!other.hasCamp) continue;
     // Either way, one road is enough.
-    colony.roads |= 1 << c;
-    other.roads |= 1 << colony.id;
+    colony.roads[c] = 1;
+    other.roads[colony.id] = 1;
     const half = (SPAN - 1) >> 1;
     const ox = colony.campX - half;
     const oy = colony.campY - half;

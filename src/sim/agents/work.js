@@ -187,8 +187,8 @@ export function useRecipe(state, ctx, id, r, plan) {
   const nav = ctx.nav;
   ctx.agents.craftRecipe[id] = r;
   plan.note = PlanNote.PLAN;
-  if (recipe.outputKind === 'structure' && recipe.output === ctx.shelterCode) {
-    buildHouse(state, ctx, id, plan);
+  if (recipe.outputKind === 'structure' && ctx.shelterCodes[recipe.output] === 1) {
+    buildHouse(state, ctx, id, recipe.output, plan);
     return;
   }
   if (recipe.outputKind === 'structure') {
@@ -258,10 +258,11 @@ function shoreSite(ctx) {
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
  * @param {number} id
+ * @param {number} code - Kind of house.
  * @param {import('./movement.js').Plan} plan
  * @returns {void}
  */
-function buildHouse(state, ctx, id, plan) {
+function buildHouse(state, ctx, id, code, plan) {
   const a = ctx.agents;
   const nav = ctx.nav;
   let colony = campOf(state, ctx, id);
@@ -284,12 +285,13 @@ function buildHouse(state, ctx, id, plan) {
     return;
   }
   // The site it was given, while it still fits; else the next one on the plan.
+  const range =
+    colony.encState !== 0 ? ctx.balance.colony.suburbRange : ctx.balance.colony.houseRange;
   const far =
-    Math.max(Math.abs(a.siteX[id] - colony.campX), Math.abs(a.siteY[id] - colony.campY)) >
-    ctx.balance.colony.houseRange;
-  if (far || houseDir(state, ctx, a.siteX[id], a.siteY[id], colony) < 0) {
+    Math.max(Math.abs(a.siteX[id] - colony.campX), Math.abs(a.siteY[id] - colony.campY)) > range;
+  if (far || houseDir(state, ctx, a.siteX[id], a.siteY[id], colony, code) < 0) {
     const out = ctx.siteOut;
-    if (!planHouse(state, ctx, colony, out)) {
+    if (!planHouse(state, ctx, colony, out, code)) {
       explore(state, ctx, id, plan);
       return;
     }

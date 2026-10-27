@@ -1,7 +1,8 @@
 import { learnTick, teachTick } from './teach-work.js';
 import { groundSpeed } from './sailing.js';
 import { refresh, tire } from '../ai/weariness.js';
-import { withBit } from '../core/bits.js';
+import { has, withBit } from '../core/bits.js';
+import { Tier } from './agent-store.js';
 import { EventType } from '../core/events.js';
 import { BARE_HANDS, lowestIngredient, matchRecipe } from '../crafting/catalog.js';
 import { PACK } from '../world/chunk-store.js';
@@ -15,6 +16,7 @@ import {
   structureAt,
 } from './equipment.js';
 import { WATER_SUBJECT } from './memory.js';
+import { MAX_RADIUS } from './navigation.js';
 import { notice, perceptionRadius } from './perception.js';
 import {
   atCamp,
@@ -64,6 +66,17 @@ export const Flag = Object.freeze({
 });
 
 /**
+ * True if the commoner's town knows how to make recipe `r` (one of its figures knows it).
+ * @param {import('../simulation.js').SimState} state
+ * @param {number} c - Colony.
+ * @param {number} r
+ * @returns {boolean}
+ */
+function commonerKnows(state, c, r) {
+  return c >= 0 && has(state.colonies[c].knowhow, r);
+}
+
+/**
  * Records a first experience once.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
@@ -87,6 +100,7 @@ function firstTime(state, ctx, id, flag, type) {
  */
 function finish(ctx, id) {
   ctx.agents.action[id] = Action.NONE;
+  ctx.agents.actionNeed[id] = 0;
   ctx.agents.thenAction[id] = Action.NONE;
   ctx.agents.asleep[id] = 0;
   ctx.agents.needsDecision[id] = 1;
@@ -111,6 +125,78 @@ function headOn(agents, other, x, y) {
 
 const DX = Int8Array.from([1, -1, 0, 0, 1, 1, -1, -1]);
 const DY = Int8Array.from([0, 0, 1, -1, 1, -1, 1, -1]);
+
+/**
+ * True if a commoner on its way slips past the one in front (decision 0030): one waiting or
+ * eating, or one coming its way (they cross), not one asleep nor at work on its tile. In a town's
+ * crowd, one tile per pixel would otherwise jam every lane.
+ * @param {import('./agent-store.js').AgentStore} agents
+ * @param {number} id
+ * @param {number} other
+ * @returns {boolean}
+ */
+function slips(agents, id, other) {
+  if (agents.tier[id] !== Tier.COMMONER || agents.asleep[other] === 1) return false;
+  const act = agents.action[other];
+  if (act === Action.MOVE) {
+    const k = agents.pathIndex[other];
+    if (k >= agents.pathLength[other]) return false;
+    const path = agents.path[other];
+    const x = path[k * 2];
+    const y = path[k * 2 + 1];
+    return Math.abs(x - agents.x[id]) <= 1 && Math.abs(y - agents.y[id]) <= 1;
+  }
+  return act === Action.IDLE || act === Action.NONE || act === Action.EAT;
+}
+
+/**
+ * Steps round the tile of its path at `index` (someone stands there) onto a free tile next to the
+ * following one, if there is one; the path goes on from there.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @param {number} index
+ * @returns {boolean} True if it stepped round.
+ */
+function goRound(state, ctx, id, index) {
+  const a = ctx.agents;
+  if (index + 1 >= a.pathLength[id]) return false;
+  const path = a.path[id];
+  const tx = path[(index + 1) * 2];
+  const ty = path[(index + 1) * 2 + 1];
+  const x = a.x[id];
+  const y = a.y[id];
+  for (let k = 0; k < 8; k++) {
+    const nx = x + DX[k];
+    const ny = y + DY[k];
+    if (Math.abs(nx - tx) > 1 || Math.abs(ny - ty) > 1 || (nx === tx && ny === ty)) continue;
+    if (nx === path[index * 2] && ny === path[index * 2 + 1]) continue;
+    if (!walkable(state, ctx, nx, ny) || state.world.lastOccupant() >= 0) continue;
+    // No squeezing between two walls.
+    if (k >= 4 && (!walkable(state, ctx, nx, y) || !walkable(state, ctx, x, ny))) continue;
+    a.place(id, nx, ny);
+    a.pathIndex[id] = index + 1;
+    a.moveProgress[id] = 0;
+    a.stepFactor[id] = 0;
+    a.blocked[id] = 0;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} x
+ * @param {number} y
+ * @returns {boolean} True if one can stand on (x, y) on foot (water only on a pier).
+ */
+function walkable(state, ctx, x, y) {
+  const p = state.world.packedAt(x, y);
+  const code = p >>> PACK.STRUCTURE_SHIFT;
+  if (ctx.blocksAgent[code] === 1) return false;
+  return groundSpeed(ctx, p & PACK.MASK, code, 0) > 0;
+}
 
 /**
  * An agent standing still in someone's way moves to a free neighbouring tile (not back onto the
@@ -253,6 +339,7 @@ export function stepAction(state, ctx, id) {
         const then = agents.thenAction[id];
         agents.thenAction[id] = Action.NONE;
         agents.action[id] = then;
+        agents.actionNeed[id] = 0;
         agents.actionX[id] = agents.x[id];
         agents.actionY[id] = agents.y[id];
         agents.actionProgress[id] = 0;
@@ -262,43 +349,58 @@ export function stepAction(state, ctx, id) {
       const path = agents.path[id];
       const nx = path[index * 2];
       const ny = path[index * 2 + 1];
-      const packed = state.world.packedAt(nx, ny);
-      const trail = state.world.lastWear() >= ctx.trailSteps;
-      const other = state.world.lastOccupant();
-      const code = packed >>> PACK.STRUCTURE_SHIFT;
-      const biome = packed & PACK.MASK;
-      const ground = groundSpeed(ctx, biome, code, agents.sail[id]);
-      // An expedition that crosses water founds overseas.
-      if (biome === ctx.waterBiome && agents.colony[id] >= 0) {
-        const home = state.colonies[agents.colony[id]];
-        if (home.inExpedition(id)) home.expSailed = true;
+      // The ground of the next tile is read when the step begins, the way at its end.
+      if (agents.stepFactor[id] === 0) {
+        const packed = state.world.packedAt(nx, ny);
+        const trail = state.world.lastWear() >= ctx.trailSteps;
+        const code = packed >>> PACK.STRUCTURE_SHIFT;
+        const biome = packed & PACK.MASK;
+        const ground = groundSpeed(ctx, biome, code, agents.sail[id]);
+        // An expedition that crosses water founds overseas.
+        if (biome === ctx.waterBiome && agents.colony[id] >= 0) {
+          const home = state.colonies[agents.colony[id]];
+          if (home.inExpedition(id)) home.expSailed = true;
+        }
+        const factor = ground * (trail ? ctx.trailSpeed : 1) * ctx.structureSpeed[code];
+        if (factor <= 0 || ctx.blocksAgent[code] === 1) {
+          finish(ctx, id);
+          return;
+        }
+        agents.stepFactor[id] = factor;
       }
-      const factor = ground * (trail ? ctx.trailSpeed : 1) * ctx.structureSpeed[code];
+      agents.moveProgress[id] += (agents.speed[id] * agents.stepFactor[id]) / ctx.ticksPerSecond;
+      if (agents.moveProgress[id] < 1) return;
+      const packed = state.world.packedAt(nx, ny);
+      const other = state.world.lastOccupant();
       // A wall built across the path since it was planned: replan.
-      if (factor <= 0 || ctx.blocksAgent[packed >>> PACK.STRUCTURE_SHIFT] === 1) {
+      if (ctx.blocksAgent[packed >>> PACK.STRUCTURE_SHIFT] === 1) {
         finish(ctx, id);
         return;
       }
-      agents.moveProgress[id] += (agents.speed[id] * factor) / ctx.ticksPerSecond;
-      if (agents.moveProgress[id] < 1) return;
       // Two agents never share a tile: one in the way is passed head-on, else waited for, and
       // after a while gone round (the new path avoids those who stand still).
       if (other >= 0 && other !== id) {
         // Inside a house, past a sleeper: they swap beds, the sleeper still asleep.
+        const facing = headOn(agents, other, agents.x[id], agents.y[id]);
         const swap =
-          headOn(agents, other, agents.x[id], agents.y[id]) ||
+          facing ||
           (agents.asleep[other] === 1 &&
             inShelter(state, ctx, nx, ny) &&
-            inShelter(state, ctx, agents.x[id], agents.y[id]));
+            inShelter(state, ctx, agents.x[id], agents.y[id])) ||
+          slips(agents, id, other);
         if (!swap) {
           agents.moveProgress[id] = 1;
+          // A commoner goes round one who stands in its way, back onto its path beyond it.
+          if (agents.tier[id] === Tier.COMMONER && goRound(state, ctx, id, index)) return;
           // One who stands in the way (not asleep in its bed) steps aside after a moment.
           const wait = ctx.balance.actions.waitTicks;
           const waited = ++agents.blocked[id];
           if (waited === wait >> 1 && stepAside(state, ctx, other, agents.x[id], agents.y[id])) {
             return;
           }
-          if (waited >= wait) finish(ctx, id);
+          // A commoner in a crowd waits longer before looking for another way.
+          const patience = agents.tier[id] === Tier.COMMONER ? wait * 3 : wait;
+          if (waited >= patience) finish(ctx, id);
           return;
         }
         // Head-on, in a gate or a lane: they slip past each other, both stepping at once.
@@ -306,8 +408,10 @@ export function stepAction(state, ctx, id) {
         const y0 = agents.y[id];
         agents.place(id, nx, ny);
         agents.place(other, x0, y0);
+        agents.stepFactor[other] = 0;
         if (agents.action[other] === Action.MOVE) {
-          agents.pathIndex[other]++;
+          // Head-on, the other has taken its next step; crossing, it is next to it still.
+          if (facing) agents.pathIndex[other]++;
           agents.moveProgress[other] = 0;
         } else {
           agents.actionX[other] = x0;
@@ -319,14 +423,19 @@ export function stepAction(state, ctx, id) {
       agents.blocked[id] = 0;
       agents.place(id, nx, ny);
       agents.pathIndex[id] = index + 1;
+      agents.stepFactor[id] = 0;
       // The ways most walked wear into trails.
       state.world.tread(nx, ny, ctx.trailSteps);
       return;
     }
     case Action.DRINK: {
-      if (!besideWater(state, ctx, agents.x[id], agents.y[id])) {
-        finish(ctx, id);
-        return;
+      // Water beside it, looked at when it began to drink.
+      if (agents.actionNeed[id] === 0) {
+        if (!besideWater(state, ctx, agents.x[id], agents.y[id])) {
+          finish(ctx, id);
+          return;
+        }
+        agents.actionNeed[id] = 1;
       }
       firstTime(state, ctx, id, Flag.DRANK, EventType.FIRST_DRINK);
       agents.thirst[id] = Math.max(0, agents.thirst[id] - ctx.balance.actions.drinkPerTick);
@@ -337,17 +446,28 @@ export function stepAction(state, ctx, id) {
       return;
     }
     case Action.FORAGE: {
+      // The food it picks is looked at when it begins a unit, and again when it takes it.
+      if (agents.actionNeed[id] === 0) {
+        if (!sourceTile(state, ctx, id, ctx.edible, ctx.spot)) {
+          finish(ctx, id);
+          return;
+        }
+        const res =
+          (state.world.packedAt(ctx.spot[0], ctx.spot[1]) >> PACK.RESOURCE_SHIFT) & PACK.MASK;
+        agents.actionNeed[id] =
+          ctx.harvestTicks[res] / (1 + agents.force[id] / ctx.harvestForceScale);
+      }
+      const need = agents.actionNeed[id];
+      agents.actionProgress[id] += 1;
+      if (agents.actionProgress[id] < need) return;
+      agents.actionProgress[id] -= need;
+      agents.actionNeed[id] = 0;
       if (!sourceTile(state, ctx, id, ctx.edible, ctx.spot)) {
         finish(ctx, id);
         return;
       }
       const x = ctx.spot[0];
       const y = ctx.spot[1];
-      const resource = (state.world.packedAt(x, y) >> PACK.RESOURCE_SHIFT) & PACK.MASK;
-      const need = ctx.harvestTicks[resource] / (1 + agents.force[id] / ctx.harvestForceScale);
-      agents.actionProgress[id] += 1;
-      if (agents.actionProgress[id] < need) return;
-      agents.actionProgress[id] -= need;
       const taken = state.world.takeUnit(x, y);
       if (taken === 0) {
         finish(ctx, id);
@@ -393,8 +513,10 @@ export function stepAction(state, ctx, id) {
           firstTime(state, ctx, id, Flag.SHELTERED, EventType.SHELTERED_SLEEP);
         }
       }
-      // Rested, it wakes, but not before the night is over.
-      if (agents.fatigue[id] <= ctx.balance.needs.wakeFatigue && !ctx.dark) finish(ctx, id);
+      // Rested, it wakes, but not before the night is over (a commoner, gone to bed at dusk,
+      // not before dawn).
+      const night = agents.tier[id] === Tier.COMMONER ? ctx.evening : ctx.dark;
+      if (agents.fatigue[id] <= ctx.balance.needs.wakeFatigue && !night) finish(ctx, id);
       return;
     }
     case Action.HARVEST:
@@ -556,23 +678,29 @@ export function stepAction(state, ctx, id) {
  */
 function harvest(state, ctx, id) {
   const agents = ctx.agents;
-  const wanted = agents.harvestGood[id];
-  ctx.wantedOne[wanted] = 1;
-  sourceTile(state, ctx, id, ctx.wantedOne, ctx.spot);
-  ctx.wantedOne[wanted] = 0;
-  const x = ctx.spot[0];
-  const y = ctx.spot[1];
-  const resource = (state.world.packedAt(x, y) >> PACK.RESOURCE_SHIFT) & PACK.MASK;
-  const loaded = agents.carriedTotal(id) >= ctx.capacity(id);
-  if (resource !== wanted || loaded || !canHarvest(ctx, id, wanted)) {
-    finish(ctx, id);
-    return;
+  // What it harvests and how fast, looked at when it begins a unit, the tile again at the end.
+  if (agents.actionNeed[id] === 0) {
+    if (!harvestable(state, ctx, id)) {
+      finish(ctx, id);
+      return;
+    }
+    const wanted = agents.harvestGood[id];
+    const speed =
+      (1 + agents.force[id] / ctx.harvestForceScale) * harvestMultiplier(ctx, id, wanted);
+    agents.actionNeed[id] = ctx.harvestTicks[wanted] / speed;
   }
-  const speed = (1 + agents.force[id] / ctx.harvestForceScale) * harvestMultiplier(ctx, id, wanted);
-  const need = ctx.harvestTicks[resource] / speed;
+  const need = agents.actionNeed[id];
   agents.actionProgress[id] += 1;
   if (agents.actionProgress[id] < need) return;
   agents.actionProgress[id] -= need;
+  agents.actionNeed[id] = 0;
+  if (!harvestable(state, ctx, id)) {
+    finish(ctx, id);
+    return;
+  }
+  const wanted = agents.harvestGood[id];
+  const x = ctx.spot[0];
+  const y = ctx.spot[1];
   const taken = state.world.takeUnit(x, y);
   if (taken === 0) {
     finish(ctx, id);
@@ -605,6 +733,26 @@ function harvest(state, ctx, id) {
   const enough = agents.carried(id, wanted) >= agents.harvestUntil[id];
   const full = agents.carriedTotal(id) >= ctx.capacity(id);
   if (enough || full || state.world.lastTakeDepleted) finish(ctx, id);
+}
+
+/**
+ * True if the agent can go on harvesting: the resource it wants beside it (its tile in
+ * `ctx.spot`), room in its load, the tool it takes.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @returns {boolean}
+ */
+function harvestable(state, ctx, id) {
+  const agents = ctx.agents;
+  const wanted = agents.harvestGood[id];
+  ctx.wantedOne[wanted] = 1;
+  sourceTile(state, ctx, id, ctx.wantedOne, ctx.spot);
+  ctx.wantedOne[wanted] = 0;
+  const p = state.world.packedAt(ctx.spot[0], ctx.spot[1]);
+  if (((p >> PACK.RESOURCE_SHIFT) & PACK.MASK) !== wanted) return false;
+  if (agents.carriedTotal(id) >= ctx.capacity(id)) return false;
+  return canHarvest(ctx, id, wanted);
 }
 
 /**
@@ -700,7 +848,7 @@ function craft(state, ctx, id) {
   if (!canUse(state, ctx, id, recipe.station)) return;
   for (const input of recipe.inputs) if (agents.carried(id, input.good) < input.count) return;
   const building = recipe.outputKind === 'structure';
-  const house = building && recipe.output === ctx.shelterCode;
+  const house = building && ctx.shelterCodes[recipe.output] === 1;
   let dir = -1;
   if (house) {
     // A house rises around its door, where the builder stands, if it fits there.
@@ -710,7 +858,7 @@ function craft(state, ctx, id) {
     if (colony && colony.expState === Expedition.TRAVELLING && colony.inExpedition(id)) {
       colony = null;
     }
-    dir = houseDir(state, ctx, x, y, colony);
+    dir = houseDir(state, ctx, x, y, colony, recipe.output);
     if (dir < 0) return;
   } else if (building) {
     const p = state.world.packedAt(x, y);
@@ -719,28 +867,31 @@ function craft(state, ctx, id) {
     }
   }
   const book = agents.recipes[id];
-  // One makes only what one believes one knows (it may have just turned out wrong).
-  if (!book.knows(r)) return;
-  if (book.wrong[r] === 1) {
+  // One makes only what one believes one knows (it may have just turned out wrong); a commoner,
+  // what its town knows how to make.
+  const commoner = agents.tier[id] === Tier.COMMONER;
+  const known = ctx.catalog.knowFor[r];
+  if (commoner ? !commonerKnows(state, agents.colony[id], known) : !book.knows(known)) return;
+  if (!commoner && book.wrong[known] === 1) {
     // A recipe heard with an error: half the ingredients are wasted, the belief is dropped and
     // the attempt is remembered as a failure.
     for (const input of recipe.inputs)
       agents.addCarried(id, input.good, -Math.ceil(input.count / 2));
-    book.forget(r);
+    book.forget(known);
     book.recordFailure(recipe.station, recipe.mask, state.tick, ctx.failureTau);
-    state.events.push(state.tick, EventType.MISTAKEN, id, x, y, r);
+    state.events.push(state.tick, EventType.MISTAKEN, id, x, y, known);
     return;
   }
   for (const input of recipe.inputs) agents.addCarried(id, input.good, -input.count);
   const m = ctx.balance.memory;
-  book.use(r, state.tick, m.consolidation, ctx.maxTau);
+  if (!commoner) book.use(known, state.tick, m.consolidation, ctx.maxTau);
   agents.recordMade(id, r, state.tick);
   if (building && recipe.output === ctx.plotCode) {
     // Sowing: a plot, its seed already in the ground.
     state.world.setStructure(x, y, recipe.output);
     tillDone(state, ctx, id, x, y);
   } else if (house) {
-    raiseHouse(state, ctx, x, y, dir);
+    raiseHouse(state, ctx, x, y, dir, recipe.output);
     const bx = ctx.newBeds[0];
     const by = ctx.newBeds[1];
     notice(state, ctx, id, ctx.catalog.resourceCount + recipe.output, bx, by, 0);
@@ -829,8 +980,14 @@ function inspire(state, ctx, id, good, station) {
 function imitate(state, ctx, maker, r) {
   const a = ctx.agents;
   const cfg = ctx.balance.social;
-  for (let id = 0; id < a.highWater; id++) {
-    if (id === maker || a.alive[id] !== 1 || a.asleep[id] === 1) continue;
+  // Nobody sees farther than the largest window from a tower.
+  const n = a.near(a.x[maker], a.y[maker], MAX_RADIUS + ctx.balance.fortress.towerSight);
+  const found = ctx.watchers;
+  found.set(a.grid.found.subarray(0, n));
+  for (let k = 0; k < n; k++) {
+    const id = found[k];
+    // Commoners do not learn by watching (decision 0030).
+    if (id === maker || a.asleep[id] === 1 || a.tier[id] === Tier.COMMONER) continue;
     const radius = perceptionRadius(ctx, id, ctx.dark);
     if (Math.abs(a.x[id] - a.x[maker]) > radius || Math.abs(a.y[id] - a.y[maker]) > radius) {
       continue;

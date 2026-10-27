@@ -1,6 +1,7 @@
 import { Action } from '../agents/action-types.js';
 import { tauOf } from '../agents/beliefs.js';
 import { EventType } from '../core/events.js';
+import { Tier } from '../agents/agent-store.js';
 
 /**
  * True if the agent is at rest and can talk: awake and idle, eating or drinking.
@@ -9,7 +10,8 @@ import { EventType } from '../core/events.js';
  * @returns {boolean}
  */
 function atRest(a, id) {
-  if (a.alive[id] !== 1 || a.asleep[id] === 1) return false;
+  // Commoners do not trade knowledge (decision 0030).
+  if (a.alive[id] !== 1 || a.asleep[id] === 1 || a.tier[id] === Tier.COMMONER) return false;
   const act = a.action[id];
   return act === Action.IDLE || act === Action.NONE || act === Action.EAT || act === Action.DRINK;
 }
@@ -157,12 +159,13 @@ function befriend(state, ctx, self, peer) {
 function ask(state, ctx, id) {
   const a = ctx.agents;
   const cfg = ctx.balance.social;
-  if (a.alive[id] !== 1 || a.asleep[id] === 1) return;
+  if (a.alive[id] !== 1 || a.asleep[id] === 1 || a.tier[id] === Tier.COMMONER) return;
   if (a.thirst[id] < cfg.askNeed && a.hunger[id] < cfg.askNeed) return;
-  for (let other = 0; other < a.highWater; other++) {
-    if (other === id || a.alive[other] !== 1 || a.asleep[other] === 1) continue;
-    const gap = Math.max(Math.abs(a.x[other] - a.x[id]), Math.abs(a.y[other] - a.y[id]));
-    if (gap > cfg.askRadius) continue;
+  const n = a.near(a.x[id], a.y[id], cfg.askRadius);
+  const found = a.grid.found;
+  for (let k = 0; k < n; k++) {
+    const other = found[k];
+    if (other === id || a.asleep[other] === 1 || a.tier[other] === Tier.COMMONER) continue;
     const memory = a.memory[other];
     const i = askedPlace(ctx, memory, id, state.tick);
     if (i < 0) continue;
@@ -202,10 +205,11 @@ export function socialSystem(state, ctx) {
       ask(state, ctx, id);
       continue;
     }
-    for (let other = 0; other < a.highWater; other++) {
+    const n = a.near(a.x[id], a.y[id], cfg.talkRadius);
+    const found = a.grid.found;
+    for (let k = 0; k < n; k++) {
+      const other = found[k];
       if (other === id || !atRest(a, other)) continue;
-      const gap = Math.max(Math.abs(a.x[other] - a.x[id]), Math.abs(a.y[other] - a.y[id]));
-      if (gap > cfg.talkRadius) continue;
       tell(state, ctx, id, other);
       tell(state, ctx, other, id);
       befriend(state, ctx, id, other);
