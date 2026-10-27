@@ -7,6 +7,7 @@ import recipeData from '../../data/recipes.json' with { type: 'json' };
 import resourceData from '../../data/resources.json' with { type: 'json' };
 import worldData from '../../data/world.json' with { type: 'json' };
 import worksData from '../../data/works.json' with { type: 'json' };
+import vocationData from '../../data/vocations.json' with { type: 'json' };
 import { has, withBit } from './core/bits.js';
 import { ACTION_NAMES, Action } from './agents/action-types.js';
 import { AgentStore } from './agents/agent-store.js';
@@ -24,6 +25,7 @@ import { createRng, seedToKey } from './core/rng.js';
 import { Colony, Enclosure, Expedition, MAX_COLONIES, ProjectKind } from './colony/colony-store.js';
 import { treasureValue } from './colony/fortress.js';
 import { buildWorks } from './colony/works.js';
+import { buildVocations } from './colony/vocation.js';
 import { History } from './colony/history.js';
 import { lifespanOf } from './colony/replication.js';
 import { buildCatalog } from './crafting/catalog.js';
@@ -136,8 +138,10 @@ export const RNG_STREAMS = Object.freeze([
  * @property {Int32Array} houseW - Width of each kind of house, by structure code (0: no house).
  * @property {Int32Array} houseH - Height of each kind of house.
  * @property {Int32Array} bedsOf - Beds inside each kind of house.
- * @property {number} longhouseCode - Structure code of the longhouse (decision 0030), 0 if none.
+ * @property {{ code: number, from: number }[]} houseSteps - Larger houses a town builds from so
+ *   many members (decision 0030): longhouse, town house.
  * @property {number} wellCode - Structure code of the well (decision 0030), 0 if none.
+ * @property {import('./colony/vocation.js').Vocation[]} vocations - Vocations of the towns.
  * @property {number} trailSteps - Footsteps that wear a tile into a trail.
  * @property {number} trailSpeed - Speed factor on a trail.
  * @property {number} houseWallCode
@@ -531,6 +535,7 @@ function buildContext(balance, tables, agents, seedKey) {
       b.id === 'mountain' || b.id === 'desert' ? 1 : 0,
     ),
     works: buildWorks(worksData, catalog, tables),
+    vocations: buildVocations(vocationData, tables),
     worksOrder: new Int32Array(16),
     treasureGoods,
     wallCode: codeOf('wall'),
@@ -598,7 +603,7 @@ function buildContext(balance, tables, agents, seedKey) {
     houseW,
     houseH,
     bedsOf,
-    longhouseCode: idCode('longhouse'),
+    houseSteps: balance.people.houses.map(([id, from]) => ({ code: idCode(id), from })),
     wellCode: idCode('well'),
     trailSteps: balance.trails.steps,
     trailSpeed: balance.trails.speed,

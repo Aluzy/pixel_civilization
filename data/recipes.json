@@ -239,6 +239,17 @@
       "name": "Puits",
       "color": "#5d8fb0",
       "kind": "well"
+    },
+    {
+      "id": "townhouse",
+      "name": "Maison de ville",
+      "color": "#7a4e30",
+      "kind": "shelter",
+      "sleepRecovery": 2,
+      "footprint": [8, 6],
+      "wall": "house_wall",
+      "door": "house_door",
+      "feminine": true
     }
   ],
   "items": [
@@ -933,6 +944,20 @@
       "durationTicks": 120,
       "output": {
         "structure": "well"
+      },
+      "learntWith": "shelter"
+    },
+    {
+      "id": "townhouse",
+      "station": null,
+      "inputs": {
+        "wood": 36,
+        "fiber": 14,
+        "stone": 16
+      },
+      "durationTicks": 480,
+      "output": {
+        "structure": "townhouse"
       },
       "learntWith": "shelter"
     }

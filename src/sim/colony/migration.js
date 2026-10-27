@@ -5,6 +5,7 @@ import { Colony, Expedition, MAX_COLONIES, MAX_EXPEDITION } from './colony-store
 import { releaseTask } from './colony-logic.js';
 import { registerHouse } from './house.js';
 import { tauOf } from '../agents/beliefs.js';
+import { chooseVocation, siteFits } from './vocation.js';
 
 // Migration (docs/design/15-colonies-et-migration.md): in a crowded colony, a member scouts for a
 // site far from the camp (water with food near it); found, it posts an expedition on the
@@ -43,6 +44,16 @@ export function roomForColony(state, cfg) {
   let living = 0;
   for (const c of state.colonies) if (c.members > 0) living++;
   return living < cfg.maxColonies;
+}
+
+/**
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id
+ * @returns {boolean} True if the agent knows how to raise a shelter.
+ */
+function buildsShelter(ctx, id) {
+  const r = ctx.catalog.recipeForStructure[ctx.shelterCode];
+  return r >= 0 && ctx.agents.recipes[id].knows(r);
 }
 
 /**
@@ -107,25 +118,39 @@ function nearFood(ctx, id, x, y, radius) {
 }
 
 /**
- * The scout looks around for a site for a new colony (with its perception window prepared): far
- * from every known camp, water in sight, food in sight or remembered within `siteRadius`. The
- * leader brings the materials of a first shelter; the colony will look for more.
+ * The scout looks around for a site for a new colony: far from every known camp, water within
+ * `siteView` of it (it surveys the land), food there or remembered within `siteRadius`. The
+ * leader brings the materials of a first shelter; the colony will look for more. The site must
+ * suit the vocation chosen for the new town (decision 0030), until the scout has spent half its
+ * time.
+ * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
  * @param {Colony} colony
  * @param {number} id
  * @param {Int32Array} out - Receives x, y (beside the water).
  * @returns {boolean}
  */
-export function findSite(ctx, colony, id, out) {
+export function findSite(state, ctx, colony, id, out) {
   const cfg = ctx.balance.migration;
   const a = ctx.agents;
   const nav = ctx.nav;
   if (!farFromCamps(ctx, colony, a.x[id], a.y[id])) return false;
+  // The scout surveys the land around (decision 0030): it looks farther than when it walks.
+  nav.prepare(state.world, a.x[id], a.y[id], cfg.siteView);
   const water = nav.nearestWaterSide();
   if (water < 0) return false;
   const x = nav.cellX(water);
   const y = nav.cellY(water);
   if (!nearFood(ctx, id, x, y, cfg.siteRadius)) return false;
+  // A site suited to the town's vocation; after half its time, the scout takes any.
+  const v = colony.expVocation;
+  if (v >= 0 && !siteFits(ctx, ctx.vocations[v])) {
+    if (state.tick - colony.scoutTick < cfg.scoutTicks / 2) return false;
+    colony.expVocation = -1;
+    for (let k = 0; k < ctx.vocations.length; k++) {
+      if (siteFits(ctx, ctx.vocations[k])) colony.expVocation = k;
+    }
+  }
   out[0] = x;
   out[1] = y;
   return true;
@@ -238,8 +263,12 @@ export function senseMigration(state, ctx, id, home, atHome) {
     return 0;
   }
   if (current >= 0 || !atHome || pressure < cfg.scoutPressure) return 0;
+  // The scout leads the expedition: it must know how to raise the first shelter.
+  if (!buildsShelter(ctx, id)) return 0;
   home.scout = id;
   home.scoutTick = state.tick;
+  // What the new town will live from: what the colony lacks most (decision 0030).
+  home.expVocation = chooseVocation(state, ctx, home);
   a.provisioned[id] = 0;
   return 1;
 }
@@ -262,7 +291,12 @@ export function updateExpedition(state, ctx, colony) {
     if (m >= 0 && (a.alive[m] !== 1 || a.colony[m] !== colony.id)) colony.expMembers[k] = -1;
   }
   if (colony.expLeader < 0 || colony.expMembers.indexOf(colony.expLeader) < 0) {
+    // One who knows how to raise the first shelter takes the lead, else anyone.
     colony.expLeader = -1;
+    for (let k = 0; k < MAX_EXPEDITION && colony.expLeader < 0; k++) {
+      const m = colony.expMembers[k];
+      if (m >= 0 && buildsShelter(ctx, m)) colony.expLeader = m;
+    }
     for (let k = 0; k < MAX_EXPEDITION && colony.expLeader < 0; k++) {
       if (colony.expMembers[k] >= 0) colony.expLeader = colony.expMembers[k];
     }
@@ -313,6 +347,7 @@ export function foundColony(state, ctx, id, x, y) {
   colony.parent = c;
   colony.foundedTick = state.tick;
   colony.overseas = mother.expSailed;
+  colony.vocation = mother.expVocation;
   state.colonies.push(colony);
   registerHouse(ctx, colony, x, y);
   colony.sheltersBuilt = 1;

@@ -5,6 +5,7 @@ import { buy, sell, take } from '../economy/market.js';
 import { askOf } from '../economy/prices.js';
 import { PACK } from '../world/chunk-store.js';
 import { FALLOW } from './crop-store.js';
+import { has } from '../core/bits.js';
 
 // Farm work of a colony (docs/design/13-agriculture-cuisine.md, « Ce que l'IA doit savoir
 // faire »): the plots are on the blackboard, so a member at the camp who knows how to sow sees
@@ -71,7 +72,9 @@ function wantedPlots(ctx, colony) {
   const cfg = ctx.balance.agriculture;
   // A colony too small to spare hands keeps gathering.
   if (colony.members < cfg.farmMembers) return 0;
-  return Math.ceil(colony.members * cfg.plotsPerMember);
+  // A farming town (decision 0030) wants more fields.
+  const more = colony.vocation >= 0 ? ctx.vocations[colony.vocation].plots : 1;
+  return Math.ceil(colony.members * cfg.plotsPerMember * more);
 }
 
 /**
@@ -116,11 +119,11 @@ export function countFarmJobs(state, ctx, colony) {
  * @param {import('../simulation.js').SimContext} ctx
  * @param {import('../colony/colony-store.js').Colony} colony
  * @param {number} id
- * @param {boolean} [plotsOnly=false] - Only the jobs of existing plots (a commoner does not
- *   choose where to make a new one).
+ * @param {boolean} [commoner=false] - A commoner (decision 0030): it makes a new plot only if its
+ *   town knows how, and never gleans.
  * @returns {boolean}
  */
-export function chooseFarmJob(state, ctx, colony, id, plotsOnly = false) {
+export function chooseFarmJob(state, ctx, colony, id, commoner = false) {
   const crops = state.crops;
   const a = ctx.agents;
   const seeds = seedsInStock(ctx, colony) + carriedSeeds(ctx, id);
@@ -144,8 +147,11 @@ export function chooseFarmJob(state, ctx, colony, id, plotsOnly = false) {
     }
   }
   if (best < 0) {
-    if (plotsOnly || plots >= wantedPlots(ctx, colony)) return false;
+    if (plots >= wantedPlots(ctx, colony)) return false;
     bestJob = seeds > bare ? FarmJob.TILL : FarmJob.GLEAN;
+    if (commoner && (bestJob === FarmJob.GLEAN || !has(colony.knowhow, ctx.plotRecipe))) {
+      return false;
+    }
     // Wild grain is rare: a few glean, the others keep feeding the colony.
     if (bestJob === FarmJob.GLEAN) {
       if (colony.gleaning >= ctx.balance.agriculture.gleaners) return false;

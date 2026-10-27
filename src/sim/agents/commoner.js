@@ -9,7 +9,13 @@ import { atCamp, readyToBuild, releaseTask, remaining, reserve } from '../colony
 import { planHouse } from '../colony/house.js';
 import { claimBed, releaseBed, townMap } from '../colony/people.js';
 import { stockPortions } from '../farming/food.js';
-import { FarmJob, carriedSeeds, chooseFarmJob, releaseFarm } from '../farming/farm-jobs.js';
+import {
+  FarmJob,
+  carriedSeeds,
+  chooseFarmJob,
+  chooseTillSite,
+  releaseFarm,
+} from '../farming/farm-jobs.js';
 import { FALLOW } from '../farming/crop-store.js';
 
 // The routine of a commoner (decision 0030, docs/design/19-grand-essor.md): no goal scoring, no
@@ -562,8 +568,9 @@ function carriesHarvest(ctx, id) {
 }
 
 /**
- * A new piece of work, the town's needs first: a house ready to raise (the town knows how), the
- * fields to tend, then what its projects lack, by urgency and nearness of a source on the map.
+ * A new piece of work, the town's needs first: a house or a well ready to raise (the town knows
+ * how), the fields to tend, what its projects lack, then what the town lives from (its
+ * vocation), gathered for the counter.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
  * @param {import('../colony/colony-store.js').Colony} colony
@@ -573,7 +580,6 @@ function carriesHarvest(ctx, id) {
  */
 function chooseWork(state, ctx, colony, map, id) {
   const a = ctx.agents;
-  const cfg = ctx.balance.colony;
   for (let s = 0; s < colony.projects.length; s++) {
     const p = colony.projects[s];
     const raise = p.kind === ProjectKind.SHELTER || p.kind === ProjectKind.WELL;
@@ -583,9 +589,44 @@ function chooseWork(state, ctx, colony, map, id) {
     reserve(state, a, id, s, 0, 0, true);
     return true;
   }
-  if (colony.farmOpen > 0 && chooseFarmJob(state, ctx, colony, id, true)) return true;
+  // The fields first while the pantry is short; else the town's works first.
+  const portion = ctx.balance.cooking.portion;
+  const fed =
+    stockPortions(ctx.foodTables, colony.stock, portion) >=
+    colony.members * ctx.balance.people.fedPortions;
   const room = ctx.capacity(id) - a.carriedTotal(id);
+  if (!fed && colony.farmOpen > 0 && chooseFarmJob(state, ctx, colony, id, true)) return true;
+  if (room > 0 && bringWork(state, ctx, colony, map, id, room)) return true;
+  if (fed && colony.farmOpen > 0 && chooseFarmJob(state, ctx, colony, id, true)) return true;
   if (room <= 0) return false;
+  // Nothing the town lacks: what the town lives from, for the counter (and the caravans).
+  const vocation = colony.vocation >= 0 ? ctx.vocations[colony.vocation] : null;
+  if (vocation === null) return false;
+  const enough = colony.members * ctx.balance.people.vocationStock;
+  for (const g of vocation.goods) {
+    if (map.sourceCount[g] === 0 || !canHarvest(ctx, id, g) || ctx.cropOfResource[g] >= 0) continue;
+    if (colony.stock[g] >= enough) continue;
+    a.saleGood[id] = g;
+    a.saleAmount[id] = Math.max(1, Math.floor(room));
+    a.saleTick[id] = state.tick;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * What the town's projects lack, by urgency and nearness of a source on its map: reserved.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} colony
+ * @param {import('../colony/town-map.js').TownMap} map
+ * @param {number} id
+ * @param {number} room - Units it can still carry.
+ * @returns {boolean}
+ */
+function bringWork(state, ctx, colony, map, id, room) {
+  const a = ctx.agents;
+  const cfg = ctx.balance.colony;
   const food = ctx.foodTables;
   const portion = ctx.balance.cooking.portion;
   let bestScore = 0;
@@ -611,7 +652,7 @@ function chooseWork(state, ctx, colony, map, id) {
   if (bestSlot < 0) return false;
   const p = colony.projects[bestSlot];
   const want = remaining(colony, p, bestGood, colony.members, cfg, food, portion);
-  const amount = Math.min(want, room, cfg.taskChunk);
+  const amount = Math.min(want, room, ctx.balance.people.taskChunk);
   p.reserved[bestGood] += amount;
   reserve(state, a, id, bestSlot, bestGood, amount, false);
   return true;
@@ -644,8 +685,8 @@ function build(state, ctx, colony, map, id) {
 }
 
 /**
- * Tending a plot of the town's fields: water it, sow it (the seed taken from the stock), or
- * harvest it and bring the crop to the stock.
+ * Tending the town's fields: water a plot, sow it (the seed taken from the stock), harvest it and
+ * bring the crop to the stock, or make a new plot. A job it cannot get on with is given back.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
  * @param {import('../colony/colony-store.js').Colony} colony
@@ -654,30 +695,39 @@ function build(state, ctx, colony, map, id) {
  * @returns {boolean}
  */
 function farm(state, ctx, colony, map, id) {
+  if (tend(state, ctx, colony, map, id)) return true;
+  releaseFarm(state, ctx, id);
+  return false;
+}
+
+/**
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} colony
+ * @param {import('../colony/town-map.js').TownMap} map
+ * @param {number} id
+ * @returns {boolean} False if the farm job cannot be done (now).
+ */
+function tend(state, ctx, colony, map, id) {
   const a = ctx.agents;
   const crops = state.crops;
   const job = a.farmJob[id];
+  if (job === FarmJob.TILL) return till(state, ctx, colony, map, id);
   const p = a.farmPlot[id];
-  if (p < 0 || job === FarmJob.TILL || job === FarmJob.GLEAN) {
-    releaseFarm(state, ctx, id);
-    return false;
-  }
+  if (p < 0 || job === FarmJob.GLEAN) return false;
   const x = crops.x[p];
   const y = crops.y[p];
   if (job === FarmJob.HARVEST) {
     const crop = ctx.crops[crops.crop[p]];
-    const ripe = holds(state, x, y, crop.resource);
-    if (!ripe || a.carriedTotal(id) >= ctx.capacity(id)) {
+    if (!holds(state, x, y, crop.resource) || a.carriedTotal(id) >= ctx.capacity(id)) {
       releaseFarm(state, ctx, id);
-      if (carriesHarvest(ctx, id)) return goToCamp(state, ctx, colony, map, id, Action.STOCK);
-      return false;
+      return carriesHarvest(ctx, id) && goToCamp(state, ctx, colony, map, id, Action.STOCK);
     }
     a.harvestGood[id] = crop.resource;
     a.harvestUntil[id] = ctx.capacity(id);
     return goTo(state, ctx, map, id, x, y, Action.HARVEST);
   }
   if (job === FarmJob.SOW && (crops.stage[p] !== FALLOW || carriedSeeds(ctx, id) === 0)) {
-    releaseFarm(state, ctx, id);
     return false;
   }
   const then = job === FarmJob.SOW ? Action.SOW : Action.WATER;
@@ -686,4 +736,30 @@ function farm(state, ctx, colony, map, id) {
     return true;
   }
   return goTo(state, ctx, map, id, x, y, then);
+}
+
+/**
+ * A new plot, with a seed it carries: the best spot it sees near the town's fields (by water),
+ * else back towards the camp to look from there.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} colony
+ * @param {import('../colony/town-map.js').TownMap} map
+ * @param {number} id
+ * @returns {boolean}
+ */
+function till(state, ctx, colony, map, id) {
+  const a = ctx.agents;
+  if (carriedSeeds(ctx, id) === 0 || !has(colony.knowhow, ctx.plotRecipe)) return false;
+  const nav = ctx.nav;
+  nav.waterSpeed = 0;
+  nav.prepare(state.world, a.x[id], a.y[id], ctx.balance.people.tillRadius);
+  const cell = chooseTillSite(state, ctx, colony);
+  a.craftRecipe[id] = ctx.plotRecipe;
+  if (cell === nav.center) {
+    startHere(ctx, id, Action.CRAFT);
+    return true;
+  }
+  if (cell >= 0) return moveTo(ctx, id, cell, Action.CRAFT);
+  return !atCamp(ctx, colony, id) && goToCamp(state, ctx, colony, map, id, Action.IDLE);
 }

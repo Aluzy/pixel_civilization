@@ -12,7 +12,7 @@ import { Tier } from '../src/sim/agents/agent-store.js';
 import { lifespanOf } from '../src/sim/colony/replication.js';
 import { Colony } from '../src/sim/colony/colony-store.js';
 import { figureQuota, planWell, townMap } from '../src/sim/colony/people.js';
-import { planHouse, raiseHouse, registerHouse } from '../src/sim/colony/house.js';
+import { houseFor, planHouse, raiseHouse, registerHouse } from '../src/sim/colony/house.js';
 import { CATALOG, JOBS, Simulation } from '../src/sim/simulation.js';
 import { PACK } from '../src/sim/world/chunk-store.js';
 import { buildWorldTables } from '../src/sim/world/world-data.js';
@@ -133,7 +133,7 @@ for (let t = 0; t < towns; t++) {
   colony.campY = site[1];
   const out = ctx.siteOut;
   while (colony.bedCount < people * 1.1) {
-    const code = ctx.longhouseCode || ctx.shelterCode;
+    const code = houseFor(ctx, people);
     if (!planHouse(state, ctx, colony, out, code)) break;
     raiseHouse(state, ctx, out[0], out[1], out[2], code);
     registerHouse(ctx, colony, out[0], out[1]);

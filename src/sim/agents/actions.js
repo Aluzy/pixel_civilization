@@ -17,6 +17,7 @@ import {
 } from './equipment.js';
 import { WATER_SUBJECT } from './memory.js';
 import { MAX_RADIUS } from './navigation.js';
+import { craftOfTown } from '../colony/vocation.js';
 import { notice, perceptionRadius } from './perception.js';
 import {
   atCamp,
@@ -685,8 +686,10 @@ function harvest(state, ctx, id) {
       return;
     }
     const wanted = agents.harvestGood[id];
+    // The people of a town are quicker at what their town lives from (decision 0030).
+    const town = agents.tier[id] === Tier.COMMONER ? craftOfTown(state, ctx, id, wanted) : 1;
     const speed =
-      (1 + agents.force[id] / ctx.harvestForceScale) * harvestMultiplier(ctx, id, wanted);
+      (1 + agents.force[id] / ctx.harvestForceScale) * harvestMultiplier(ctx, id, wanted) * town;
     agents.actionNeed[id] = ctx.harvestTicks[wanted] / speed;
   }
   const need = agents.actionNeed[id];

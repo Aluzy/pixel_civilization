@@ -4,6 +4,7 @@ import { worksProject } from '../colony/works.js';
 import { atCamp, claimFreeStock, openTasks, releaseTask } from '../colony/colony-logic.js';
 import { Tier } from '../agents/agent-store.js';
 import { addKnowhow, peoplePass } from '../colony/people.js';
+import { houseFor } from '../colony/house.js';
 import { Enclosure, ProjectKind } from '../colony/colony-store.js';
 import { planEnclosure, updateDanger, wallNeeds, wantsEnclosure } from '../colony/fortress.js';
 import { PACK } from '../world/chunk-store.js';
@@ -64,9 +65,8 @@ export function colonySystem(state, ctx) {
     // Beds ahead of the births: a share of the members more, at least one.
     const ahead = Math.max(1, Math.ceil(colony.members * cfg.bedMargin));
     const missingBeds = colony.members + ahead - colony.beds();
-    // A town builds longhouses (decision 0030): many beds for the materials of a few houses.
-    const long = ctx.longhouseCode > 0 && colony.members >= ctx.balance.people.longhouseFrom;
-    const house = long ? ctx.longhouseCode : ctx.shelterCode;
+    // A town builds larger houses (decision 0030): many beds for the materials of a few houses.
+    const house = houseFor(ctx, colony.members);
     const perHouse = ctx.bedsOf[house];
     if (missingBeds > 0 && building < atOnce && building * perHouse < missingBeds + perHouse) {
       const slot = colony.freeSlot();

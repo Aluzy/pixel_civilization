@@ -6,6 +6,19 @@ import { onAnyRing } from './fortress.js';
 // door, around one bed; two beds take a 4 × 3 ring. The builder stands on the door tile and the
 // house rises around it in one of four directions, the first that fits.
 
+/**
+ * The house a colony of `members` builds: the largest of `houseSteps` it is large enough for,
+ * else a shelter.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} members
+ * @returns {number} Structure code.
+ */
+export function houseFor(ctx, members) {
+  let code = ctx.shelterCode;
+  for (const step of ctx.houseSteps) if (step.code > 0 && members >= step.from) code = step.code;
+  return code;
+}
+
 /** Directions of a house from its door: the door is on the south, north, east or west side. */
 export const HouseDir = Object.freeze({ SOUTH: 0, NORTH: 1, EAST: 2, WEST: 3 });
 

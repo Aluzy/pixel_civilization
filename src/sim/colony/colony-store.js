@@ -191,6 +191,9 @@ export class Colony {
     this.map = null;
     this.knowhow = 0;
     this.birthCredit = 0;
+    /** What the town lives from (index in data/vocations.json, -1 none), and its next town's. */
+    this.vocation = -1;
+    this.expVocation = -1;
     // Places deposited by members (one per subject and area, the latest sighting wins).
     const n = cfg.boardCapacity;
     this.boardSubject = new Int16Array(n);
@@ -610,6 +613,7 @@ export class Colony {
     h.typedArray(this.bedHouse.subarray(0, this.bedCount));
     hashBits(h.uint32(this.figures), this.knowhow).uint32(Math.round(this.birthCredit * 1000));
     h.uint32(this.map === null ? -1 : this.map.builtTick);
+    h.uint32(this.vocation & 0xff).uint32(this.expVocation & 0xff);
     const n = this.boardCount;
     h.uint32(n)
       .typedArray(this.boardSubject.subarray(0, n))
