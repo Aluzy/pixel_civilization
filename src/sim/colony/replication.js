@@ -3,6 +3,7 @@ import { MAX_RADIUS } from '../agents/navigation.js';
 import { EventType } from '../core/events.js';
 import { inherit } from '../genome/genome.js';
 import { PACK } from '../world/chunk-store.js';
+import { figureQuota } from './people.js';
 
 const DX = Int8Array.from([1, -1, 0, 0, 1, 1, -1, -1]);
 const DY = Int8Array.from([0, 0, 1, -1, 1, -1, 1, -1]);
@@ -138,8 +139,9 @@ function payFood(ctx, id) {
 }
 
 /**
- * Creates the replica on a free passable tile next to the parent: attributes mutated by up to
- * ±`mutation`, needs at their start value, no memory, no recipe, same colony.
+ * Creates the replica on a free passable tile next to the parent (one of the people in a town whose
+ * figures are all there): attributes mutated by up to ±`mutation`, needs at their start value, no
+ * memory, no recipe, same colony.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
  * @param {number} id - Parent.
@@ -149,8 +151,14 @@ export function replicate(state, ctx, id) {
   const a = ctx.agents;
   const out = ctx.costOut;
   if (missingCost(ctx, id, out) !== 0 || !roomToReplicate(state, ctx, id)) return -1;
-  const child = bear(state, ctx, id, Tier.FIGURE);
+  // In a town whose figures are all there, the replica is one of the people (decision 0030).
+  const c = a.colony[id];
+  const colony = c >= 0 ? state.colonies[c] : null;
+  const town = colony !== null && colony.members >= ctx.balance.people.commonFrom;
+  const tier = town && colony.figures >= figureQuota(ctx, colony) ? Tier.COMMONER : Tier.FIGURE;
+  const child = bear(state, ctx, id, tier);
   if (child < 0) return -1;
+  if (colony !== null && tier === Tier.FIGURE) colony.figures++;
   const cost = ctx.replicationCost;
   for (let g = 1; g < cost.length; g++) if (cost[g] > 0) a.addCarried(id, g, -cost[g]);
   payFood(ctx, id);
