@@ -21,7 +21,7 @@ Chaque colonie a deux rangs d'individus (`Tier` dans `agent-store.js`) :
 
   La routine se revoit tous les 30 cycles (120 au repos), ou quand une action finit. Elle écrit sa tâche (`duty`) que l'inspecteur affiche.
 
-**Quota de figures** (`people.figureQuota`) : toute la colonie tant qu'elle a moins de 16 membres, puis 6 figures plus 2 % des membres. Un membre du peuple est promu quand une figure manque ; un nouveau-né est une figure si le quota n'est pas plein.
+**Quota de figures** (`people.figureQuota`) : toute la colonie tant qu'elle a moins de 16 membres, puis 12 figures plus 2 % des membres. Un membre du peuple est promu quand une figure manque ; un nouveau-né est une figure si le quota n'est pas plein.
 
 **Esprit léger** : un membre du peuple a une mémoire de 2 lieux, une carte d'exploration grossière, un journal de 4 entrées et un modèle social d'une place. La routine ne lit que la carte de la ville (ci-dessous), jamais la grille du monde au-delà.
 
@@ -84,13 +84,20 @@ Une ville a une **vocation** (`data/vocations.json`, `colony/vocation.js`) :
 
 Dans l'ordre :
 
-1. lancer un abri ou un puits si la ville en a besoin et sait le faire ;
-2. cultiver quand la nourriture manque (moins de 4 portions par membre) ;
-3. apporter les matériaux des projets, par charges de 15 ;
+1. lancer ou bâtir ce que la ville sait faire et qui est prêt : un abri, un puits, le mur de l'enceinte, ses tours, un canal (le mur et le canal se posent case par case, depuis une case voisine) ;
+2. selon sa place dans la ville (un sur quatre pour chaque rôle, par identifiant) :
+   - **réserve** : garder en réserve 2 unités par membre de chaque matériau (pierre, argile, charbon…), le plus cher au comptoir et le moins tenu d'abord : les figures l'achètent pour fabriquer et inventer ;
+   - **chantiers** : apporter les matériaux des projets, par charges de 15 ;
+   - les autres : les champs d'abord quand la nourriture manque (moins de 4 portions par membre) ;
+3. apporter les matériaux des projets ;
 4. cultiver ;
-5. récolter les biens de la vocation pour le comptoir.
+5. récolter les biens de la vocation, puis les matériaux, pour le comptoir.
 
-Aux champs, le peuple pèse l'urgence contre la marche (`farmUrgency`) : le travail à portée avant celui de l'autre bout des champs. Il défriche si la ville sait faire un champ, et ne glane jamais.
+**Les champs sont au peuple** : il glane le blé sauvage sur la carte de la ville, sème ses premières graines, agrandit les champs tant que la ville sait faire un champ, et pèse l'urgence d'un travail contre la marche (`farmUrgency`).
+
+**Les outils de la ville** : un membre du peuple récolte une ressource qui demande un outil (le charbon et la pioche de pierre) si sa ville sait fabriquer cet outil.
+
+**Les métiers des figures** : dans une ville, une figure ne prend plus un métier qui ne fait que récolter (agriculteur, cueilleur, bûcheron, mineur) ; elle quitte celui qu'elle avait et choisit parmi ceux qui fabriquent (meunier, boulanger), transportent (marchand) ou réfléchissent (inventeur, scribe, garde). Une vente du peuple au comptoir est comptée au métier de ce qu'il apporte (le blé à l'agriculteur), pour que les livres du comptoir montrent toujours les chaînes.
 
 ## 8. Performance
 
@@ -102,3 +109,4 @@ Aux champs, le peuple pèse l'urgence contre la marche (`farmUrgency`) : le trav
 
 - Le peuple n'apprend pas, ne se souvient pas, n'invente pas. Son savoir est celui des figures de sa ville. La décision 0030 assume cette entorse à la règle « ne pas simplifier l'IA » : l'intelligence reste entière chez les figures, qui gardent tout ce qui se raconte.
 - Deux membres du peuple en chemin peuvent partager une case un instant.
+- La fonderie vient plus tard : au jour 100, 2 parties sur 24 l'ont découverte, contre 9 en v0.16 (le four 13 contre 18). L'inventeur a ses matériaux en réserve, mais ne trouve pas la brique puis la fonderie à temps. Le critère du J10 ne l'exige plus que d'une partie sur trois (décision 0030).
