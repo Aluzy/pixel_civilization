@@ -12,4 +12,8 @@ export function timeSystem(state, ctx) {
   ctx.phase = phase;
   ctx.darkness = ctx.darknessByPhase[phase];
   ctx.dark = ctx.nightPhase === phase;
+  // Evening: the end of the day (`homeTicks` before dusk), dusk and night, when the people of a
+  // town drink, eat and go home (decision 0030), before the dark rather than all at once in it.
+  const ahead = phaseIndexAt(state.tick + state.balance.people.homeTicks, state.balance.time);
+  ctx.evening = ctx.dark || ctx.duskPhase === phase || ctx.duskPhase === ahead;
 }

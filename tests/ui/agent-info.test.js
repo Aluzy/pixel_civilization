@@ -222,7 +222,7 @@ describe('colonies panels', () => {
     foundColony(sim.state, sim.ctx, 0, ...[mother.expX, mother.expY]);
     const colony = sim.describeColony(1);
     const lines = formatColony(colony, sim.describeColonies());
-    expect(lines[0]).toBe('Colonies : n°1 (1)');
+    expect(lines[0]).toBe('Colonies (1, 1 individus) : n°1 (1)');
     expect(lines).toContain(`Colonie n°1 : 1 individu(s) · 0 naissance(s) · 0 mort(s)`);
     expect(lines).toContain('Fille de la colonie n°0, fondée le jour 1');
     expect(lines.some((l) => l.startsWith('Colonie n°0 (mère) : camp '))).toBe(true);

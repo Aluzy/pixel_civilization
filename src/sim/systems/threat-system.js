@@ -32,8 +32,10 @@ function nearestPrey(state, ctx, x, y, radius, forcing = false) {
   const a = ctx.agents;
   let best = -1;
   let bestD = Infinity;
-  for (let id = 0; id < a.highWater; id++) {
-    if (a.alive[id] !== 1) continue;
+  const n = a.near(x, y, radius);
+  const found = a.grid.found;
+  for (let k = 0; k < n; k++) {
+    const id = found[k];
     const d = Math.max(Math.abs(a.x[id] - x), Math.abs(a.y[id] - y));
     if (d > radius || d >= bestD) continue;
     if (inShelter(state, ctx, a.x[id], a.y[id])) {

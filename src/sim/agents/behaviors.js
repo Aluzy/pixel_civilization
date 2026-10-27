@@ -517,6 +517,8 @@ export function goHome(state, ctx, colony, id, plan) {
   let bestD = Infinity;
   for (let k = 0; k < colony.bedCount; k++) {
     if (nav.cellAt(colony.bedX[k], colony.bedY[k]) >= 0 || foundTaken(state, ctx, id, k)) continue;
+    // A commoner's own bed is left to it.
+    if (colony.bedOwner[k] >= 0 && colony.bedOwner[k] !== id) continue;
     const d = Math.max(Math.abs(colony.bedX[k] - a.x[id]), Math.abs(colony.bedY[k] - a.y[id]));
     if (d < bestD) {
       bestD = d;

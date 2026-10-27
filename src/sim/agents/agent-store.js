@@ -1,4 +1,5 @@
 import { hashBits } from '../core/bits.js';
+import { AgentGrid } from './agent-grid.js';
 import { RecipeBook } from '../crafting/recipe-book.js';
 import { Action } from './action-types.js';
 import { ExplorationMap } from './exploration-map.js';
@@ -9,8 +10,11 @@ import { SocialModel } from './social-model.js';
 /** Kinds of chronicle events about memory, each with its own cooldown per agent. */
 export const MEMORY_EVENT_KINDS = 5;
 
-/** Longest path an agent can hold; paths never leave its perception window (radius ≤ 22). */
-export const PATH_MAX = 2048;
+/**
+ * Longest path an agent holds; a longer one is walked in parts (paths never leave its perception
+ * window, and a commoner's trip across its town is cut in legs).
+ */
+export const PATH_MAX = 256;
 
 /**
  * Components of all agents, as typed arrays indexed by entity id (light ECS). Ids are reused
@@ -18,6 +22,17 @@ export const PATH_MAX = 2048;
  */
 /** Beds an agent remembers it found taken, to look elsewhere for the night. */
 export const BED_SLOTS = 4;
+
+/**
+ * Tiers of agents (decision 0030): a figure thinks with the whole AI; a commoner (the people of a
+ * large town) follows the routine of its trade, with its town's map for knowledge.
+ */
+export const Tier = Object.freeze({ FIGURE: 0, COMMONER: 1 });
+
+/** Places a commoner keeps in mind, and cells of its (unused) exploration map. */
+const COMMONER_MEMORY = 2;
+const COMMONER_EXPLORATION = 16;
+const COMMONER_JOURNAL = 4;
 
 export class AgentStore {
   /**
@@ -50,6 +65,18 @@ export class AgentStore {
     goalCount = 1,
   }) {
     this.sheets = sheets;
+    /** {@link Tier} of each agent, and how many figures are alive. */
+    this.tier = new Uint8Array(max);
+    this.figureCount = 0;
+    /** A commoner's duty of the moment (see commoner.js), and its bed in its colony (-1 none). */
+    this.duty = new Uint8Array(max);
+    /** Restfulness of the tile it sleeps on, read when it fell asleep (0 awake). */
+    this.rest = new Float32Array(max);
+    /** Speed factor of the tile it steps onto, read when the step began (0: read it again). */
+    this.stepFactor = new Float32Array(max);
+    /** Ticks the unit it harvests or picks takes, read when it began (0: read it again). */
+    this.actionNeed = new Float32Array(max);
+    this.bed = new Int16Array(max).fill(-1);
     // Weariness per goal (decision 0029): failed trials pile up while pursuing it, and fade.
     this.goalCount = goalCount;
     this.weary = new Float64Array(max * goalCount);
@@ -111,10 +138,10 @@ export class AgentStore {
     this.provisioned = new Uint8Array(max);
     // A merchant's caravan: colony it goes to (-1 none), 1 going there, 2 coming back, the good it
     // carries to sell, and the prices it saw at that colony's counter.
-    this.caravanTo = new Int8Array(max).fill(-1);
+    this.caravanTo = new Int16Array(max).fill(-1);
     this.caravanLeg = new Uint8Array(max);
     /** Last colony the caravan halted at on its way (decision 0029), or -1. */
-    this.caravanHalt = new Int8Array(max).fill(-1);
+    this.caravanHalt = new Int16Array(max).fill(-1);
     this.caravanGood = new Uint8Array(max);
     this.caravanPrice = new Float64Array(max * goodCount);
     /** Tile of the wall segment (gate, tower) it builds, and 1 while it stands on a tower. */
@@ -129,6 +156,8 @@ export class AgentStore {
     this.exploration = exploration;
     /** One past the highest id ever used: loops stop there. */
     this.highWater = 0;
+    /** Where the agents stand, by buckets of tiles: who is near (decision 0030). */
+    this.grid = new AgentGrid(max);
     this.aliveCount = 0;
 
     const f64 = () => new Float64Array(max);
@@ -288,6 +317,7 @@ export class AgentStore {
    * @param {number} [spec.parent=-1]
    * @param {number} [spec.generation=0]
    * @param {number} [spec.lifespan] - Age at which it dies of old age, in ticks.
+   * @param {number} [spec.tier] - {@link Tier} (a figure by default).
    * @returns {number}
    */
   create({
@@ -301,6 +331,7 @@ export class AgentStore {
     parent = -1,
     generation = 0,
     lifespan = 0x7fffffff,
+    tier = Tier.FIGURE,
   }) {
     let id = 0;
     while (id < this.max && this.alive[id] === 1) id++;
@@ -308,6 +339,13 @@ export class AgentStore {
     if (id >= this.highWater) this.highWater = id + 1;
     this.alive[id] = 1;
     this.aliveCount++;
+    this.tier[id] = tier;
+    if (tier === Tier.FIGURE) this.figureCount++;
+    this.duty[id] = 0;
+    this.bed[id] = -1;
+    this.rest[id] = 0;
+    this.stepFactor[id] = 0;
+    this.actionNeed[id] = 0;
     this.bornTick[id] = tick;
     this.weary.fill(0, id * this.goalCount, (id + 1) * this.goalCount);
     this.sail[id] = 0;
@@ -317,6 +355,7 @@ export class AgentStore {
     this.x[id] = x;
     this.y[id] = y;
     if (this.world) this.world.setOccupant(x, y, id);
+    this.grid.insert(id, x, y);
     this.moveProgress[id] = 0;
     this.blocked[id] = 0;
     this.maxHp[id] = attributes.hp;
@@ -352,7 +391,10 @@ export class AgentStore {
     this.kills[id] = 0;
     const rc = Math.max(1, this.recipeCount);
     this.firstMade.fill(-1, id * rc, (id + 1) * rc);
-    this.recipes[id] = new RecipeBook(this.recipeCount, this.failureSlots);
+    this.recipes[id] = new RecipeBook(
+      this.recipeCount,
+      tier === Tier.FIGURE ? this.failureSlots : 1,
+    );
     this.lastPlan[id] = null;
     this.colony[id] = colony;
     this.parent[id] = parent;
@@ -383,7 +425,7 @@ export class AgentStore {
     this.gathered.fill(0, id * this.goodSlots, (id + 1) * this.goodSlots);
     this.builds[id] = 0;
     this.delivers[id] = 0;
-    this.social[id] = new SocialModel(this.sheets);
+    this.social[id] = new SocialModel(tier === Tier.FIGURE ? this.sheets : 1);
     this.lifespan[id] = lifespan;
     this.genes.set(this.geneStart, id * this.geneCount);
     this.dangerCount[id] = 0;
@@ -427,12 +469,42 @@ export class AgentStore {
     if (!this.path[id]) this.path[id] = new Int32Array(PATH_MAX * 2);
     this.pathLength[id] = 0;
     this.pathIndex[id] = 0;
-    this.memory[id] = new Memory(attributes.memory);
-    this.explored[id] = new ExplorationMap(this.exploration.capacity, this.exploration.cellSize);
     this.memoryEventTick.fill(-1e9, id * MEMORY_EVENT_KINDS, (id + 1) * MEMORY_EVENT_KINDS);
     this.rng[id] = rng;
-    this.journal[id] = new Journal(this.journalSize);
+    this.mind(id, tier === Tier.FIGURE);
     return id;
+  }
+
+  /**
+   * Gives the agent a mind of a figure's size (places to remember as its Mémoire allows, an
+   * exploration map, a journal), or the small one of a commoner. What it held is forgotten.
+   * @param {number} id
+   * @param {boolean} figure
+   * @returns {void}
+   */
+  mind(id, figure) {
+    this.memory[id] = new Memory(figure ? this.memorySize[id] : COMMONER_MEMORY);
+    const cells = figure ? this.exploration.capacity : COMMONER_EXPLORATION;
+    this.explored[id] = new ExplorationMap(cells, this.exploration.cellSize);
+    this.journal[id] = new Journal(figure ? this.journalSize : COMMONER_JOURNAL);
+  }
+
+  /**
+   * A commoner becomes a figure (decision 0030): it now thinks for itself, with a fresh mind;
+   * what it knows of recipes it must learn (from a master, a book, by trying).
+   * @param {number} id
+   * @returns {void}
+   */
+  promote(id) {
+    if (this.tier[id] === Tier.FIGURE) return;
+    this.tier[id] = Tier.FIGURE;
+    this.figureCount++;
+    this.mind(id, true);
+    this.recipes[id] = new RecipeBook(this.recipeCount, this.failureSlots);
+    this.social[id] = new SocialModel(this.sheets);
+    this.goal[id] = -1;
+    this.needsDecision[id] = 1;
+    this.exploring[id] = 0;
   }
 
   /**
@@ -443,7 +515,9 @@ export class AgentStore {
     if (this.alive[id] !== 1) return;
     this.alive[id] = 0;
     this.aliveCount--;
+    if (this.tier[id] === Tier.FIGURE) this.figureCount--;
     if (this.world) this.world.setOccupant(this.x[id], this.y[id], -1 - id);
+    this.grid.remove(id);
     this.asleep[id] = 0;
     this.action[id] = Action.NONE;
   }
@@ -462,6 +536,34 @@ export class AgentStore {
     }
     this.x[id] = x;
     this.y[id] = y;
+    this.grid.move(id, x, y);
+  }
+
+  /**
+   * Moves the agent onto a tile another walker holds, without taking it: the tile stays the
+   * other's (decision 0030, the crowd of a town).
+   * @param {number} id
+   * @param {number} x
+   * @param {number} y
+   * @returns {void}
+   */
+  through(id, x, y) {
+    if (this.world) this.world.setOccupant(this.x[id], this.y[id], -1 - id);
+    this.x[id] = x;
+    this.y[id] = y;
+    this.grid.move(id, x, y);
+  }
+
+  /**
+   * Alive agents within Chebyshev distance `r` of (x, y), in increasing id order, written to
+   * `grid.found` (valid until the next query).
+   * @param {number} x
+   * @param {number} y
+   * @param {number} r
+   * @returns {number} How many.
+   */
+  near(x, y, r) {
+    return this.grid.query(this.x, this.y, x - r, y - r, x + r, y + r);
   }
 
   /**
@@ -526,7 +628,7 @@ export class AgentStore {
    * @returns {void}
    */
   hashInto(h) {
-    h.uint32(this.aliveCount).uint32(this.highWater);
+    h.uint32(this.aliveCount).uint32(this.highWater).uint32(this.figureCount);
     const fields = [
       this.moveProgress,
       this.hp,
@@ -543,6 +645,11 @@ export class AgentStore {
     for (let id = 0; id < this.highWater; id++) {
       if (this.alive[id] !== 1) continue;
       h.uint32(id).uint32(this.x[id]).uint32(this.y[id]);
+      h.uint32(Math.round(this.rest[id] * 1000)).uint32(Math.round(this.stepFactor[id] * 1e6));
+      h.uint32(Math.round(this.actionNeed[id] * 1e3));
+      h.uint32(this.tier[id])
+        .uint32(this.duty[id])
+        .uint32(this.bed[id] & 0xffff);
       h.uint32(this.goal[id] & 0xff);
       h.uint32(this.action[id]).uint32(this.thenAction[id]);
       h.uint32(this.actionX[id]).uint32(this.actionY[id]).uint32(this.asleep[id]);
@@ -611,9 +718,9 @@ export class AgentStore {
       h.typedArray(this.tradeUnits.subarray(t0, t1)).typedArray(this.tradeCoins.subarray(t0, t1));
       h.uint32(this.tradeNext[id]).uint32(this.saleGood[id]).uint32(this.saleAmount[id]);
       h.uint32(this.saleTick[id]).uint32(this.crowdSeen[id]).uint32(this.provisioned[id]);
-      h.uint32(this.caravanTo[id] & 0xff)
+      h.uint32(this.caravanTo[id] & 0xffff)
         .uint32(this.caravanLeg[id])
-        .uint32(this.caravanHalt[id] & 0xff)
+        .uint32(this.caravanHalt[id] & 0xffff)
         .uint32(this.caravanGood[id]);
       h.typedArray(this.caravanPrice.subarray(g0, g0 + this.goodSlots));
       h.uint32(this.siteX[id]).uint32(this.siteY[id]).uint32(this.onTower[id]);

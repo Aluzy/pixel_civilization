@@ -6,7 +6,7 @@
       "resource": "wheat",
       "seed": "seed",
       "stages": 3,
-      "yield": 40,
+      "yield": 60,
       "seedChance": 0.3,
       "hintChance": 0.25
     }

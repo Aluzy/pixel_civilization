@@ -1,6 +1,7 @@
 import { EventType } from '../core/events.js';
 import { PACK } from '../world/chunk-store.js';
 import { ProjectKind } from './colony-store.js';
+import { makes, used } from './people.js';
 
 // Canals (docs/design/02-monde.md, « Canaux »; decision 0027): a colony brings the water to its
 // village. The canal is traced from the camp, or from the house farthest from water, to the nearest
@@ -257,7 +258,7 @@ export function digCanal(state, ctx, id) {
   const x = a.siteX[id];
   const y = a.siteY[id];
   const gap = Math.max(Math.abs(a.x[id] - x), Math.abs(a.y[id] - y));
-  if (gap !== 1 || !a.recipes[id].knows(r)) return false;
+  if (gap !== 1 || !makes(ctx, id, r)) return false;
   if (colony.canalNext >= colony.canalLen) return false;
   if (colony.canalX[colony.canalNext] !== x || colony.canalY[colony.canalNext] !== y) return false;
   for (const input of ctx.catalog.recipes[r].inputs) {
@@ -275,7 +276,7 @@ export function digCanal(state, ctx, id) {
     return false;
   }
   for (const input of ctx.catalog.recipes[r].inputs) a.addCarried(id, input.good, -input.count);
-  a.recipes[id].use(r, state.tick, ctx.balance.memory.consolidation, ctx.maxTau);
+  used(state, ctx, id, r);
   a.recordMade(id, r, state.tick);
   a.builds[id]++;
   const p = state.world.packedAt(x, y);

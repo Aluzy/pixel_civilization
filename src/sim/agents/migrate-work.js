@@ -107,7 +107,7 @@ export function migrateBehaviour(state, ctx, id, plan) {
   }
   if (!colony.inExpedition(id)) {
     const site = ctx.recallTarget;
-    if (findSite(ctx, colony, id, site)) {
+    if (findSite(state, ctx, colony, id, site)) {
       openExpedition(state, ctx, colony, id, site[0], site[1]);
     } else {
       scout(state, ctx, colony, id, plan);
@@ -134,6 +134,7 @@ export function migrateBehaviour(state, ctx, id, plan) {
     if (r < 0 || !a.recipes[id].knows(r)) {
       startHere(ctx, id, Action.IDLE);
     } else {
+      pool(ctx, colony, id, r);
       const missing = ctx.catalog.recipes[r].inputs.find((i) => a.carried(id, i.good) < i.count);
       if (missing) gather(state, ctx, id, missing.good, missing.count, plan);
       else useRecipe(state, ctx, id, r, plan);
@@ -192,4 +193,31 @@ function scout(state, ctx, colony, id, plan) {
   }
   explore(state, ctx, id, plan);
   plan.note = PlanNote.MIGRATING;
+}
+
+/**
+ * On the site, the builder of the first shelter takes what it lacks from the members of its
+ * expedition close by (decision 0030): one carries the wood, another the stone.
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {import('../colony/colony-store.js').Colony} colony
+ * @param {number} id
+ * @param {number} r - The shelter's recipe.
+ * @returns {void}
+ */
+function pool(ctx, colony, id, r) {
+  const a = ctx.agents;
+  const reach = ctx.balance.migration.poolRadius;
+  for (const input of ctx.catalog.recipes[r].inputs) {
+    for (let k = 0; k < colony.expMembers.length; k++) {
+      const m = colony.expMembers[k];
+      const short = input.count - a.carried(id, input.good);
+      if (short <= 0) break;
+      if (m < 0 || m === id) continue;
+      if (Math.max(Math.abs(a.x[m] - a.x[id]), Math.abs(a.y[m] - a.y[id])) > reach) continue;
+      const n = Math.min(short, a.carried(m, input.good));
+      if (n <= 0) continue;
+      a.addCarried(m, input.good, -n);
+      a.addCarried(id, input.good, n);
+    }
+  }
 }

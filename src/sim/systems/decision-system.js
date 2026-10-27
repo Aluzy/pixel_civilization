@@ -39,6 +39,8 @@ const AWAY_INPUTS = Object.freeze([
   INPUT.inventDuty,
 ]);
 import { roleOf } from '../economy/market.js';
+import { Tier } from '../agents/agent-store.js';
+import { Duty, commonerTick } from '../agents/commoner.js';
 import { EventType } from '../core/events.js';
 
 /**
@@ -269,9 +271,11 @@ function alliesAround(ctx, id) {
   const a = ctx.agents;
   const r = ctx.balance.safety.allyRadius;
   let n = 0;
-  for (let other = 0; other < a.highWater; other++) {
-    if (other === id || a.alive[other] !== 1 || a.asleep[other] === 1) continue;
-    if (Math.abs(a.x[other] - a.x[id]) > r || Math.abs(a.y[other] - a.y[id]) > r) continue;
+  const count = a.near(a.x[id], a.y[id], r);
+  const found = a.grid.found;
+  for (let k = 0; k < count; k++) {
+    const other = found[k];
+    if (other === id || a.asleep[other] === 1) continue;
     if (carriesKind(ctx, other, 'weapon')) n++;
   }
   return n;
@@ -416,7 +420,11 @@ function jobWeights(ctx, role, weights, kitchenPost) {
  */
 export function decisionSystem(state, ctx) {
   const a = ctx.agents;
-  const interval = ctx.balance.ai.decisionInterval;
+  // Many figures think less often, each as well (decision 0030, the budget follows the
+  // population): past `figureBudget` figures, the interval grows with their number.
+  const budget = ctx.balance.people.figureBudget;
+  const interval = ctx.balance.ai.decisionInterval * Math.max(1, Math.ceil(a.figureCount / budget));
+  const people = ctx.balance.people;
   const input = ctx.inputs;
   const scores = ctx.scores;
   const plan = ctx.plan;
@@ -424,6 +432,14 @@ export function decisionSystem(state, ctx) {
   const bonus = ctx.projects.bonus;
   for (let id = 0; id < a.highWater; id++) {
     if (a.alive[id] !== 1) continue;
+    if (a.tier[id] === Tier.COMMONER) {
+      // Most ticks a commoner has nothing to think about: checked here without a call.
+      const every = a.duty[id] === Duty.REST ? people.restTicks : people.checkTicks;
+      if (a.needsDecision[id] === 1 || (state.tick + id) % every === 0) {
+        commonerTick(state, ctx, id);
+      }
+      continue;
+    }
     // Sleep and focused work (harvesting, making, trying) are not reconsidered every few ticks:
     // only an attack, the end of the action or a vital need interrupts them.
     const busy = a.asleep[id] === 1 || isFocused(a.action[id]);

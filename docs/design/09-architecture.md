@@ -144,7 +144,7 @@ Messages typés, objets simples ; les gros volumes passent en `ArrayBuffer` tran
 | Rendu → Worker | `select` | individu à décrire dans chaque `frame` (`id`, ou −1) ; `withMap` ajoute sa carte d'exploration (calque mémoire) |
 | Rendu → Worker | `skip` | `{ kind: 'dawn' \| 'event' }` : pleine vitesse jusqu'à l'aube ou jusqu'au prochain événement, puis ×1 |
 | Rendu → Worker | `auto` | `{ on, alerts }` : accélération automatique et types d'événements qui la ramènent à ×1 |
-| Worker → Rendu | `frame` | cycle, heure, vitesse demandée et effective, saut en cours, positions des individus (interpolées le long du chemin) et des prédateurs, résumé de la colonie, accélération automatique active, nouveaux événements, fiche de l'individu sélectionné |
+| Worker → Rendu | `frame` | cycle, heure, vitesse demandée et effective, saut en cours, positions des individus (tableaux typés transférés : identifiants, x et y interpolés le long du chemin, sommeil ; décision 0030) et des prédateurs, résumé de la colonie, accélération automatique active, nouveaux événements, fiche de l'individu sélectionné |
 | Worker → Rendu | `chunk` | `cx`, `cy` et copies transférables des tableaux biome, ressource, quantité, construction, altitude |
 | Worker → Rendu | `stats` | tableau de bord, vitesse effective |
 | Worker → Rendu | `events` | nouveaux événements de chronique |
@@ -176,7 +176,9 @@ Le rendu minimal tourne sur la carte graphique et coûte peu ; la simulation tou
 - **L'intelligence ne dépend jamais de la vitesse ni de la machine.** Le budget de réflexion d'un cycle est exprimé en unités de travail (nœuds de recherche, tirages simulés) et fixé par `balance.json` et la population, pas par le temps réel. Une machine lente donne une vitesse effective plus faible, jamais des décisions différentes : c'est la condition du déterminisme.
 - **Dégradation douce avec la population** : au-delà d'un seuil (ex. 200 individus), l'horizon et le nombre de tirages de la simulation mentale diminuent par paliers définis dans `balance.json`.
 - **Répartition par importance** : les décisions courantes coûtent peu, les décisions stratégiques sont rares et mises en file d'attente (voir [06-ia](06-ia.md), « Budget de réflexion »).
-- **Objectif de performance** : 500 individus à ×1 en moins de 4 ms par cycle (valeur actuelle de `CLAUDE.md`), mesuré par la simulation headless et suivi dans la CI.
+- **Deux rangs** (décision 0030) : dans une grande ville, seules les figures font tourner l'IA complète ; le peuple suit une routine de ville qui lit la carte de sa ville (chemins depuis le camp, vers l'eau, sources proches), redessinée au plus toutes les 300 cycles. Voir [19](19-grand-essor.md).
+- **Pas de boucle en carré** : les voisins d'un individu se trouvent par l'index spatial (`agents/agent-grid.js`, seaux de 16 × 16 cases, résultats dans l'ordre des identifiants).
+- **Objectif de performance** : 10 000 individus à ×16, soit moins de 6,25 ms par cycle (valeur actuelle de `CLAUDE.md`), mesuré par `npm run bench:towns` (40 villes de 250 habitants). `npm run bench` mesure toujours 500 fondateurs.
 
 ### Parallélisme sur plusieurs cœurs (à partir de J5)
 

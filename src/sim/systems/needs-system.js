@@ -2,6 +2,7 @@ import { Flag, isEffort } from '../agents/actions.js';
 import { inShelter, structureAt } from '../agents/equipment.js';
 import { atCamp, campOf } from '../colony/colony-logic.js';
 import { EventType } from '../core/events.js';
+import { Tier } from '../agents/agent-store.js';
 
 /**
  * Fear (the need for safety) fades with time, faster in a shelter or among others at the camp,
@@ -42,21 +43,27 @@ export function needsSystem(state, ctx) {
     a.hunger[id] = Math.min(n.critical, a.hunger[id] + r.hunger * effort);
     a.thirst[id] = Math.min(n.critical, a.thirst[id] + r.thirst * effort);
     if (a.asleep[id] === 1) {
-      // A shelter makes sleep more restful.
-      const code = structureAt(state, ctx, a.x[id], a.y[id]);
-      const rest = code === 0 ? 1 : ctx.catalog.structures[code - 1].sleepRecovery;
-      a.fatigue[id] = Math.max(0, a.fatigue[id] - r.fatigueRecovery * rest);
+      // A shelter makes sleep more restful (read once, when it fell asleep).
+      if (a.rest[id] === 0) {
+        const code = structureAt(state, ctx, a.x[id], a.y[id]);
+        a.rest[id] = code === 0 ? 1 : ctx.catalog.structures[code - 1].sleepRecovery;
+      }
+      a.fatigue[id] = Math.max(0, a.fatigue[id] - r.fatigueRecovery * a.rest[id]);
     } else {
+      a.rest[id] = 0;
       a.fatigue[id] = Math.min(n.critical, a.fatigue[id] + r.fatigue * effort);
     }
-    // Only walking into the unknown for its own sake satisfies curiosity, not errands.
-    if (a.goal[id] === ctx.goalIndex.explore && a.exploring[id] === 1 && isEffort(a.action[id])) {
-      a.curiosity[id] = Math.max(0, a.curiosity[id] - r.curiosityRelief);
-    } else if (a.asleep[id] === 0) {
-      a.curiosity[id] = Math.min(n.critical, a.curiosity[id] + r.curiosity);
+    // Curiosity and fear move a figure's choices; a commoner has a routine (decision 0030).
+    if (a.tier[id] === Tier.FIGURE) {
+      // Only walking into the unknown for its own sake satisfies curiosity, not errands.
+      const exploring = a.goal[id] === ctx.goalIndex.explore && a.exploring[id] === 1;
+      if (exploring && isEffort(a.action[id])) {
+        a.curiosity[id] = Math.max(0, a.curiosity[id] - r.curiosityRelief);
+      } else if (a.asleep[id] === 0) {
+        a.curiosity[id] = Math.min(n.critical, a.curiosity[id] + r.curiosity);
+      }
+      fearDrift(state, ctx, id);
     }
-
-    fearDrift(state, ctx, id);
 
     let critical = 0;
     if (a.hunger[id] >= n.critical) critical++;

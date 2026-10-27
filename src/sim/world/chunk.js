@@ -38,6 +38,8 @@ export class Chunk {
     this.occupant = new Uint16Array(CHUNK_AREA);
     /** True once the simulation has changed a tile, so the chunk belongs to the saved state. */
     this.modified = false;
+    /** The store's count of changes at the last structure or ground changed here (0 never). */
+    this.built = 0;
   }
 
   /**

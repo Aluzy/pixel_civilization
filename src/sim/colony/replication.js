@@ -1,7 +1,9 @@
+import { Tier } from '../agents/agent-store.js';
 import { MAX_RADIUS } from '../agents/navigation.js';
 import { EventType } from '../core/events.js';
 import { inherit } from '../genome/genome.js';
 import { PACK } from '../world/chunk-store.js';
+import { figureQuota } from './people.js';
 
 const DX = Int8Array.from([1, -1, 0, 0, 1, 1, -1, -1]);
 const DY = Int8Array.from([0, 0, 1, -1, 1, -1, 1, -1]);
@@ -137,8 +139,9 @@ function payFood(ctx, id) {
 }
 
 /**
- * Creates the replica on a free passable tile next to the parent: attributes mutated by up to
- * ±`mutation`, needs at their start value, no memory, no recipe, same colony.
+ * Creates the replica on a free passable tile next to the parent (one of the people in a town whose
+ * figures are all there): attributes mutated by up to ±`mutation`, needs at their start value, no
+ * memory, no recipe, same colony.
  * @param {import('../simulation.js').SimState} state
  * @param {import('../simulation.js').SimContext} ctx
  * @param {number} id - Parent.
@@ -146,9 +149,36 @@ function payFood(ctx, id) {
  */
 export function replicate(state, ctx, id) {
   const a = ctx.agents;
-  const r = ctx.balance.replication;
   const out = ctx.costOut;
   if (missingCost(ctx, id, out) !== 0 || !roomToReplicate(state, ctx, id)) return -1;
+  // In a town whose figures are all there, the replica is one of the people (decision 0030).
+  const c = a.colony[id];
+  const colony = c >= 0 ? state.colonies[c] : null;
+  const town = colony !== null && colony.members >= ctx.balance.people.commonFrom;
+  const tier = town && colony.figures >= figureQuota(ctx, colony) ? Tier.COMMONER : Tier.FIGURE;
+  const child = bear(state, ctx, id, tier);
+  if (child < 0) return -1;
+  if (colony !== null && tier === Tier.FIGURE) colony.figures++;
+  const cost = ctx.replicationCost;
+  for (let g = 1; g < cost.length; g++) if (cost[g] > 0) a.addCarried(id, g, -cost[g]);
+  payFood(ctx, id);
+  a.lastReplication[id] = state.tick;
+  return child;
+}
+
+/**
+ * A child of `id`, born on a free passable tile next to it: attributes mutated by up to
+ * ±`mutation`, genes inherited, needs at their start value, no memory, no recipe, same colony,
+ * a share of the parent's écus and its job to learn.
+ * @param {import('../simulation.js').SimState} state
+ * @param {import('../simulation.js').SimContext} ctx
+ * @param {number} id - Parent.
+ * @param {number} tier - {@link Tier} of the child.
+ * @returns {number} Child id, or -1 if no tile is free beside the parent.
+ */
+export function bear(state, ctx, id, tier) {
+  const a = ctx.agents;
+  const r = ctx.balance.replication;
   const rng = state.rng.lifecycle;
   // Always the same draw order, so the mutations are reproducible.
   const mutate = (value) => value * (1 + (rng.next() * 2 - 1) * r.mutation);
@@ -179,9 +209,6 @@ export function replicate(state, ctx, id) {
   }
   // Nowhere free beside the parent: two never share a tile.
   if (!found) return -1;
-  const cost = ctx.replicationCost;
-  for (let g = 1; g < cost.length; g++) if (cost[g] > 0) a.addCarried(id, g, -cost[g]);
-  payFood(ctx, id);
   const child = a.create({
     x,
     y,
@@ -193,6 +220,7 @@ export function replicate(state, ctx, id) {
     parent: id,
     generation: a.generation[id] + 1,
     lifespan: lifespanOf(ctx.balance, rng),
+    tier,
   });
   inherit(ctx.genes, a.genes, id, child, r.geneMutation, state.rng.genome);
   // A share of the parent's écus, and its job to learn by its side for the first days.
@@ -200,11 +228,12 @@ export function replicate(state, ctx, id) {
   a.coins[id] -= gift;
   a.coins[child] = gift;
   a.job[child] = a.job[id];
-  a.lastReplication[id] = state.tick;
   a.children[id]++;
-  const colony = state.colonies[a.colony[id]];
-  colony.births++;
-  colony.members++;
+  if (a.colony[id] >= 0) {
+    const colony = state.colonies[a.colony[id]];
+    colony.births++;
+    colony.members++;
+  }
   state.events.push(state.tick, EventType.BIRTH, child, x, y, id);
   return child;
 }

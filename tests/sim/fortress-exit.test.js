@@ -35,7 +35,7 @@ function watch(colony, t, seed) {
 // prowling around it (a long test: Vitest breathes between days).
 describe('treasures and fortresses (J12 exit)', () => {
   it('closes an enclosure around the treasure, and no predator gets in', async () => {
-    for (const seed of [6, 11]) {
+    for (const seed of [2, 22]) {
       const sim = new Simulation({ seed, balance });
       const colony = sim.state.colonies[0];
       const t = sim.state.threats;

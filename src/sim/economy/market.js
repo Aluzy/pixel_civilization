@@ -1,4 +1,5 @@
 import { EventType } from '../core/events.js';
+import { Tier } from '../agents/agent-store.js';
 import { askOf, bidOf } from './prices.js';
 
 // The colony's counter (docs/design/14-economie.md, « Le marché »): what members bring to the
@@ -69,7 +70,8 @@ export function sell(state, ctx, colony, id, good, units) {
   a.coins[id] += pay;
   a.earnedToday[id] += pay;
   colony.treasury -= pay;
-  const role = roleOf(ctx, colony, id);
+  // One of the people has no job of its own: it does the trade of what it brings.
+  const role = a.tier[id] === Tier.COMMONER ? ctx.jobs.sellerOf[good] : roleOf(ctx, colony, id);
   colony.sold[(role + 1) * colony.stock.length + good] += units;
   colony.lastSeller[good] = id;
   noteTrade(a, id, state.tick, good, units, pay);

@@ -14,6 +14,7 @@ export const ProjectKind = Object.freeze({
   CANAL: 8, // Gather stone, then dig a canal from the water to a home, tile by tile.
   WORKS: 9, // A work of architecture (paving, a public building…): its tiles laid one by one.
   SHIP: 10, // Gather the materials of a ship, then build it on the shore.
+  WELL: 11, // Gather stone, then dig a well among the houses far from water (commoners only).
 });
 
 /** Most tiles of one work of architecture. */
@@ -32,15 +33,20 @@ export const Enclosure = Object.freeze({
 /** Most libraries a colony keeps track of. */
 export const MAX_LIBRARIES = 8;
 
+/** Most beds of a colony. */
+export const MAX_BEDS = 4096;
+
 /** Most guards a colony keeps at once. */
 export const MAX_GUARDS = 12;
 
 /** Most cooks a colony keeps at once. */
 export const MAX_COOKS = 8;
 
-/** Most colonies in a game (relation sheets are preallocated for each). */
-/** Colonies a game can hold, living or dead (the living are capped by migration.maxColonies). */
-export const MAX_COLONIES = 32;
+/**
+ * Colonies a game can hold, living or dead (the living are capped by migration.maxColonies);
+ * relation sheets are preallocated for each.
+ */
+export const MAX_COLONIES = 256;
 
 /** Most members of an expedition. */
 export const MAX_EXPEDITION = 12;
@@ -167,10 +173,27 @@ export class Colony {
     this.shelterY = new Int32Array(256);
     this.shelterCount = 0;
     this.sheltersBuilt = 0;
-    // The beds inside the houses: one sleeper each.
-    this.bedX = new Int32Array(1024);
-    this.bedY = new Int32Array(1024);
+    // The beds inside the houses: one sleeper each; a commoner's own bed is kept for it.
+    this.bedX = new Int32Array(MAX_BEDS);
+    this.bedY = new Int32Array(MAX_BEDS);
     this.bedCount = 0;
+    this.bedOwner = new Int32Array(MAX_BEDS).fill(-1);
+    /** First bed of the house of each bed, and beds in that house. */
+    this.bedHouse = new Int16Array(MAX_BEDS);
+    this.houseBeds = new Uint8Array(MAX_BEDS);
+    /** Where the search for a free bed starts (beds before it were all owned). */
+    this.bedHint = 0;
+    // The people (decision 0030): figures alive at the last count, the town's map (derived from
+    // the world, redrawn every `mapTicks`), what its figures know how to make (53-bit set of
+    // recipes) and the births it can afford (a fraction of a birth carried over).
+    this.figures = 0;
+    /** @type {import('./town-map.js').TownMap | null} */
+    this.map = null;
+    this.knowhow = 0;
+    this.birthCredit = 0;
+    /** What the town lives from (index in data/vocations.json, -1 none), and its next town's. */
+    this.vocation = -1;
+    this.expVocation = -1;
     // Places deposited by members (one per subject and area, the latest sighting wins).
     const n = cfg.boardCapacity;
     this.boardSubject = new Int16Array(n);
@@ -355,7 +378,7 @@ export class Colony {
     this.worksDone = 0;
     /** Times each work was opened: the least done comes first. */
     this.worksCount = new Int16Array(16);
-    this.roads = 0;
+    this.roads = new Uint8Array(MAX_COLONIES);
     this.lastWork = -0x40000000;
     this.beautyCounts = new Int32Array(8);
     /** @type {Project[]} */
@@ -439,7 +462,21 @@ export class Colony {
     if (this.bedCount >= this.bedX.length) return;
     this.bedX[this.bedCount] = x;
     this.bedY[this.bedCount] = y;
+    this.bedHouse[this.bedCount] = this.bedCount;
+    this.houseBeds[this.bedCount] = 1;
     this.bedCount++;
+  }
+
+  /**
+   * The beds just added, from `first` on, make one house.
+   * @param {number} first
+   * @returns {void}
+   */
+  closeHouse(first) {
+    for (let k = first; k < this.bedCount; k++) {
+      this.bedHouse[k] = first;
+      this.houseBeds[k] = this.bedCount - first;
+    }
   }
 
   /**
@@ -572,6 +609,11 @@ export class Colony {
     h.typedArray(this.shelterY.subarray(0, this.shelterCount));
     h.uint32(this.bedCount).typedArray(this.bedX.subarray(0, this.bedCount));
     h.typedArray(this.bedY.subarray(0, this.bedCount));
+    h.typedArray(this.bedOwner.subarray(0, this.bedCount)).uint32(this.bedHint);
+    h.typedArray(this.bedHouse.subarray(0, this.bedCount));
+    hashBits(h.uint32(this.figures), this.knowhow).uint32(Math.round(this.birthCredit * 1000));
+    h.uint32(this.map === null ? -1 : this.map.builtTick);
+    h.uint32(this.vocation & 0xff).uint32(this.expVocation & 0xff);
     const n = this.boardCount;
     h.uint32(n)
       .typedArray(this.boardSubject.subarray(0, n))
@@ -635,7 +677,7 @@ export class Colony {
     h.uint32(this.encClosedTick).uint32(this.breaches).uint32(this.gleaning);
     h.uint32(this.canalLen).uint32(this.canalNext).uint32(this.canalTiles);
     h.uint32(this.canalToCamp ? 1 : 0);
-    h.uint32(this.worksDone).uint32(this.roads).uint32(this.lastWork);
+    h.uint32(this.worksDone).typedArray(this.roads).uint32(this.lastWork);
     h.typedArray(this.beautyCounts).typedArray(this.worksCount);
     h.uint32(this.canalsPlanned).typedArray(this.canalX.subarray(0, this.canalLen));
     h.typedArray(this.canalY.subarray(0, this.canalLen));

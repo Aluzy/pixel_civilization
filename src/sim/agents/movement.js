@@ -36,6 +36,7 @@ export function moveTo(ctx, id, cell, then) {
   agents.pathIndex[id] = 0;
   agents.blocked[id] = 0;
   agents.action[id] = Action.MOVE;
+  agents.stepFactor[id] = 0;
   agents.thenAction[id] = then;
   agents.actionX[id] = ctx.nav.cellX(cell);
   agents.actionY[id] = ctx.nav.cellY(cell);
@@ -52,6 +53,7 @@ export function moveTo(ctx, id, cell, then) {
 export function startHere(ctx, id, action) {
   const agents = ctx.agents;
   agents.action[id] = action;
+  agents.actionNeed[id] = 0;
   agents.thenAction[id] = Action.NONE;
   agents.actionX[id] = agents.x[id];
   agents.actionY[id] = agents.y[id];

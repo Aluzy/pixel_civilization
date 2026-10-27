@@ -244,7 +244,7 @@ export class UiScene extends Phaser.Scene {
       'Pixel Civilisation',
       formatClock(frame.time),
       `Vitesse ${speed}${frame.skip ? ` ${SKIP_LABEL[frame.skip]}` : ''}${frame.auto ? ' auto' : ''}`,
-      `Individus ${frame.agents.length}`,
+      `Individus ${frame.agents.count}`,
       `Harmonie ${harmony && harmony.focus >= 0 ? Math.round(harmony.score) : '—'} (H)`,
       `${Math.round(this.game.loop.actualFps)} img/s`,
     ];

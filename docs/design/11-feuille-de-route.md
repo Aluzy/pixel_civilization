@@ -405,6 +405,37 @@ Réalisé :
   - l'encombrement des portes des maisons au coucher ;
   - le gel des blocs lointains, pour relever le plafond de 500 individus.
 
+### Mise à jour — Le grand essor (`v0.17.0`)
+
+Demandée après la v0.16 (décision 0030, [19](19-grand-essor.md)) : des populations de l'ordre de 10 000 individus, fluides à ×16, et des éclaireurs qui fondent au loin des villes spécialisées. L'utilisateur accepte de limiter les fonctions de la plupart des pixels : le **peuple** suit une routine de ville, les **figures** gardent l'IA complète.
+
+Réalisé :
+
+- plafonds relevés : 16 384 entités, 16 000 individus, 160 colonies vivantes ;
+- figures et peuple, savoir-faire de la ville, budget de réflexion étalé ;
+- index spatial à la place des boucles en carré ; positions des individus en tableaux transférés et dessinées d'un seul objet ;
+- carte de la ville (chemins, eau, sources) ; la foule qui se traverse ;
+- maisons longues et maisons de ville, faubourgs, placettes, puits, un lit par membre, la maison qui se remplit par le fond ;
+- naissances du foyer ;
+- vocations des villes, éclaireurs lointains, expéditions plus sûres ;
+- inspecteur : rang et tâche d'un membre du peuple ; panneau de colonie : vocation, figures et peuple, les plus grandes villes d'abord.
+
+- **Mesures** (graines 1 à 24) :
+  - `npm run bench:towns` (40 villes de 250 habitants, 10 000 à 11 500 individus) : 5,8 ms par cycle en moyenne, 6,2 ms le pire jour (6,25 ms permis à ×16) ;
+  - J10 au jour 100 : four dans 16 parties (18 en v0.16), fonderie dans 3 (9), chaîne du pain dans 10 ;
+  - J11 : une fille qui commerce et passe 16 membres avant le jour 150 dans 16 parties ;
+  - J12 : une enceinte fermée avant le jour 150, sans brèche, dans 7 parties (7 sur 10 en v0.16) ;
+  - la croissance sur 300 jours n'a pas été mesurée sur la version finale. Une mesure intermédiaire (12 graines, avant les derniers réglages des figures) donnait 844 individus en moyenne au jour 300 et 413 au jour 150, contre 69 au jour 150 en v0.16.
+- **Tenu** :
+  - les sorties des J2 à J12 passent ;
+  - graines de démonstration : J3 14 ; J6 16 ; J9 et J10 3, 5 et 9 ; J11 11 et 22 ; J12 2 et 22.
+- **Assoupli** (avec l'accord de l'utilisateur) : le J10 n'exige plus la fonderie que d'une partie sur trois.
+- **Reporté** :
+  - retrouver le rythme d'invention de la v0.16 ;
+  - les caravanes de vivres dédiées ;
+  - la péremption des vivres ;
+  - le gel des blocs lointains.
+
 ### J13 — Conflits (reporté)
 
 Reporté à la demande (décision 0029) : l'expansion et le commerce passent d'abord. Le contenu prévu reste valable.

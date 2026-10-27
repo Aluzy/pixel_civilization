@@ -114,3 +114,10 @@
 | Relais | Colonie fondée près d'une route, plus près des autres | `relay` |
 | Halte | Arrêt d'une caravane chez une troisième colonie sur son chemin | `halt` |
 | Quartier | Stations du même type proches, qui travaillent plus vite | `quarters` |
+| Figure | Individu à l'IA complète ; une colonie en garde 8 plus 2 % de ses membres (décision 0030) | `Tier.FIGURE` |
+| Peuple | Individus d'une ville qui suivent la routine de ville, sans IA complète (décision 0030) | `Tier.COMMONER` |
+| Tâche du peuple | Ce que fait un membre du peuple : dormir, boire, manger, travailler, s'abriter, se reposer | `duty` |
+| Carte de la ville | Chemins depuis le camp, vers l'eau, et sources proches, lus par le peuple | `TownMap` |
+| Savoir-faire de la ville | Union des recettes connues des figures d'une colonie | `knowhow` |
+| Vocation | Spécialité d'une ville (champs, pierre, pêche, forêt), choisie selon ce qui manque à sa mère | `vocation` |
+| Index spatial | Seaux de 16 × 16 cases pour trouver les individus proches sans tous les parcourir | `AgentGrid` |

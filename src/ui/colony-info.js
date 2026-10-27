@@ -4,6 +4,9 @@ const PRICES_PER_LINE = 4;
 /** Harmony components, in the order of the simulation. */
 const COMPONENTS = ['stabilité', 'durabilité', 'ordre spatial', 'savoir', 'bien-être', 'beauté'];
 
+/** Colonies named in the list of the panel, the largest first. */
+const SHOWN_COLONIES = 12;
+
 /**
  * Lines of the colony panel (from Simulation#describeColony): population, beds, stock, the
  * projects in progress with what they still need and who worked on them, the libraries, the
@@ -17,14 +20,23 @@ export function formatColony(colony, colonies = []) {
   if (!colony || colony.members === 0) return [];
   const lines = [];
   if (colonies.length > 1) {
-    const shown = colonies.filter((c) => c.members > 0).map((c) => `n°${c.id} (${c.members})`);
-    lines.push(`Colonies : ${shown.join(' · ')}`);
+    // The largest towns first: a world of a hundred towns names only the first ones.
+    const alive = colonies.filter((c) => c.members > 0).sort((p, q) => q.members - p.members);
+    const shown = alive.slice(0, SHOWN_COLONIES).map((c) => `n°${c.id} (${c.members})`);
+    const more = alive.length > SHOWN_COLONIES ? ` · +${alive.length - SHOWN_COLONIES}` : '';
+    const total = alive.reduce((n, c) => n + c.members, 0);
+    lines.push(`Colonies (${alive.length}, ${total} individus) : ${shown.join(' · ')}${more}`);
   }
   const name = colonies.length > 1 || colony.parent >= 0 ? `Colonie n°${colony.id}` : 'Colonie';
   lines.push(
     `${name} : ${colony.members} individu(s) · ${colony.births} naissance(s) · ` +
       `${colony.deaths} mort(s)`,
   );
+  if (colony.vocation || colony.figures !== undefined) {
+    const vocation = colony.vocation ? `${colony.vocation} · ` : '';
+    const people = colony.members - (colony.figures ?? colony.members);
+    lines.push(`${vocation}${colony.figures ?? colony.members} figure(s), ${people} du peuple`);
+  }
   if (colony.parent >= 0) {
     const sea = colony.overseas ? ' outre-mer' : '';
     lines.push(`Fille de la colonie n°${colony.parent}, fondée${sea} le jour ${colony.foundedDay}`);

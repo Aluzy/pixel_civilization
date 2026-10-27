@@ -123,3 +123,7 @@ Implémenté au J11 (décision 0024). Là où il s'écarte des sections précéd
 - **Navire** : une colonie d'au moins 40 membres qui va bien bâtit un navire sur sa berge. Tant qu'il est à quai, son éclaireur, son expédition et ses caravanes avancent sur l'eau. Une colonie fondée au-delà de l'eau est d'outre-mer.
 - Les routes pavées relient aussi les colonies qui ont commercé.
 - Détail dans [18](18-expansion-et-commerce.md).
+
+## Éclaireurs lointains et vocations (décision 0030)
+
+L'éclaireur part désormais loin (70 à 180 cases, par étapes de 40 à 90) chercher un site pour la **vocation** dont les biens manquent le plus au comptoir de sa colonie : ville agricole, ville de la pierre, port de pêche, ville forestière. Il juge un site sur une vue de 16 cases et doit savoir bâtir un abri. Jusqu'à 160 colonies vivent à la fois. Voir [19](19-grand-essor.md).

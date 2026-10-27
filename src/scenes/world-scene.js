@@ -55,10 +55,13 @@ export class WorldScene extends Phaser.Scene {
     /** @type {string} */
     this.lastViewportKey = '';
     this.lastViewportSync = 0;
-    /** @type {Map<number, Phaser.GameObjects.Rectangle>} */
-    this.agentRects = new Map();
-    /** @type {{ id: number, x: number, y: number }[]} */
-    this.agents = [];
+    /** @type {{ count: number, ids: Int32Array, xy: Float32Array, asleep: Uint8Array }} */
+    this.agents = {
+      count: 0,
+      ids: new Int32Array(0),
+      xy: new Float32Array(0),
+      asleep: new Uint8Array(0),
+    };
     /** @type {Map<number, Phaser.GameObjects.Rectangle>} */
     this.threatRects = new Map();
     /** @type {number} Selected individual, or -1. */
@@ -106,6 +109,8 @@ export class WorldScene extends Phaser.Scene {
       .setVisible(false);
 
     this.memoryGraphics = this.add.graphics().setDepth(DEPTH.memory);
+    // The individuals, thousands of them: one drawing of the ones in view.
+    this.agentGraphics = this.add.graphics().setDepth(DEPTH.agents);
     // Memory layer colour per subject: water, resources, structures, then danger.
     const hex = (c) => Number.parseInt(c.slice(1), 16);
     this.subjectColors = [
@@ -155,10 +160,11 @@ export class WorldScene extends Phaser.Scene {
   update(_time, delta) {
     this.controls.update(delta);
     if (this.following && this.selectedAgent >= 0) {
-      const agent = this.agents.find((a) => a.id === this.selectedAgent);
-      if (agent) this.centerOnTile(agent.x, agent.y);
+      const k = this.agentIndex(this.selectedAgent);
+      if (k >= 0) this.centerOnTile(this.agents.xy[k * 2], this.agents.xy[k * 2 + 1]);
     }
     const rect = visibleRect(this.controls.view());
+    this.drawAgents(rect);
     this.shade.setPosition(rect.x0, rect.y0).setScale(rect.x1 - rect.x0, rect.y1 - rect.y0);
     this.selection.setStrokeStyle(2 / this.cameras.main.zoom, 0xffffff, 0.95);
     this.syncViewport(rect);
@@ -187,7 +193,37 @@ export class WorldScene extends Phaser.Scene {
   }
 
   /**
-   * @param {{ time: { phase: string }, agents: { id: number, x: number, y: number }[] }} frame
+   * Index of an individual in the last frame, or -1.
+   * @param {number} id
+   * @returns {number}
+   */
+  agentIndex(id) {
+    const { count, ids } = this.agents;
+    for (let k = 0; k < count; k++) if (ids[k] === id) return k;
+    return -1;
+  }
+
+  /**
+   * Draws the individuals in view, one black pixel each (pure black is reserved for them).
+   * @param {{ x0: number, y0: number, x1: number, y1: number }} rect - Visible tiles.
+   * @returns {void}
+   */
+  drawAgents(rect) {
+    const g = this.agentGraphics;
+    g.clear();
+    g.fillStyle(0x000000, 1);
+    const { count, xy } = this.agents;
+    for (let k = 0; k < count; k++) {
+      const x = xy[k * 2];
+      const y = xy[k * 2 + 1];
+      if (x < rect.x0 - 1 || y < rect.y0 - 1 || x > rect.x1 || y > rect.y1) continue;
+      g.fillRect(x, y, 1, 1);
+    }
+  }
+
+  /**
+   * @param {{ time: { phase: string }, agents: { count: number, ids: Int32Array,
+   *   xy: Float32Array } }} frame
    * @returns {void}
    */
   applyFrame(frame) {
@@ -195,26 +231,11 @@ export class WorldScene extends Phaser.Scene {
     this.shade.setFillStyle(shade.color, shade.alpha);
 
     this.agents = frame.agents;
-    const seen = new Set();
-    for (const a of frame.agents) {
-      seen.add(a.id);
-      let rect = this.agentRects.get(a.id);
-      if (!rect) {
-        // 1 pixel = 1 unit; pure black is reserved for individuals.
-        rect = this.add.rectangle(0, 0, 1, 1, 0x000000).setOrigin(0, 0).setDepth(DEPTH.agents);
-        this.agentRects.set(a.id, rect);
-      }
-      rect.setPosition(a.x, a.y);
-    }
-    for (const [id, rect] of this.agentRects) {
-      if (seen.has(id)) continue;
-      rect.destroy();
-      this.agentRects.delete(id);
-    }
     this.drawThreats(frame.threats ?? []);
     if (this.selectedAgent >= 0) {
-      const agent = frame.agents.find((a) => a.id === this.selectedAgent);
-      if (agent) this.selection.setPosition(agent.x, agent.y).setVisible(true);
+      const k = this.agentIndex(this.selectedAgent);
+      const xy = this.agents.xy;
+      if (k >= 0) this.selection.setPosition(xy[k * 2], xy[k * 2 + 1]).setVisible(true);
       else this.clearSelection();
     }
     this.drawMemory(frame);
@@ -316,13 +337,14 @@ export class WorldScene extends Phaser.Scene {
       ? Math.max(PICK_RADIUS, TOUCH_PICK_PX / this.cameras.main.zoom)
       : PICK_RADIUS;
     let bestD2 = radius * radius;
-    for (const a of this.agents) {
-      const dx = a.x + 0.5 - wx;
-      const dy = a.y + 0.5 - wy;
+    const { count, ids, xy } = this.agents;
+    for (let k = 0; k < count; k++) {
+      const dx = xy[k * 2] + 0.5 - wx;
+      const dy = xy[k * 2 + 1] + 0.5 - wy;
       const d2 = dx * dx + dy * dy;
       if (d2 <= bestD2) {
         bestD2 = d2;
-        best = a.id;
+        best = ids[k];
       }
     }
     if (best >= 0) {

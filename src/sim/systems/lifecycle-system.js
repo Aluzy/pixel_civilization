@@ -1,4 +1,5 @@
 import { releaseTask } from '../colony/colony-logic.js';
+import { releaseBed } from '../colony/people.js';
 import { EventType } from '../core/events.js';
 import { bequeath } from '../economy/market.js';
 
@@ -14,10 +15,11 @@ function frighten(state, ctx, id) {
   const a = ctx.agents;
   const s = ctx.balance.safety;
   if (a.colony[id] >= 0) state.colonies[a.colony[id]].lastThreat = state.tick;
-  for (let other = 0; other < a.highWater; other++) {
-    if (other === id || a.alive[other] !== 1) continue;
-    const d = Math.max(Math.abs(a.x[other] - a.x[id]), Math.abs(a.y[other] - a.y[id]));
-    if (d <= s.deathRadius) a.fear[other] = Math.min(100, a.fear[other] + s.fearDeath);
+  const n = a.near(a.x[id], a.y[id], s.deathRadius);
+  const found = a.grid.found;
+  for (let k = 0; k < n; k++) {
+    const other = found[k];
+    if (other !== id) a.fear[other] = Math.min(100, a.fear[other] + s.fearDeath);
   }
 }
 
@@ -53,6 +55,7 @@ export function lifecycleSystem(state, ctx) {
     const docs = state.documents;
     for (let d = 0; d < docs.max; d++) if (docs.holder[d] === id) docs.destroy(d);
     releaseTask(state, ctx, id);
+    releaseBed(state, a, id);
     bequeath(state, ctx, id);
     if (a.colony[id] >= 0) {
       const colony = state.colonies[a.colony[id]];
